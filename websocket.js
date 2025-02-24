@@ -1,23 +1,28 @@
+import { getChatbotResponse } from "../controllers/chatbotController.js";
+
 const initWebSocket = (io) => {
-    io.on('connection', (socket) => {
-        console.log(`🔌 A user connected: ${socket.id}`);
+    io.on("connection", (socket) => {
+        console.log("⚡ New client connected:", socket.id);
 
-        // Send a message to the client upon successful connection
-        socket.emit("message", "Welcome to the WebSocket server!");
+        socket.on("chatMessage", async (data) => {
+            console.log("📩 Message received from client:", data);
 
-        // Listen for messages from clients
-        socket.on("message", (data) => {
-            console.log(`📩 Received message: ${data}`);
-            io.emit("message", `Server received: ${data}`);
+            const { message, businessId } = data;
+            if (!message || !businessId) {
+                console.error("❌ Missing message or businessId");
+                return;
+            }
+
+            const botResponse = await getChatbotResponse({ body: { message, businessId } }, { json: (response) => response });
+            console.log("🤖 Chatbot response:", botResponse);
+
+            socket.emit("chatResponse", botResponse);
         });
 
-        // Handle disconnection
         socket.on("disconnect", () => {
-            console.log(`❌ User disconnected: ${socket.id}`);
+            console.log("🔌 Client disconnected:", socket.id);
         });
     });
-
-    console.log('✅ WebSocket server is running');
 };
 
 export default initWebSocket;
