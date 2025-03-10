@@ -3,6 +3,8 @@ import Service from "../models/Service.js";
 import ExtraInfo from "../models/ExtraInfo.js";
 import Contact from "../models/Contact.js";
 import Business from "../models/Business.js";
+import { saveLead } from "./leadController.js"; 
+import stringSimilarity from "string-similarity"; // ✅ Import string-similarity
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -43,25 +45,77 @@ export const getBusinessDataForChatbot = async (businessId) => {
 /**
  * Handle incoming chatbot messages with sales-driven responses
  */
+const userSessions = {}; // ✅ Store user's service interest in memory
+
 export const handleChatMessage = async (message, businessId) => {
     try {
         console.log(`💬 Processing chat message: "${message}" for business ${businessId}`);
+
+        if (!businessId) return "⚠️ Error: Business ID is missing.";
 
         // Fetch business data
         const businessData = await getBusinessDataForChatbot(businessId);
         if (!businessData) return "⚠️ Sorry, I couldn't fetch business details at the moment.";
 
-        const { businessName, services, faqs, contactDetails } = businessData;
-
-        // Ensure services list is available
+        const { businessName, services, contactDetails } = businessData;
         const serviceNames = services.map(service => service.name);
         const serviceList = serviceNames.length > 0 ? serviceNames.join(", ") : "various high-quality dental services.";
 
-        // **Detect High-Intent Users**
+        // ✅ **Detect High-Intent Users**
         const highIntentKeywords = ["price", "cost", "how much", "book", "appointment", "available", "consultation", "urgent", "need now"];
         const isHighIntent = highIntentKeywords.some(keyword => message.toLowerCase().includes(keyword));
 
-        // **Generate AI Response**
+        // ✅ **Fuzzy Matching for Service Interest (Fixes Spelling Mistakes)**
+        const userInput = message.toLowerCase();
+        const serviceOptions = serviceNames.map(name => name.toLowerCase());
+        const matches = stringSimilarity.findBestMatch(userInput, serviceOptions);
+
+        let detectedService = null;
+        let bestMatch = matches.bestMatch;
+
+        // ✅ **Ensure Correct Service is Picked**
+        if (bestMatch.rating >= 0.5) {  // 🔥 **Optimized threshold for best accuracy**
+            detectedService = services.find(service =>
+                service.name.toLowerCase() === bestMatch.target
+            )?.name;
+
+            console.log(`🔍 Matched Service: ${detectedService} (Confidence: ${bestMatch.rating})`);
+        }
+
+        // ✅ **Backup Matching (If Fuzzy Match Fails, Try Partial Match)**
+        if (!detectedService) {
+            detectedService = services.find(service =>
+                userInput.includes(service.name.toLowerCase())
+            )?.name || null;
+        }
+
+        // ✅ **Send Call-To-Action for Correct Service Match IMMEDIATELY**
+        if (detectedService) {
+            userSessions[businessId] = detectedService;
+            console.log(`✅ Service Detected: ${detectedService} → Sending CTA Response`);
+            return `📞 Great choice! Our **${detectedService}** service is highly recommended. Would you like to schedule a consultation? Please provide your **name, phone number, and email** to proceed.`;
+        }
+
+        // ✅ **Handle Price Inquiries IMMEDIATELY**
+        if (isHighIntent) {
+            console.log("💰 Price inquiry detected → Sending CTA Response");
+            return `💰 Our pricing depends on the specific treatment you need. We offer competitive and transparent pricing. Would you like to discuss the best options for you? Please provide your **name, phone number, and email** to proceed with a consultation.`;
+        }
+
+        // ✅ **Lead Capture Detection**
+        const leadResponse = await saveLead(
+            businessId,
+            message,
+            userSessions[businessId] || "General Inquiry"
+        );
+
+        if (leadResponse) {
+            delete userSessions[businessId];
+            return leadResponse;
+        }
+
+        // ✅ **Fallback AI Response ONLY IF NO CTA WAS TRIGGERED**
+        console.log("🤖 No CTA triggered → Using OpenAI for fallback response.");
         const prompt = `
         You are a **sales-driven AI chatbot** representing **${businessName}**, a leading dental clinic.
         Your goal is to **convert users into booked consultations** by providing persuasive and sales-focused responses.
@@ -73,11 +127,6 @@ export const handleChatMessage = async (message, businessId) => {
         - Use **urgency** (limited slots, special discounts, expert team).
         - Ensure every response has a **Call-To-Action (CTA)**.
         - Push users toward **booking an appointment**.
-
-        **Example Scenarios:**
-        - If they ask about services, list them but **encourage booking**.
-        - If they ask about prices, ask for their **budget and urgency**.
-        - If they seem ready, push for **immediate booking**.
 
         **User Message:** "${message}"
         **Business Services:** ${serviceList}
