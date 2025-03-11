@@ -64,11 +64,10 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
         }
 
         // Validate that we have all required information
-        if (!name || !phone || !email) {
+        if (!name || !phone) {
             console.log("⚠️ Missing required contact information");
             console.log("Name:", name);
             console.log("Phone:", phone);
-            console.log("Email:", email);
             return null;
         }
 
@@ -79,14 +78,66 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
             return `📞 Thanks, ${name}! We already have your details and will contact you soon.`;
         }
 
-        // Save new lead
-        const newLead = new Lead({ businessId, name, phone, email, serviceInterest, status: "new" });
+        // Save new lead with priority status based on time
+        const currentHour = new Date().getHours();
+        const isPriorityHours = currentHour >= 9 && currentHour < 17; // 9 AM to 5 PM
+
+        const newLead = new Lead({
+            businessId,
+            name,
+            phone,
+            email: email || null, // Make email optional
+            service: serviceInterest,
+            status: "new",
+            priority: isPriorityHours ? "high" : "normal",
+            bestTimeToCall: isPriorityHours ? "now" : "next-business-day",
+            createdAt: new Date(),
+            lastContactedAt: new Date()
+        });
+
         await newLead.save();
 
+        // Return appropriate message based on business hours
+        const responseMessage = isPriorityHours
+            ? `✅ Thank you, ${name}! Our team will call you very shortly at ${phone} to discuss ${serviceInterest}.`
+            : `✅ Thank you, ${name}! Our team will call you during business hours (9 AM - 5 PM) at ${phone} to discuss ${serviceInterest}.`;
+
         console.log(`✅ New lead captured: ${name} - ${phone}`);
-        return `✅ Thank you, ${name}! We've recorded your details for **${serviceInterest}**. Our team will reach out to you soon!`;
+        return responseMessage;
+
     } catch (error) {
         console.error("❌ Error saving lead:", error);
         return "⚠️ Sorry, there was an error processing your request.";
+    }
+};
+
+export const updateLeadStatus = async (leadId, status, notes = "") => {
+    try {
+        const lead = await Lead.findByIdAndUpdate(
+            leadId,
+            { 
+                status,
+                lastContactedAt: new Date(),
+                $push: { 
+                    callHistory: {
+                        status,
+                        notes,
+                        timestamp: new Date()
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        if (!lead) {
+            throw new Error('Lead not found');
+        }
+
+        console.log(`✅ Lead ${leadId} status updated to: ${status}`);
+        return lead;
+
+    } catch (error) {
+        console.error('❌ Error updating lead status:', error);
+        throw error;
     }
 };
