@@ -7,8 +7,253 @@ import { saveLead } from "./leadController.js";
 import stringSimilarity from "string-similarity"; // ✅ Import string-similarity
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Enhanced session storage
 const userSessions = {}; // Store user's service interest in memory
-const highIntentKeywords = ["price", "cost", "how much", "book", "appointment", "available", "consultation", "urgent", "need now"];
+const userMessages = {}; // Store previous messages for each user
+const conversationMemory = {}; // Store conversation context and history
+
+// Add these to the top with other constants
+const affirmativeResponses = ['yes', 'yeah', 'sure', 'okay', 'ok', 'yep', 'yup', 'definitely', 'absolutely'];
+
+// Initialize or get session memory
+function getSessionMemory(businessId) {
+    if (!conversationMemory[businessId]) {
+        conversationMemory[businessId] = {
+            currentService: null,
+            mentionedServices: [],
+            lastQuestion: null,
+            messageHistory: [], // Store full message history
+            context: {
+                priceAsked: false,
+                introductionGiven: false,
+                timelineDiscussed: false,
+                bookingAttempted: false
+            }
+        };
+    }
+    return conversationMemory[businessId];
+}
+
+// Update session memory with new information
+function updateSessionMemory(businessId, message, detectedService) {
+    const memory = getSessionMemory(businessId);
+    const lowercaseMsg = message.toLowerCase();
+
+    // Check for affirmative response to previous question
+    if (affirmativeResponses.includes(lowercaseMsg) && memory.lastQuestion) {
+        const previousQuestion = memory.lastQuestion;
+        memory.lastQuestion = 'booking'; // Progress to booking
+        
+        // Store the affirmative response
+        memory.messageHistory.push({
+            message: message,
+            timestamp: new Date(),
+            isUser: true,
+            service: memory.currentService,
+            context: {
+                wasAffirmative: true,
+                previousQuestion: previousQuestion
+            }
+        });
+        
+        return memory;
+    }
+
+    // Store the message with enhanced context
+    memory.messageHistory.push({
+        message: message,
+        timestamp: new Date(),
+        isUser: true,
+        service: detectedService || memory.currentService,
+        context: {
+            priceAsked: lowercaseMsg.includes('price') || lowercaseMsg.includes('cost'),
+            introRequested: lowercaseMsg.includes('introduce') || lowercaseMsg.includes('tell me about'),
+            timelineAsked: lowercaseMsg.includes('long') || lowercaseMsg.includes('time') || 
+                         lowercaseMsg.includes('duration') || lowercaseMsg.includes('takes'),
+            bookingRequested: lowercaseMsg.includes('book') || lowercaseMsg.includes('appointment')
+        }
+    });
+
+    // Update service tracking with enhanced context
+    if (detectedService) {
+        memory.currentService = detectedService;
+        if (!memory.mentionedServices.includes(detectedService)) {
+            memory.mentionedServices.push(detectedService);
+        }
+        
+        // Initialize or update service-specific context
+        if (!memory.serviceContext) memory.serviceContext = {};
+        if (!memory.serviceContext[detectedService]) {
+            memory.serviceContext[detectedService] = {
+                priceAsked: false,
+                introductionGiven: false,
+                timelineDiscussed: false,
+                bookingAttempted: false,
+                lastDiscussed: new Date()
+            };
+        }
+    }
+
+    // Update question tracking
+    if (lowercaseMsg.includes('price') || lowercaseMsg.includes('cost')) {
+        memory.lastQuestion = 'price';
+        if (detectedService) memory.serviceContext[detectedService].priceAsked = true;
+    } else if (lowercaseMsg.includes('introduce') || lowercaseMsg.includes('tell me about')) {
+        memory.lastQuestion = 'introduction';
+        if (detectedService) memory.serviceContext[detectedService].introductionGiven = true;
+    } else if (lowercaseMsg.includes('long') || lowercaseMsg.includes('time') || 
+               lowercaseMsg.includes('duration') || lowercaseMsg.includes('takes')) {
+        memory.lastQuestion = 'timeline';
+        if (detectedService) memory.serviceContext[detectedService].timelineDiscussed = true;
+    } else if (lowercaseMsg.includes('book') || lowercaseMsg.includes('appointment')) {
+        memory.lastQuestion = 'booking';
+        if (detectedService) memory.serviceContext[detectedService].bookingAttempted = true;
+    }
+
+    return memory;
+}
+
+// Get relevant previous messages about a service
+function getPreviousServiceInfo(memory, service) {
+    if (!memory.messageHistory) return null;
+
+    const relevantMessages = memory.messageHistory
+        .filter(msg => msg.service === service)
+        .slice(-3); // Get last 3 relevant messages
+
+    return relevantMessages.length > 0 ? relevantMessages : null;
+}
+
+// Generate response based on conversation memory
+function generateMemoryBasedResponse(memory, serviceInfo) {
+    const service = memory.currentService;
+    if (!service || !serviceInfo[service]) return null;
+
+    const info = serviceInfo[service];
+    const serviceContext = memory.serviceContext[service];
+    const previousMessages = getPreviousServiceInfo(memory, service);
+
+    // Reference other services if they were discussed
+    const otherServicesContext = memory.mentionedServices
+        .filter(s => s !== service)
+        .map(s => memory.serviceContext[s])
+        .filter(Boolean);
+
+    // Check if this is an affirmative response
+    const lastMessage = memory.messageHistory[memory.messageHistory.length - 1];
+    const isAffirmativeResponse = lastMessage?.context?.wasAffirmative;
+
+    switch (memory.lastQuestion) {
+        case 'price':
+            let priceResponse = `For ${service}, the investment typically ranges from ${info.pricing.range}. This includes ${info.pricing.features}.`;
+            
+            // Add references to other services if their prices were discussed
+            if (otherServicesContext.length > 0) {
+                const otherServices = memory.mentionedServices.filter(s => s !== service);
+                if (otherServices.length === 1) {
+                    priceResponse += ` As we discussed earlier about ${otherServices[0]}, `;
+                } else {
+                    priceResponse += ` As with our other services, `;
+                }
+                priceResponse += `we offer flexible payment plans starting at $199/month.`;
+            } else {
+                priceResponse += ` We offer flexible payment plans starting at $199/month.`;
+            }
+            
+            priceResponse += ` To get your personalized quote and learn about our current offers, please share your name, phone number, and email address.`;
+            return priceResponse;
+
+        case 'introduction':
+            let introResponse = `${serviceContext.priceAsked ? "In addition to the pricing I mentioned, " : ""}At Revive Dental, we offer high-quality ${service.toLowerCase()} that are ${info.description} designed to ${info.benefits}. Our expert team ensures ${info.features}, and the result is a beautiful and natural-looking outcome.`;
+            
+            // Add timeline info if previously discussed
+            if (serviceContext.timelineDiscussed) {
+                introResponse += ` As we discussed, the treatment typically takes ${info.timeline}.`;
+            } else {
+                introResponse += ` The treatment typically takes ${info.timeline}.`;
+            }
+
+            // Add pricing reference if previously discussed
+            if (serviceContext.priceAsked) {
+                introResponse += ` And remember, we offer flexible payment plans starting at $199/month.`;
+            }
+
+            // Reference other services if relevant
+            if (otherServicesContext.length > 0) {
+                introResponse += ` Like our ${memory.mentionedServices.filter(s => s !== service).join(" and ")} services, `;
+                introResponse += `we maintain the highest standards of care and patient comfort.`;
+            }
+
+            introResponse += ` Would you like to schedule a consultation to learn more?`;
+            return introResponse;
+
+        case 'timeline':
+            let timelineResponse = `For ${service}, the complete treatment typically takes ${info.timeline}. During this time, we'll ensure ${info.features} for the best results.`;
+            
+            // Reference previous price discussion if exists
+            if (serviceContext.priceAsked) {
+                timelineResponse += ` As mentioned earlier, the investment ranges from ${info.pricing.range}, and we're currently offering special financing options.`;
+            }
+
+            // Add introduction reference if exists
+            if (serviceContext.introductionGiven) {
+                timelineResponse += ` As I explained before, this will give you a beautiful, natural-looking result.`;
+            }
+
+            // Reference other services' timelines if discussed
+            if (otherServicesContext.length > 0) {
+                const otherServices = memory.mentionedServices.filter(s => s !== service);
+                if (otherServices.length === 1) {
+                    timelineResponse += ` Unlike ${otherServices[0]} which takes ${serviceInfo[otherServices[0]].timeline}, `;
+                    timelineResponse += `${service} has its own unique treatment timeline to ensure optimal results.`;
+                }
+            }
+
+            timelineResponse += ` Would you like to schedule a consultation to discuss your specific case?`;
+            return timelineResponse;
+
+        case 'booking':
+            let bookingResponse = `Excellent! Let's schedule your ${service.toLowerCase()} consultation right away.`;
+            
+            // Reference previous discussions
+            if (serviceContext.priceAsked) {
+                bookingResponse += ` As we discussed, the investment ranges from ${info.pricing.range}.`;
+            }
+            
+            if (serviceContext.timelineDiscussed) {
+                bookingResponse += ` The treatment will take ${info.timeline}, and`;
+            } else {
+                bookingResponse += ` We currently have`;
+            }
+            
+            bookingResponse += ` a special offer for ${service.toLowerCase()} treatments with limited slots available this week.`;
+            
+            // Add comprehensive consultation details
+            bookingResponse += ` During your consultation, our expert team will:
+1. Evaluate your specific needs
+2. Create a personalized treatment plan
+3. Discuss financing options starting at $199/month
+4. Answer all your questions about the procedure`;
+
+            // Reference other services if discussed
+            if (otherServicesContext.length > 0) {
+                bookingResponse += `\nWe can also discuss the other services you were interested in (${memory.mentionedServices.filter(s => s !== service).join(", ")}).`;
+            }
+            
+            bookingResponse += `\n\nTo secure your appointment, please provide your:
+• Name
+• Phone number
+• Email address`;
+            
+            return bookingResponse;
+
+        default:
+            return null;
+    }
+}
+
+const highIntentKeywords = ["price", "cost", "how much", "book", "appointment", "available", "consultation", "urgent", "need now", "schedule", "important", "now"];
 const serviceRelatedWords = ['service', 'treatment', 'procedure', 'offer', 'dental', 'teeth', 'tooth'];
 
 // Common variations of service names for better matching
@@ -64,28 +309,28 @@ export const handleChatMessage = async (message, businessId) => {
 
         if (!businessId) return "⚠️ Error: Business ID is missing.";
 
+        // Get or initialize session memory
+        const memory = getSessionMemory(businessId);
+        
         // First, check if this is contact information being provided
         const contactInfo = extractContactInfo(message);
         if (contactInfo) {
             console.log("Contact info detected:", contactInfo);
             const { name, phone, email } = contactInfo;
-            const serviceInterest = userSessions[businessId] || "General Inquiry";
+            const serviceInterest = memory.currentService || "General Inquiry";
             
-            // Always format the lead message in the same way
             const leadMessage = `name: ${name}, phone: ${phone}, email: ${email}`;
             
             try {
-                // Always attempt to save the lead
                 await saveLead(businessId, leadMessage, serviceInterest);
-                
-                // Always return the same confirmation message format
+                // Clean up session data
+                delete conversationMemory[businessId];
+                delete userMessages[businessId];
+                delete userSessions[businessId];
                 return `✅ Thank you, ${name}! We've recorded your details for **${serviceInterest}**. Our team will reach out to you soon!`;
             } catch (error) {
                 console.error("Error saving lead:", error);
                 return "⚠️ Sorry, there was an error processing your request. Please try again.";
-            } finally {
-                // Clean up the session
-                delete userSessions[businessId];
             }
         }
 
@@ -93,224 +338,154 @@ export const handleChatMessage = async (message, businessId) => {
         const businessData = await getBusinessDataForChatbot(businessId);
         if (!businessData) return "⚠️ Sorry, I couldn't fetch business details at the moment.";
 
-        const { businessName, services, contactDetails } = businessData;
-        const serviceNames = services.map(service => service.name);
-        const serviceList = serviceNames.length > 0 ? serviceNames.join(", ") : "various high-quality dental services.";
-
-        // ✅ **Enhanced Fuzzy Matching for Service Interest**
-        const userInput = message.toLowerCase();
-        const serviceOptions = serviceNames.map(name => name.toLowerCase());
+        const { services } = businessData;
         
+        // Detect service from message or use existing context
         let detectedService = null;
-        let bestMatchRating = 0;
-
-        // Check against service variations first
-        for (const [service, variations] of Object.entries(serviceVariations)) {
-            if (variations.some(v => userInput.includes(v))) {
-                const matchingService = services.find(s => 
-                    s.name.toLowerCase().includes(service)
-                );
-                if (matchingService) {
-                    detectedService = matchingService.name;
-                    bestMatchRating = 1;
-                    break;
-                }
+        
+        // Check if we're continuing discussion about current service
+        if (memory.currentService) {
+            const hasServiceReference = message.toLowerCase().includes('it') || 
+                                     message.toLowerCase().includes('this') || 
+                                     message.toLowerCase().includes('that') || 
+                                     message.toLowerCase().includes('this service');
+            if (hasServiceReference) {
+                detectedService = memory.currentService;
             }
         }
 
-        // If no match found through variations, try fuzzy matching
+        // If no service reference found, try to detect new service
         if (!detectedService) {
-            // Split user input into words
-            const userWords = userInput.split(/\s+/);
+            const userInput = message.toLowerCase();
             
-            serviceOptions.forEach((serviceName, index) => {
-                // Try matching full service name
-                const fullNameMatch = stringSimilarity.compareTwoStrings(userInput, serviceName);
-                
-                // Try matching individual words
-                const serviceWords = serviceName.split(/\s+/);
-                const wordMatches = userWords.map(userWord => 
-                    serviceWords.map(serviceWord => 
-                        stringSimilarity.compareTwoStrings(userWord, serviceWord)
-                    ).reduce((max, curr) => Math.max(max, curr), 0)
-                );
-                
-                const wordMatchAverage = wordMatches.reduce((sum, curr) => sum + curr, 0) / wordMatches.length;
-                const matchRating = Math.max(fullNameMatch, wordMatchAverage);
-
-                if (matchRating > bestMatchRating && matchRating >= 0.3) {
-                    bestMatchRating = matchRating;
-                    detectedService = services[index].name;
-                }
-            });
-        }
-
-        // Send Call-To-Action for Correct Service Match
-        if (detectedService) {
-            userSessions[businessId] = detectedService;
-            console.log(`✅ Service Detected: ${detectedService} → Sending CTA Response (Match Rating: ${bestMatchRating})`);
-            
-            // Generate a more natural and informative response based on the specific service
-            const serviceInfo = {
-                'Veneers': {
-                    description: 'custom-made, ultra-thin porcelain shells',
-                    benefits: 'fix stains, chips, or gaps',
-                    timeline: '2-3 visits',
-                    features: 'minimally invasive procedure',
-                    options: 'both porcelain and composite options available'
-                },
-                'Implants': {
-                    description: 'permanent tooth replacement solution',
-                    benefits: 'restore full functionality and natural appearance',
-                    timeline: '3-6 months complete process',
-                    features: 'titanium posts that integrate with your jaw',
-                    options: 'single tooth or full arch solutions'
-                },
-                'Whitening': {
-                    description: 'professional teeth whitening treatment',
-                    benefits: 'remove years of stains and discoloration',
-                    timeline: 'single 1-hour session',
-                    features: 'safe and clinically proven procedure',
-                    options: 'in-office or take-home kits'
-                },
-                'Cleaning': {
-                    description: 'thorough professional dental cleaning',
-                    benefits: 'remove plaque, tartar, and surface stains',
-                    timeline: '30-60 minute session',
-                    features: 'comprehensive oral health assessment',
-                    options: 'regular or deep cleaning available'
-                },
-                'Orthodontics': {
-                    description: 'teeth straightening treatment',
-                    benefits: 'align teeth and correct bite issues',
-                    timeline: '12-24 months on average',
-                    features: 'regular progress monitoring',
-                    options: 'traditional braces or clear aligners'
-                },
-                'Extraction': {
-                    description: 'tooth removal procedure',
-                    benefits: 'relieve pain and prevent complications',
-                    timeline: '30-60 minute procedure',
-                    features: 'modern techniques for comfort',
-                    options: 'simple or surgical extraction'
-                }
-            };
-
-            // Get service info or use default if service not in our detailed list
-            const info = serviceInfo[detectedService] || {
-                description: 'professional dental treatment',
-                benefits: 'improve your oral health',
-                timeline: 'customized to your needs',
-                features: 'latest dental technology',
-                options: 'personalized treatment plans'
-            };
-
-            const responses = [
-                `${detectedService} is an excellent choice! It's a ${info.description} that can ${info.benefits}. The procedure typically takes ${info.timeline} and is ${info.features}. To discuss your specific needs, please share your name, phone number, and email address, and our specialist will walk you through all the options!`,
-                
-                `I'd love to tell you about our ${detectedService} treatment! We offer ${info.options}, each with their own benefits. Our current special promotion includes a free consultation. To learn which option would be best for you, please provide your name, phone number, and email address, and our expert will contact you shortly.`,
-                
-                `Great interest in ${detectedService}! This treatment can make a real difference in your dental health. We use the latest technology for optimal results, and we're offering flexible payment plans starting from $199/month. To learn more and schedule your consultation, please share your name, phone number, and email address.`
-            ];
-            return responses[Math.floor(Math.random() * responses.length)];
-        }
-
-        // ✅ **Detect High-Intent Users and Service Inquiries**
-        const isHighIntent = highIntentKeywords.some(keyword => message.toLowerCase().includes(keyword));
-        const isServiceInquiry = serviceRelatedWords.some(word => message.toLowerCase().includes(word));
-
-        // If it's a service inquiry or high intent, send CTA immediately
-        if (isServiceInquiry || isHighIntent) {
-            let ctaMessage = "";
-            if (message.toLowerCase().includes('price') || message.toLowerCase().includes('cost')) {
-                // Define price ranges for different services
-                const servicePricing = {
-                    'Veneers': { range: '$400-$2,500 per tooth', features: 'porcelain or composite options' },
-                    'Implants': { range: '$3,000-$6,000 per implant', features: 'includes crown and abutment' },
-                    'Whitening': { range: '$200-$1,000', features: 'in-office or take-home options' },
-                    'Cleaning': { range: '$100-$300', features: 'regular or deep cleaning' },
-                    'Orthodontics': { range: '$3,000-$7,000', features: 'traditional braces or clear aligners' },
-                    'Extraction': { range: '$150-$700', features: 'simple or surgical extraction' },
-                    'Cosmetic Dentistry': { range: '$200-$6,000', features: 'various treatment options' }
-                };
-
-                // Determine which service to discuss based on user's message and detected service
-                let discussedService = detectedService;
-                if (!discussedService) {
-                    // Try to match service from the message
-                    for (const service of Object.keys(servicePricing)) {
-                        if (message.toLowerCase().includes(service.toLowerCase())) {
-                            discussedService = service;
-                            break;
-                        }
-                    }
-                    // Default to Cosmetic Dentistry if no specific service detected
-                    if (!discussedService) {
-                        discussedService = 'Cosmetic Dentistry';
+            // Check against service variations
+            for (const [service, variations] of Object.entries(serviceVariations)) {
+                if (variations.some(v => userInput.includes(v))) {
+                    const matchingService = services.find(s => 
+                        s.name.toLowerCase().includes(service)
+                    );
+                    if (matchingService) {
+                        detectedService = matchingService.name;
+                        break;
                     }
                 }
-
-                const pricing = servicePricing[discussedService];
-                
-                // Price-specific responses with dynamic service information
-                const priceResponses = [
-                    `For ${discussedService}, the investment typically ranges from ${pricing.range}, which includes ${pricing.features}. The good news is we have several ways to make it affordable! We offer 0% interest payment plans and significant discounts for treatment packages. To get an exact quote and discuss our current promotions, please share your name, phone number, and email address, and our treatment coordinator will reach out with detailed pricing options.`,
-                    
-                    `The cost for ${discussedService} ranges from ${pricing.range} depending on your specific needs. We offer multiple treatment options and ${pricing.features} to fit different budgets. We have flexible payment plans and seasonal discounts available! To receive a personalized quote and learn about our current special offers, please provide your name, phone number, and email address.`,
-                    
-                    `Let me be transparent about ${discussedService} pricing: the treatment typically ranges from ${pricing.range}. We make achieving your dream smile affordable with monthly payments as low as $199 and special package deals. Plus, we're offering a limited-time 20% discount for new patients! To learn more about our pricing and payment options, simply share your name, phone number, and email address.`
-                ];
-                ctaMessage = priceResponses[Math.floor(Math.random() * priceResponses.length)];
-            } else {
-                // General service inquiry responses
-                const serviceResponses = [
-                    `We specialize in creating beautiful, natural-looking smiles through various treatments including ${serviceList}. Each service is customized to your unique needs and goals. To explore which option would work best for you, please share your name, phone number, and email address, and our smile consultant will guide you through all the possibilities.`,
-                    
-                    `You've come to the right place! Whether you're interested in a quick smile enhancement or a complete transformation, we have solutions for every need. Our most popular services include ${serviceList}, and we use the latest dental technology for optimal results. To learn more about your options, please provide your name, phone number, and email address, and our specialist will contact you.`,
-                    
-                    `From simple whitening to complete smile makeovers, we offer comprehensive solutions including ${serviceList}. The best part? We can work with your schedule and budget to achieve the results you want. To schedule your free consultation and smile simulation, please share your name, phone number, and email address.`
-                ];
-                ctaMessage = serviceResponses[Math.floor(Math.random() * serviceResponses.length)];
             }
-            return ctaMessage;
         }
 
-        // ✅ **Fallback AI Response**
-        console.log("🤖 No CTA triggered → Using OpenAI for fallback response.");
-        const prompt = `
-        You are a **sales-driven AI chatbot** representing **${businessName}**, a leading dental clinic.
-        Your goal is to **convert users into booked consultations** by providing persuasive and sales-focused responses.
+        // Update session memory with new information
+        const updatedMemory = updateSessionMemory(businessId, message, detectedService);
 
-        **Key Tactics:**
-        - Answer like a **real human** who cares about the user.
-        - **Personalize** responses with the user's name.
-        - Always mention the **business name** in responses.
-        - Use **urgency** (limited slots, special discounts, expert team).
-        - Ensure every response has a **Call-To-Action (CTA)**.
-        - Push users toward **booking an appointment**.
+        // Define comprehensive service information
+        const serviceInfo = {
+            'Veneers': {
+                description: 'custom-made, ultra-thin porcelain shells',
+                benefits: 'enhance your smile by fixing stains, chips, gaps, or discoloration',
+                timeline: '2-3 visits',
+                features: 'minimally invasive procedure with natural-looking results',
+                pricing: { range: '$800-$2,500 per tooth', features: 'custom design and fitting' }
+            },
+            'Dental Implants': {
+                description: 'permanent tooth replacement solution',
+                benefits: 'restore full functionality and natural appearance of missing teeth',
+                timeline: '3-6 months total treatment time',
+                features: 'advanced titanium integration technology with custom-matched crowns',
+                pricing: { range: '$3,000-$6,000 per implant', features: 'complete procedure including implant, abutment, and crown' }
+            },
+            'Teeth Whitening': {
+                description: 'professional-grade teeth whitening treatment',
+                benefits: 'achieve a brighter, whiter smile by removing years of stains',
+                timeline: '1-2 sessions of 60-90 minutes each',
+                features: 'safe and effective whitening agents with lasting results',
+                pricing: { range: '$200-$1,000', features: 'professional in-office treatment' }
+            },
+            'Root Canal': {
+                description: 'advanced endodontic treatment',
+                benefits: 'save your natural tooth and eliminate pain from infection',
+                timeline: '1-2 appointments',
+                features: 'modern techniques and equipment for comfortable treatment',
+                pricing: { range: '$700-$1,500 per tooth', features: 'complete procedure including filling' }
+            },
+            'Braces & Aligners': {
+                description: 'orthodontic alignment solution',
+                benefits: 'straighten teeth and correct bite issues',
+                timeline: '12-24 months on average',
+                features: 'choice of traditional braces or clear aligners',
+                pricing: { range: '$3,000-$7,000', features: 'complete orthodontic treatment' }
+            },
+            'Wisdom Tooth Extraction': {
+                description: 'surgical tooth removal procedure',
+                benefits: 'prevent or resolve issues caused by wisdom teeth',
+                timeline: '45-90 minutes per procedure, 1-week recovery',
+                features: 'sedation options available for comfort',
+                pricing: { range: '$200-$700 per tooth', features: 'extraction and aftercare' }
+            },
+            'Dental Cleaning': {
+                description: 'professional dental hygiene service',
+                benefits: 'maintain oral health and prevent cavities',
+                timeline: '30-60 minutes per session',
+                features: 'thorough cleaning, polishing, and fluoride treatment',
+                pricing: { range: '$75-$200', features: 'comprehensive cleaning and check-up' }
+            },
+            'Pediatric Dentistry': {
+                description: 'specialized dental care for children',
+                benefits: 'ensure proper dental development and oral health',
+                timeline: '30-45 minutes per visit',
+                features: 'child-friendly environment and gentle approach',
+                pricing: { range: '$50-$300', features: 'varies by specific treatment needed' }
+            }
+        };
 
-        **User Message:** "${message}"
-        **Business Services:** ${serviceList}
-        **Contact Details:** Phone: ${contactDetails.phone || "Not available"}, Email: ${contactDetails.email || "Not available"}
-
-        **🔥 High-Intent Handling:** ${
-            isHighIntent
-                ? "This user is showing strong interest! Offer them an immediate booking option or special deal."
-                : "This user seems to be browsing. Engage them and encourage action."
+        // Enhanced service detection function
+        function detectServiceFromMessage(message, services) {
+            const lowercaseMsg = message.toLowerCase();
+            
+            // Check direct service mentions first
+            for (const [serviceName, info] of Object.entries(serviceInfo)) {
+                if (lowercaseMsg.includes(serviceName.toLowerCase())) {
+                    return serviceName;
+                }
+            }
+            
+            // Check service variations
+            for (const [service, variations] of Object.entries(serviceVariations)) {
+                if (variations.some(v => lowercaseMsg.includes(v))) {
+                    // Match the variation to the full service name
+                    const fullServiceName = Object.keys(serviceInfo).find(name => 
+                        name.toLowerCase().includes(service.toLowerCase())
+                    );
+                    if (fullServiceName) return fullServiceName;
+                }
+            }
+            
+            return null;
         }
 
-        Provide a response that **sells effectively and includes a Call-To-Action (CTA)**.
-        `;
+        // Generate response based on memory
+        const memoryBasedResponse = generateMemoryBasedResponse(updatedMemory, serviceInfo);
+        let response;
+        
+        if (memoryBasedResponse) {
+            response = memoryBasedResponse;
+        } else {
+            // Fallback to general response if no specific context
+            const serviceList = services.map(service => service.name).join(", ");
+            response = `We offer a range of dental services including ${serviceList}. ${
+                updatedMemory.mentionedServices.length > 0 
+                    ? `I see you were interested in ${updatedMemory.mentionedServices.join(" and ")} earlier. ` 
+                    : ""
+            }To help you find the best treatment option for your needs, please let me know which service you're interested in, or share your name, phone number, and email address for a personalized consultation.`;
+        }
 
-        const aiResponse = await openai.chat.completions.create({
-            model: "gpt-4",
-            messages: [{ role: "system", content: prompt }],
-            temperature: 0.7,
+        // Store bot's response in history
+        updatedMemory.messageHistory.push({
+            message: response,
+            timestamp: new Date(),
+            isUser: false,
+            service: updatedMemory.currentService
         });
+        
+        return response;
 
-        const finalResponse = aiResponse.choices[0]?.message?.content.trim() || "⚠️ I'm sorry, but I couldn't generate a response.";
-
-        return finalResponse;
     } catch (error) {
         console.error("❌ Error handling chat message:", error);
         return "⚠️ Sorry, there was an error processing your request.";
