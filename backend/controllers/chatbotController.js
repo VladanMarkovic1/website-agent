@@ -6,7 +6,14 @@ import Business from "../models/Business.js";
 import { saveLead } from "./leadController.js"; 
 import stringSimilarity from "string-similarity"; // ✅ Import string-similarity
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Make OpenAI optional for testing
+let openai;
+try {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+} catch (error) {
+    console.log('OpenAI initialization failed, running in test mode');
+    openai = null;
+}
 
 // Enhanced session storage
 const userSessions = {}; // Store user's service interest in memory

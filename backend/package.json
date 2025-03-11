@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "set NODE_ENV=development&& npx nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
@@ -22,5 +24,8 @@
     "puppeteer": "^24.2.1",
     "socket.io": "^4.8.1",
     "string-similarity": "^4.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }

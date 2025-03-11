@@ -1,13 +1,88 @@
 import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
 
-// Create reusable transporter
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // or your preferred email service
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
+dotenv.config();
+
+let transporter = null;
+
+// Initialize transporter with Ethereal account
+async function createTransporter() {
+    if (!transporter) {
+        // Create Ethereal test account
+        const testAccount = await nodemailer.createTestAccount();
+        console.log('Test Account:', testAccount);
+
+        // Create reusable transporter
+        transporter = nodemailer.createTransport({
+            host: 'smtp.ethereal.email',
+            port: 587,
+            secure: false,
+            auth: {
+                user: testAccount.user,
+                pass: testAccount.pass
+            }
+        });
     }
-});
+    return transporter;
+}
+
+// Send instant confirmation email
+export const sendInstantConfirmation = async (leadData) => {
+    try {
+        // Get or create transporter
+        const transport = await createTransporter();
+        
+        const currentHour = new Date().getHours();
+        const isDuringBusinessHours = currentHour >= 9 && currentHour < 17;
+        
+        const businessHours = isDuringBusinessHours 
+            ? " very shortly"
+            : " during our business hours (9 AM - 5 PM)";
+
+        const mailOptions = {
+            from: '"Dental Website" <test@dental.com>',
+            to: leadData.email,
+            subject: 'Thank You for Contacting Revive Dental',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>Thank you for choosing Revive Dental!</h2>
+                    <p>Dear ${leadData.name},</p>
+                    <p>We've received your inquiry about ${leadData.service}. Our team will call you shortly at ${leadData.phone} to discuss your needs.</p>
+                    
+                    <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                        <p><strong>Your Contact Information:</strong></p>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li>Name: ${leadData.name}</li>
+                            <li>Phone: ${leadData.phone}</li>
+                            <li>Service Interest: ${leadData.service}</li>
+                        </ul>
+                    </div>
+
+                    <p><strong>What to Expect:</strong></p>
+                    <ul>
+                        <li>Our team will call you${businessHours}</li>
+                        <li>We'll discuss your specific needs and answer any questions</li>
+                        <li>We'll help schedule your consultation at a convenient time</li>
+                    </ul>
+
+                    <p>If you need immediate assistance, please call us at: <strong>${process.env.BUSINESS_PHONE || '1-800-DENTAL'}</strong></p>
+                    <br>
+                    <p>Best regards,</p>
+                    <p>The Revive Dental Team</p>
+                </div>
+            `
+        };
+
+        const info = await transport.sendMail(mailOptions);
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log('Preview URL:', previewUrl);
+        return { info, previewUrl };
+
+    } catch (error) {
+        console.error('❌ Error sending confirmation email:', error);
+        throw error;
+    }
+};
 
 // Email templates
 const emailTemplates = {

@@ -1,4 +1,5 @@
 import Lead from "../models/Lead.js";
+import { sendInstantConfirmation } from "../utils/emailService.js";
 
 /**
  * Function to capture and store leads in MongoDB.
@@ -97,10 +98,23 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
 
         await newLead.save();
 
+        // Send confirmation email if email is provided
+        if (email) {
+            sendInstantConfirmation({
+                name,
+                phone,
+                email,
+                service: serviceInterest
+            }).catch(error => {
+                // Log error but don't affect the response
+                console.error('Error sending confirmation email:', error);
+            });
+        }
+
         // Return appropriate message based on business hours
         const responseMessage = isPriorityHours
-            ? `✅ Thank you, ${name}! Our team will call you very shortly at ${phone} to discuss ${serviceInterest}.`
-            : `✅ Thank you, ${name}! Our team will call you during business hours (9 AM - 5 PM) at ${phone} to discuss ${serviceInterest}.`;
+            ? `✅ Thank you, ${name}! Our team will call you very shortly at ${phone} to discuss ${serviceInterest}.${email ? ' We\'ve also sent you a confirmation email.' : ''}`
+            : `✅ Thank you, ${name}! Our team will call you during business hours (9 AM - 5 PM) at ${phone} to discuss ${serviceInterest}.${email ? ' We\'ve also sent you a confirmation email.' : ''}`;
 
         console.log(`✅ New lead captured: ${name} - ${phone}`);
         return responseMessage;
