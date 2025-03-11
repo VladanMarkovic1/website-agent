@@ -11,7 +11,10 @@ const LeadSchema = new mongoose.Schema({
         enum: ["new", "contacted", "converted"], 
         default: "new" 
     }, // Lead status tracking
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    followUpSent: { type: Boolean, default: false },
+    followUpDate: { type: Date }  // Timestamp when follow-up was sent
+    
 });
 
 export default mongoose.model("Lead", LeadSchema);
