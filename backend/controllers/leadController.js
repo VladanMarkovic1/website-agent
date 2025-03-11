@@ -13,24 +13,64 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
             return "⚠️ Error: Missing business ID.";
         }
 
-        // **Ensure message is valid before calling .match()**
+        // **Ensure message is valid before processing**
         if (!message || typeof message !== "string") {
             console.error("❌ Error: Invalid message format.");
             return "⚠️ Error: Invalid message format.";
         }
 
-        // Regular expression to detect name, phone number, and email in the message
-        const contactRegex = /name:\s*([A-Za-z\s]+),\s*phone:\s*(\+?\d+),\s*email:\s*([\w\.-]+@\w+\.\w+)/i;
-        const contactMatch = message.match(contactRegex);
+        // Extract name, phone, and email from the message
+        const parts = message.split(/[,:]/).map(part => part.trim());
+        let name, phone, email;
 
-        if (!contactMatch) {
-            console.log("⚠️ No lead information detected.");
-            return null;
+        // Try to find each piece of information
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i].toLowerCase();
+            const value = parts[i + 1]?.trim();
+
+            if (part.includes('name') && value) {
+                name = value;
+                i++; // Skip the next part since we used it as the value
+            } else if (part.includes('phone') && value) {
+                phone = value;
+                i++;
+            } else if (part.includes('email') && value) {
+                email = value;
+                i++;
+            }
         }
 
-        const name = contactMatch[1].trim();
-        const phone = contactMatch[2].trim();
-        const email = contactMatch[3].trim();
+        // If we couldn't find the parts using labels, try to extract them directly
+        if (!name || !phone || !email) {
+            const emailMatch = message.match(/[\w\.-]+@[\w\.-]+\.\w+/);
+            const phoneMatch = message.match(/\b\d[\d\s-]{5,}\d\b/);
+            
+            if (emailMatch) email = emailMatch[0];
+            if (phoneMatch) phone = phoneMatch[0];
+            
+            // Whatever's left that's not email or phone is probably the name
+            const remainingParts = parts.filter(part => {
+                const isEmail = part.includes('@');
+                const isPhone = part.replace(/\D/g, '').length >= 6;
+                const isLabel = part.toLowerCase().includes('name') || 
+                              part.toLowerCase().includes('phone') || 
+                              part.toLowerCase().includes('email');
+                return !isEmail && !isPhone && !isLabel;
+            });
+            
+            if (!name && remainingParts.length > 0) {
+                name = remainingParts[0];
+            }
+        }
+
+        // Validate that we have all required information
+        if (!name || !phone || !email) {
+            console.log("⚠️ Missing required contact information");
+            console.log("Name:", name);
+            console.log("Phone:", phone);
+            console.log("Email:", email);
+            return null;
+        }
 
         // Check if lead already exists
         const existingLead = await Lead.findOne({ businessId, phone });

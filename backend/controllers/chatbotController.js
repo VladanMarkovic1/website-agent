@@ -7,6 +7,19 @@ import { saveLead } from "./leadController.js";
 import stringSimilarity from "string-similarity"; // ✅ Import string-similarity
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const userSessions = {}; // Store user's service interest in memory
+const highIntentKeywords = ["price", "cost", "how much", "book", "appointment", "available", "consultation", "urgent", "need now"];
+const serviceRelatedWords = ['service', 'treatment', 'procedure', 'offer', 'dental', 'teeth', 'tooth'];
+
+// Common variations of service names for better matching
+const serviceVariations = {
+    'veneers': ['vener', 'veneer', 'veners'],
+    'implants': ['implant', 'implents', 'implent'],
+    'whitening': ['whiten', 'whitning', 'whitting'],
+    'cleaning': ['clean', 'cleanning', 'cleans'],
+    'orthodontics': ['ortho', 'orthodontic', 'braces'],
+    'extraction': ['extract', 'remove', 'removing']
+};
 
 /**
  * Fetch services, FAQs, and contact details for the chatbot
@@ -45,13 +58,36 @@ export const getBusinessDataForChatbot = async (businessId) => {
 /**
  * Handle incoming chatbot messages with sales-driven responses
  */
-const userSessions = {}; // ✅ Store user's service interest in memory
-
 export const handleChatMessage = async (message, businessId) => {
     try {
         console.log(`💬 Processing chat message: "${message}" for business ${businessId}`);
 
         if (!businessId) return "⚠️ Error: Business ID is missing.";
+
+        // First, check if this is contact information being provided
+        const contactInfo = extractContactInfo(message);
+        if (contactInfo) {
+            console.log("Contact info detected:", contactInfo);
+            const { name, phone, email } = contactInfo;
+            const serviceInterest = userSessions[businessId] || "General Inquiry";
+            
+            // Always format the lead message in the same way
+            const leadMessage = `name: ${name}, phone: ${phone}, email: ${email}`;
+            
+            try {
+                // Always attempt to save the lead
+                await saveLead(businessId, leadMessage, serviceInterest);
+                
+                // Always return the same confirmation message format
+                return `✅ Thank you, ${name}! We've recorded your details for **${serviceInterest}**. Our team will reach out to you soon!`;
+            } catch (error) {
+                console.error("Error saving lead:", error);
+                return "⚠️ Sorry, there was an error processing your request. Please try again.";
+            } finally {
+                // Clean up the session
+                delete userSessions[businessId];
+            }
+        }
 
         // Fetch business data
         const businessData = await getBusinessDataForChatbot(businessId);
@@ -61,60 +97,77 @@ export const handleChatMessage = async (message, businessId) => {
         const serviceNames = services.map(service => service.name);
         const serviceList = serviceNames.length > 0 ? serviceNames.join(", ") : "various high-quality dental services.";
 
-        // ✅ **Detect High-Intent Users**
-        const highIntentKeywords = ["price", "cost", "how much", "book", "appointment", "available", "consultation", "urgent", "need now"];
-        const isHighIntent = highIntentKeywords.some(keyword => message.toLowerCase().includes(keyword));
-
-        // ✅ **Fuzzy Matching for Service Interest (Fixes Spelling Mistakes)**
+        // ✅ **Enhanced Fuzzy Matching for Service Interest**
         const userInput = message.toLowerCase();
         const serviceOptions = serviceNames.map(name => name.toLowerCase());
-        const matches = stringSimilarity.findBestMatch(userInput, serviceOptions);
-
+        
         let detectedService = null;
-        let bestMatch = matches.bestMatch;
+        let bestMatchRating = 0;
 
-        // ✅ **Ensure Correct Service is Picked**
-        if (bestMatch.rating >= 0.5) {  // 🔥 **Optimized threshold for best accuracy**
-            detectedService = services.find(service =>
-                service.name.toLowerCase() === bestMatch.target
-            )?.name;
-
-            console.log(`🔍 Matched Service: ${detectedService} (Confidence: ${bestMatch.rating})`);
+        // Check against service variations first
+        for (const [service, variations] of Object.entries(serviceVariations)) {
+            if (variations.some(v => userInput.includes(v))) {
+                const matchingService = services.find(s => 
+                    s.name.toLowerCase().includes(service)
+                );
+                if (matchingService) {
+                    detectedService = matchingService.name;
+                    bestMatchRating = 1;
+                    break;
+                }
+            }
         }
 
-        // ✅ **Backup Matching (If Fuzzy Match Fails, Try Partial Match)**
+        // If no match found through variations, try fuzzy matching
         if (!detectedService) {
-            detectedService = services.find(service =>
-                userInput.includes(service.name.toLowerCase())
-            )?.name || null;
+            // Split user input into words
+            const userWords = userInput.split(/\s+/);
+            
+            serviceOptions.forEach((serviceName, index) => {
+                // Try matching full service name
+                const fullNameMatch = stringSimilarity.compareTwoStrings(userInput, serviceName);
+                
+                // Try matching individual words
+                const serviceWords = serviceName.split(/\s+/);
+                const wordMatches = userWords.map(userWord => 
+                    serviceWords.map(serviceWord => 
+                        stringSimilarity.compareTwoStrings(userWord, serviceWord)
+                    ).reduce((max, curr) => Math.max(max, curr), 0)
+                );
+                
+                const wordMatchAverage = wordMatches.reduce((sum, curr) => sum + curr, 0) / wordMatches.length;
+                const matchRating = Math.max(fullNameMatch, wordMatchAverage);
+
+                if (matchRating > bestMatchRating && matchRating >= 0.3) {
+                    bestMatchRating = matchRating;
+                    detectedService = services[index].name;
+                }
+            });
         }
 
-        // ✅ **Send Call-To-Action for Correct Service Match IMMEDIATELY**
+        // Send Call-To-Action for Correct Service Match
         if (detectedService) {
             userSessions[businessId] = detectedService;
-            console.log(`✅ Service Detected: ${detectedService} → Sending CTA Response`);
-            return `📞 Great choice! Our **${detectedService}** service is highly recommended. Would you like to schedule a consultation? Please provide your **name, phone number, and email** to proceed.`;
+            console.log(`✅ Service Detected: ${detectedService} → Sending CTA Response (Match Rating: ${bestMatchRating})`);
+            return `📞 Great choice! Our **${detectedService}** service is highly recommended. To schedule your consultation, please provide your contact information in this format:\nname: Your Name phone: Your Phone email: Your Email`;
         }
 
-        // ✅ **Handle Price Inquiries IMMEDIATELY**
-        if (isHighIntent) {
-            console.log("💰 Price inquiry detected → Sending CTA Response");
-            return `💰 Our pricing depends on the specific treatment you need. We offer competitive and transparent pricing. Would you like to discuss the best options for you? Please provide your **name, phone number, and email** to proceed with a consultation.`;
+        // ✅ **Detect High-Intent Users and Service Inquiries**
+        const isHighIntent = highIntentKeywords.some(keyword => message.toLowerCase().includes(keyword));
+        const isServiceInquiry = serviceRelatedWords.some(word => message.toLowerCase().includes(word));
+
+        // If it's a service inquiry or high intent, send CTA immediately
+        if (isServiceInquiry || isHighIntent) {
+            let ctaMessage = "";
+            if (isServiceInquiry) {
+                ctaMessage = `We offer these excellent services: **${serviceList}**. To learn more about any specific service and receive a personalized consultation, please provide your contact information in this format:\nname: Your Name phone: Your Phone email: Your Email`;
+            } else {
+                ctaMessage = `💰 Our pricing depends on the specific treatment you need. We offer competitive and transparent pricing. To receive detailed pricing information and discuss the best options for you, please provide your contact information in this format:\nname: Your Name phone: Your Phone email: Your Email`;
+            }
+            return ctaMessage;
         }
 
-        // ✅ **Lead Capture Detection**
-        const leadResponse = await saveLead(
-            businessId,
-            message,
-            userSessions[businessId] || "General Inquiry"
-        );
-
-        if (leadResponse) {
-            delete userSessions[businessId];
-            return leadResponse;
-        }
-
-        // ✅ **Fallback AI Response ONLY IF NO CTA WAS TRIGGERED**
+        // ✅ **Fallback AI Response**
         console.log("🤖 No CTA triggered → Using OpenAI for fallback response.");
         const prompt = `
         You are a **sales-driven AI chatbot** representing **${businessName}**, a leading dental clinic.
@@ -155,3 +208,91 @@ export const handleChatMessage = async (message, businessId) => {
         return "⚠️ Sorry, there was an error processing your request.";
     }
 };
+
+/**
+ * Extract contact information from a message
+ */
+function extractContactInfo(message) {
+    console.log("Attempting to extract contact info from:", message);
+
+    // Try the strict format first (name: value)
+    const strictRegex = /name:\s*([^,\n]+).*phone:\s*([^,\n]+).*email:\s*([^,\n]+)/i;
+    const strictMatch = message.match(strictRegex);
+    
+    if (strictMatch) {
+        return {
+            name: strictMatch[1].trim(),
+            phone: strictMatch[2].trim(),
+            email: strictMatch[3].trim()
+        };
+    }
+
+    // Try more flexible format (comma or space separated values)
+    // First split by commas, then by spaces if needed
+    let parts = message.split(',').map(p => p.trim());
+    
+    // If we don't have at least 2 parts after comma split, try space split
+    if (parts.length < 2) {
+        parts = message.split(/\s+/).filter(p => p.trim());
+    }
+
+    console.log("Parts after splitting:", parts);
+
+    if (parts.length >= 2) {
+        // Look for email pattern (more flexible)
+        const emailPart = parts.find(p => p.includes('@'));
+        if (emailPart) {
+            // Look for phone pattern - more flexible pattern
+            const phonePart = parts.find(p => {
+                const digits = p.replace(/\D/g, '');
+                return digits.length >= 6 && digits.length <= 15 && p !== emailPart;
+            });
+
+            if (phonePart) {
+                // Everything that's not email or phone is considered part of the name
+                const nameParts = parts.filter(p => {
+                    const isEmail = p.includes('@');
+                    const isPhone = p.replace(/\D/g, '').length >= 6;
+                    return !isEmail && !isPhone;
+                });
+
+                if (nameParts.length > 0) {
+                    const contactInfo = {
+                        name: nameParts.join(' ').trim(),
+                        phone: phonePart.trim(),
+                        email: emailPart.trim()
+                    };
+                    console.log("Extracted contact info:", contactInfo);
+                    return contactInfo;
+                }
+            }
+        }
+    }
+
+    // Try to find any three parts that look like name, phone, and email
+    if (parts.length >= 3) {
+        const emailParts = parts.filter(p => p.includes('@'));
+        const phoneParts = parts.filter(p => {
+            const digits = p.replace(/\D/g, '');
+            return digits.length >= 6 && digits.length <= 15 && !p.includes('@');
+        });
+        const nameParts = parts.filter(p => {
+            const isEmail = p.includes('@');
+            const isPhone = p.replace(/\D/g, '').length >= 6;
+            return !isEmail && !isPhone;
+        });
+
+        if (emailParts.length > 0 && phoneParts.length > 0 && nameParts.length > 0) {
+            const contactInfo = {
+                name: nameParts.join(' ').trim(),
+                phone: phoneParts[0].trim(),
+                email: emailParts[0].trim()
+            };
+            console.log("Extracted contact info (alternative method):", contactInfo);
+            return contactInfo;
+        }
+    }
+
+    console.log("No contact info found");
+    return null;
+}
