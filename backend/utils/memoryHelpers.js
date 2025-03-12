@@ -34,25 +34,31 @@ export function detectQuestionType(message) {
  * @returns {Object|null} Extracted contact info or null
  */
 export function extractContactInfo(message) {
-    // Email regex pattern
-    const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-    
-    // Phone number patterns (various formats)
-    const phonePattern = /(?:\+?1[-.]?)?\(?([0-9]{3})\)?[-.]?([0-9]{3})[-.]?([0-9]{4})/;
-    
-    // Name pattern (simple version - two or more consecutive words)
-    const namePattern = /[A-Z][a-z]{1,} [A-Z][a-z]{1,}/;
+    // Handle structured format (name: xxx, phone: xxx, email: xxx)
+    const structuredMatch = {
+        name: message.match(/name:\s*([^,]+)/i)?.[1],
+        phone: message.match(/phone:\s*([^,]+)/i)?.[1],
+        email: message.match(/email:\s*([^,]+)/i)?.[1]
+    };
 
-    const email = message.match(emailPattern)?.[0];
-    const phone = message.match(phonePattern)?.[0];
-    const name = message.match(namePattern)?.[0];
+    if (structuredMatch.name && structuredMatch.phone && structuredMatch.email) {
+        return structuredMatch;
+    }
+
+    // Handle natural format (name, phone, email)
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i;
+    const phoneRegex = /(\d[\d\s-]{7,})/;
+    const nameRegex = /([A-Z][a-z]+)/;
+
+    const email = message.match(emailRegex)?.[1];
+    const phone = message.match(phoneRegex)?.[1]?.replace(/\s+/g, '');
+    const name = message.match(nameRegex)?.[1];
 
     if (email || phone || name) {
         return {
-            email,
-            phone: phone?.replace(/[^0-9]/g, ''),
-            name,
-            hasPartialInfo: Boolean(email || phone || name)
+            email: email || null,
+            phone: phone || null,
+            name: name || null
         };
     }
 
@@ -93,10 +99,12 @@ export function formatContactInfo(contactInfo) {
  * @returns {boolean} Whether all required fields are present
  */
 export function hasCompleteContactInfo(contactInfo) {
+    if (!contactInfo) return false;
+    
     return Boolean(
-        contactInfo.email &&
-        contactInfo.phone &&
-        contactInfo.name
+        contactInfo.email?.trim() &&
+        contactInfo.phone?.trim() &&
+        contactInfo.name?.trim()
     );
 }
 
