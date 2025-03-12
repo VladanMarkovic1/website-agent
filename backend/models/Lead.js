@@ -37,6 +37,42 @@ const leadSchema = new mongoose.Schema({
         enum: ['now', 'next-business-day', 'morning', 'afternoon', 'evening'],
         default: 'now'
     },
+    emailHistory: [{
+        type: {
+            type: String,
+            enum: ['confirmation', 'followUp', 'reminder'],
+            required: true
+        },
+        sentAt: {
+            type: Date,
+            default: Date.now
+        },
+        status: {
+            type: String,
+            enum: ['sent', 'failed', 'opened', 'clicked'],
+            default: 'sent'
+        },
+        emailId: String,
+        previewUrl: String,
+        template: String,
+        error: String
+    }],
+    emailCommunication: {
+        lastEmailSent: Date,
+        totalEmailsSent: {
+            type: Number,
+            default: 0
+        },
+        hasResponded: {
+            type: Boolean,
+            default: false
+        },
+        unsubscribed: {
+            type: Boolean,
+            default: false
+        },
+        nextScheduledEmail: Date
+    },
     callHistory: [{
         status: String,
         notes: String,
@@ -59,14 +95,32 @@ const leadSchema = new mongoose.Schema({
             type: Boolean,
             default: false
         },
+        notes: String,
+        remindersSent: [{
+            type: Date
+        }]
+    },
+    interactions: [{
+        type: {
+            type: String,
+            enum: ['email', 'call', 'sms', 'consultation'],
+            required: true
+        },
+        status: String,
+        timestamp: {
+            type: Date,
+            default: Date.now
+        },
         notes: String
-    }
+    }]
 });
 
 // Index for efficient queries
 leadSchema.index({ businessId: 1, createdAt: -1 });
 leadSchema.index({ status: 1, priority: 1, lastContactedAt: 1 });
 leadSchema.index({ phone: 1, businessId: 1 }, { unique: true });
+leadSchema.index({ 'emailCommunication.nextScheduledEmail': 1 });
+leadSchema.index({ 'emailCommunication.lastEmailSent': 1 });
 
 const Lead = mongoose.model('Lead', leadSchema);
 
