@@ -2,12 +2,24 @@ import { sendInstantConfirmation } from '../utils/emailService.js';
 
 export const testEmail = async (req, res) => {
     try {
+        // First, ensure we have a service
+        if (!req.body.service) {
+            return res.status(400).json({
+                success: false,
+                error: "Service is required"
+            });
+        }
+
+        // Create the test data EXACTLY as received from the request
         const testData = {
             name: "Test User",
             phone: "555-123-4567",
             email: req.body.email || "test@example.com",
-            service: "Dental Implants"
+            service: req.body.service // This should preserve "Veneers" from the request
         };
+
+        // Log to verify the data
+        console.log('Sending to email service:', testData);
 
         const result = await sendInstantConfirmation(testData);
         

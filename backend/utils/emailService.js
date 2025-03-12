@@ -29,9 +29,14 @@ async function createTransporter() {
 // Send instant confirmation email
 export const sendInstantConfirmation = async (leadData) => {
     try {
-        // Get or create transporter
+        // Log the received data
+        console.log('4. leadData at start of sendInstantConfirmation:', JSON.stringify(leadData, null, 2));
+
         const transport = await createTransporter();
         
+        // Log the service value before creating mail options
+        console.log('5. Service before mailOptions:', leadData.service);
+
         const currentHour = new Date().getHours();
         const isDuringBusinessHours = currentHour >= 9 && currentHour < 17;
         
@@ -42,7 +47,7 @@ export const sendInstantConfirmation = async (leadData) => {
         const mailOptions = {
             from: '"Dental Website" <test@dental.com>',
             to: leadData.email,
-            subject: 'Thank You for Contacting Revive Dental',
+            subject: `Thank You for Your Interest in ${leadData.service}`,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2>Thank you for choosing Revive Dental!</h2>
@@ -72,6 +77,9 @@ export const sendInstantConfirmation = async (leadData) => {
                 </div>
             `
         };
+
+        // Log the service value after creating mail options
+        console.log('6. Service after mailOptions:', leadData.service);
 
         const info = await transport.sendMail(mailOptions);
         const previewUrl = nodemailer.getTestMessageUrl(info);
@@ -206,4 +214,45 @@ function getServiceBenefits(service) {
         'Pediatric Dentistry': 'Child-friendly care for developing smiles'
     };
     return benefits[service] || 'Exceptional dental care with proven results';
-} 
+}
+
+export const testEmail = async (req, res) => {
+    try {
+        // Get service from request body
+        const service = req.body.service;
+        
+        // Log the service value immediately
+        console.log('1. Service from request:', service);
+
+        const testData = {
+            name: "Test User",
+            phone: "555-123-4567",
+            email: req.body.email || "test@example.com",
+            service: service
+        };
+
+        // Log the testData before sending
+        console.log('2. testData before sending:', JSON.stringify(testData, null, 2));
+
+        // Send the email
+        const result = await sendInstantConfirmation(testData);
+        
+        // Log the testData after sending
+        console.log('3. testData after sending:', JSON.stringify(testData, null, 2));
+
+        res.json({
+            success: true,
+            message: "Test email sent successfully",
+            previewUrl: result.previewUrl,
+            messageId: result.info?.messageId,
+            testData
+        });
+
+    } catch (error) {
+        console.error('Test email error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}; 
