@@ -125,6 +125,26 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
     }
 };
 
+export const getLeads = async (req, res) => {
+    try {
+        const { businessId } = req.params;
+
+        if (!businessId) {
+            return res.status(400).json({ error: "Missing business ID." });
+        }
+
+        // Fetch leads specific to the business
+        const leads = await Lead.find({ businessId }).sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, leads });
+    } catch (error) {
+        console.error("❌ Error fetching leads:", error);
+        res.status(500).json({ error: "Internal server error while retrieving leads." });
+    }
+};
+
+
+
 export const updateLeadStatus = async (leadId, status, notes = "") => {
     try {
         const lead = await Lead.findByIdAndUpdate(
