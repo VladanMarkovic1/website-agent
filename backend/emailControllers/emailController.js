@@ -1,4 +1,4 @@
-import { sendInstantConfirmation } from '../utils/emailService.js';
+import { sendInstantConfirmation } from './emailService.js';
 
 export const testEmail = async (req, res) => {
     try {

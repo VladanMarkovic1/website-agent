@@ -1,5 +1,5 @@
 import Lead from "../models/Lead.js";
-import { sendInstantConfirmation } from "../utils/emailService.js";
+import { sendInstantConfirmation } from "../emailControllers/emailService.js";
 
 /**
  * Function to capture and store leads in MongoDB.

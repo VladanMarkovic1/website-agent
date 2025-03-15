@@ -1,6 +1,6 @@
 import Business from "../models/Business.js";
 import Selectors from "../models/Selector.js";
-import  scrapeBusinessData  from "../scraper/scraper.js";
+import  scrapeBusinessData  from "./scraper.js";
 
 export const scrapeBusiness = async (req, res) => {
     const { businessId } = req.params;

@@ -1,4 +1,4 @@
-import { handleChatMessage } from "../controllers/chatbotController.js";
+import { handleChatMessage } from "../chatbotControllers/chatbotController.js";
 
 const initWebSocket = (io) => {
     io.on("connection", (socket) => {

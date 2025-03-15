@@ -29,7 +29,6 @@ const startServer = async () => {
     app.use("/scraper", scraperRoutes);
     app.use("/api/services", serviceRoutes);
     app.use("/api/chatbot", chatbotRoutes);
-
     // ✅ Initialize WebSocket Chat
     initWebSocket(io);
 
