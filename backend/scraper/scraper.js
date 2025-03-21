@@ -10,12 +10,14 @@ const scrapeBusinessData = async (business) => {
     try {
         await page.goto(business.websiteUrl, { waitUntil: 'domcontentloaded' });
 
-        // ✅ Scraping Services
+            // 1) Scrape Services Dynamically
         console.log('🔍 Scraping Services...');
-        const rawServices = await page.evaluate(() => {
-            return [...document.querySelectorAll("ul.dropdown-menu.sub-nav li:not([id*=doctor]):not([id*=team]) a")]
-                .map(el => el.textContent.trim());
-        });
+        const rawServices = await page.evaluate((serviceSelector) => {
+        return [...document.querySelectorAll(serviceSelector)].map(el => el.textContent.trim());
+        }, business.selectors.serviceSelector); 
+        //   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        //   Using the serviceSelector from the DB
+
 
         const services = rawServices.filter(text =>
             text.length > 3 &&  
@@ -36,26 +38,25 @@ const scrapeBusinessData = async (business) => {
 
         console.log(`✅ Contact Details Found:`, contactDetails);
 
-        // ✅ Scraping FAQs
+        // 3) Scrape FAQs Dynamically
         console.log("❓ Scraping FAQs...");
         await page.goto(`${business.websiteUrl}/faq`, { waitUntil: 'domcontentloaded' });
 
-        await page.waitForSelector(".grid-title.text-left.faq-heading", { visible: true, timeout: 20000 });
-        await page.waitForSelector(".grid-desc.text-left", { visible: true, timeout: 20000 });
+        // Wait for the question and answer selectors to appear
+        await page.waitForSelector(business.selectors.faqsSelector.question, { visible: true, timeout: 20000 });
+        await page.waitForSelector(business.selectors.faqsSelector.answer, { visible: true, timeout: 20000 });
 
-        const questions = await page.evaluate(() => {
-            return [...document.querySelectorAll(".grid-title.text-left.faq-heading")]
-                .map(el => el.textContent.trim());
-        });
+        const questions = await page.evaluate((questionSelector) => {
+        return [...document.querySelectorAll(questionSelector)].map(el => el.textContent.trim());
+        }, business.selectors.faqsSelector.question);
 
-        const answers = await page.evaluate(() => {
-            return [...document.querySelectorAll(".grid-desc.text-left")]
-                .map(el => el.textContent.trim());
-        });
+        const answers = await page.evaluate((answerSelector) => {
+        return [...document.querySelectorAll(answerSelector)].map(el => el.textContent.trim());
+        }, business.selectors.faqsSelector.answer);
 
         const faqs = questions.map((q, i) => ({
-            question: q,
-            answer: answers[i] || "No answer found"
+        question: q,
+        answer: answers[i] || "No answer found"
         }));
 
         console.log("✅ FAQs Extracted:", faqs);
