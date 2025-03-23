@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
-import BusinessOwner from '../models/BusinessOwner.js';
-import Invitation from '../models/Invitation.js';
+import BusinessOwner from '../../models/BusinessOwner.js';
+import Invitation from '../../models/Invitation.js';
 
 export const registerUser = async (req, res) => {
   const { token, name, password } = req.body;

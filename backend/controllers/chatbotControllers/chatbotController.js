@@ -1,8 +1,8 @@
-import Business from "../models/Business.js";
-import Service from "../models/Service.js";
-import ExtraInfo from "../models/ExtraInfo.js";
-import Contact from "../models/Contact.js";
-import { saveLead } from "./leadController.js";
+import Business from "../../models/Business.js";
+import Service from "../../models/Service.js";
+import ExtraInfo from "../../models/ExtraInfo.js";
+import Contact from "../../models/Contact.js";
+import { saveLead } from "../leadController.js";
 import dotenv from "dotenv";
 
 // Memory-related functions

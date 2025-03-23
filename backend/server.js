@@ -8,6 +8,8 @@ import initWebSocket from "./config/websocket.js";
 import scraperRoutes from "./routes/scraperRoutes.js";
 import serviceRoutes from "./routes/serviceRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js"; // ✅ Chatbot routes added
+import registrationRoutes from "./routes/registrationRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 
@@ -29,6 +31,8 @@ const startServer = async () => {
     app.use("/scraper", scraperRoutes);
     app.use("/api/services", serviceRoutes);
     app.use("/api/chatbot", chatbotRoutes);
+    app.use("/admin", adminRoutes);           // Mount admin routes
+    app.use("/", registrationRoutes);           // Mount registration route
     // ✅ Initialize WebSocket Chat
     initWebSocket(io);
 

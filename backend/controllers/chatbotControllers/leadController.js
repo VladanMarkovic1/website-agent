@@ -1,4 +1,4 @@
-import Lead from "../models/Lead.js";
+import Lead from "../../models/Lead.js";
 import { sendInstantConfirmation } from "../emailControllers/emailService.js";
 
 /**
