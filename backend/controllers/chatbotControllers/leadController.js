@@ -3,18 +3,19 @@ import { sendInstantConfirmation } from "../emailControllers/emailService.js";
 
 /**
  * Function to capture and store leads in MongoDB.
+ * This is your core function that returns a response message.
  */
 export const saveLead = async (businessId, message, serviceInterest = "General Inquiry") => {
     try {
         console.log(`📥 Processing lead capture for business: ${businessId}, Service Interest: ${serviceInterest}`);
 
-        // **Check if businessId is valid**
+        // Check if businessId is valid
         if (!businessId) {
             console.error("❌ Error: businessId is missing.");
             return "⚠️ Error: Missing business ID.";
         }
 
-        // **Ensure message is valid before processing**
+        // Ensure message is valid before processing
         if (!message || typeof message !== "string") {
             console.error("❌ Error: Invalid message format.");
             return "⚠️ Error: Invalid message format.";
@@ -24,14 +25,14 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
         const parts = message.split(/[,:]/).map(part => part.trim());
         let name, phone, email;
 
-        // Try to find each piece of information
+        // Try to find each piece of information using labels
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i].toLowerCase();
             const value = parts[i + 1]?.trim();
 
             if (part.includes('name') && value) {
                 name = value;
-                i++; // Skip the next part since we used it as the value
+                i++;
             } else if (part.includes('phone') && value) {
                 phone = value;
                 i++;
@@ -41,7 +42,7 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
             }
         }
 
-        // If we couldn't find the parts using labels, try to extract them directly
+        // If not all information was found, try to extract directly
         if (!name || !phone || !email) {
             const emailMatch = message.match(/[\w\.-]+@[\w\.-]+\.\w+/);
             const phoneMatch = message.match(/\b\d[\d\s-]{5,}\d\b/);
@@ -49,13 +50,13 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
             if (emailMatch) email = emailMatch[0];
             if (phoneMatch) phone = phoneMatch[0];
             
-            // Whatever's left that's not email or phone is probably the name
+            // Use remaining parts as potential name
             const remainingParts = parts.filter(part => {
                 const isEmail = part.includes('@');
                 const isPhone = part.replace(/\D/g, '').length >= 6;
-                const isLabel = part.toLowerCase().includes('name') || 
-                              part.toLowerCase().includes('phone') || 
-                              part.toLowerCase().includes('email');
+                const isLabel = part.toLowerCase().includes('name') ||
+                                part.toLowerCase().includes('phone') ||
+                                part.toLowerCase().includes('email');
                 return !isEmail && !isPhone && !isLabel;
             });
             
@@ -64,7 +65,7 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
             }
         }
 
-        // Validate that we have all required information
+        // Validate that required information is available
         if (!name || !phone) {
             console.log("⚠️ Missing required contact information");
             console.log("Name:", name);
@@ -106,7 +107,6 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
                 email,
                 service: serviceInterest
             }).catch(error => {
-                // Log error but don't affect the response
                 console.error('Error sending confirmation email:', error);
             });
         }
@@ -125,17 +125,36 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
     }
 };
 
+/**
+ * Express route handler for creating a lead.
+ * Expects businessId, message, and optionally serviceInterest in req.body.
+ */
+export const createLeadHandler = async (req, res) => {
+    try {
+        const { businessId, message, serviceInterest } = req.body;
+        const responseMessage = await saveLead(businessId, message, serviceInterest);
+        if (!responseMessage) {
+            return res.status(400).json({ error: "Missing required contact information or lead already exists." });
+        }
+        res.status(200).json({ success: true, message: responseMessage });
+    } catch (error) {
+        console.error("Error creating lead:", error);
+        res.status(500).json({ error: "Internal server error while creating lead." });
+    }
+};
+
+/**
+ * Express route handler for retrieving leads for a specific business.
+ * Expects businessId in req.params.
+ */
 export const getLeads = async (req, res) => {
     try {
         const { businessId } = req.params;
-
         if (!businessId) {
             return res.status(400).json({ error: "Missing business ID." });
         }
-
-        // Fetch leads specific to the business
+        // Fetch leads specific to the business and sort by creation time descending.
         const leads = await Lead.find({ businessId }).sort({ createdAt: -1 });
-
         res.status(200).json({ success: true, leads });
     } catch (error) {
         console.error("❌ Error fetching leads:", error);
@@ -143,8 +162,26 @@ export const getLeads = async (req, res) => {
     }
 };
 
+/**
+ * Express route handler for updating lead status.
+ * Expects leadId in req.params and status (and optional notes) in req.body.
+ */
+export const updateLeadStatusHandler = async (req, res) => {
+    try {
+        const { leadId } = req.params;
+        const { status, notes } = req.body;
+        const updatedLead = await updateLeadStatus(leadId, status, notes);
+        res.status(200).json({ success: true, lead: updatedLead });
+    } catch (error) {
+        console.error("Error updating lead status:", error);
+        res.status(500).json({ error: "Internal server error while updating lead status." });
+    }
+};
 
-
+/**
+ * Function to update lead status.
+ * This function is used internally by the updateLeadStatusHandler.
+ */
 export const updateLeadStatus = async (leadId, status, notes = "") => {
     try {
         const lead = await Lead.findByIdAndUpdate(
@@ -162,14 +199,11 @@ export const updateLeadStatus = async (leadId, status, notes = "") => {
             },
             { new: true }
         );
-
         if (!lead) {
             throw new Error('Lead not found');
         }
-
         console.log(`✅ Lead ${leadId} status updated to: ${status}`);
         return lead;
-
     } catch (error) {
         console.error('❌ Error updating lead status:', error);
         throw error;
