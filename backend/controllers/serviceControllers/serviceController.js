@@ -1,4 +1,4 @@
-import Service from "../models/Service.js";
+import Service from "../../models/Service.js";
 
 export const updateBusinessServices = async (req, res) => {
     const { businessId } = req.params;

@@ -1,6 +1,7 @@
+import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { adminAuth } from '../middleware/adminAuth.js';
-import { sendInvitation } from '../controllers/adminController.js';
+import { sendInvitation } from '../controllers/adminControllers/adminController.js';
 
 const router = express.Router();
 

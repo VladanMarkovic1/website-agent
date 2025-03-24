@@ -1,5 +1,5 @@
 import express from 'express';
-import { updateBusinessServices } from '../serviceControllers/serviceController.js';
+import { updateBusinessServices } from '../controllers/serviceControllers/serviceController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkBusinessOwner } from '../middleware/checkBusinessOwner.js';
 

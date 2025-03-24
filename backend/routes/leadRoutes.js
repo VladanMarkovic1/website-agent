@@ -1,5 +1,5 @@
 import express from "express";
-import { getLeads, createLeadHandler, updateLeadStatusHandler } from "../controllers/leadController.js";
+import { getLeads, createLeadHandler, updateLeadStatusHandler } from "../controllers/leadControllers/leadController.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { checkBusinessOwner } from "../middleware/checkBusinessOwner.js";
 
@@ -15,6 +15,6 @@ router.post("/", authenticateToken, createLeadHandler);
 
 // PUT /leads/:leadId - Update the status of a lead
 // This one should be secured so that only authorized users can update lead status.
-router.put("/:leadId", authenticateToken, updateLeadStatusHandler);
+router.put("/leads/:businessId/:leadId", authenticateToken, checkBusinessOwner, updateLeadStatusHandler);
 
 export default router;
