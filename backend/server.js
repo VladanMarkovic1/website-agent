@@ -32,8 +32,8 @@ const startServer = async () => {
 
     // Routes
     app.use("/scraper", scraperRoutes);
-    app.use("/api/services", serviceRoutes);
-    app.use("/api/chatbot", chatbotRoutes);
+    app.use("/services", serviceRoutes);
+    app.use("/chatbot", chatbotRoutes);
     app.use('/leads', leadRoutes);
     app.use("/admin", adminRoutes);           // Admin endpoints
     app.use("/", registrationRoutes);           // Registration endpoint
