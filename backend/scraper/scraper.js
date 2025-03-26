@@ -1,91 +1,151 @@
 import puppeteer from 'puppeteer';
 import saveScrapedData from '../scraper/saveScrapedData.js';
 
-const scrapeBusinessData = async (business) => {
-    console.log(`🌍 Visiting main page: ${business.websiteUrl}`);
+// Configuration constants
+const CONFIG = {
+    RETRY_ATTEMPTS: 3,
+    RETRY_DELAY: 2000, // 2 seconds
+    PAGE_TIMEOUT: 60000, // Increased to 60 seconds
+    SCRAPE_TIMEOUT: 120000, // 2 minutes total
+};
 
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
+// Validation functions
+const validateData = {
+    phone: (phone) => {
+        return phone && phone.match(/[\d\s+\-()]+/);
+    },
+    email: (email) => {
+        return email && email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+    },
+    services: (services) => {
+        return Array.isArray(services) && services.length > 0;
+    }
+};
 
-    try {
-        await page.goto(business.websiteUrl, { waitUntil: 'domcontentloaded' });
+// Helper function for delay
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-            // 1) Scrape Services Dynamically
-        console.log('🔍 Scraping Services...');
-        const rawServices = await page.evaluate((serviceSelector) => {
-        return [...document.querySelectorAll(serviceSelector)].map(el => el.textContent.trim());
-        }, business.selectors.serviceSelector); 
-        //   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        //   Using the serviceSelector from the DB
-
-
-        const services = rawServices.filter(text =>
-            text.length > 3 &&  
-            !text.includes("Dr") &&  
-            !text.match(/Doctor|Meet|Our Team|Reviews|Testimonials|News|About|Specialist|Physician|Surgeon|Contact/i)
-        );
-
-        console.log("✅ Services Found:", services);
-
-        // ✅ Scraping Contact Information
-        console.log('📞 Scraping Contact Details...');
-        const contactDetails = await page.evaluate((selectors) => {
-            return {
-                phone: document.querySelector(selectors.phone)?.textContent.trim() || "Not found",
-                email: document.querySelector(selectors.email)?.textContent.trim() || "Not found"
-            };
-        }, business.selectors.contactSelector);
-
-        console.log(`✅ Contact Details Found:`, contactDetails);
-
-        // 3) Scrape FAQs Dynamically
-        console.log("❓ Scraping FAQs...");
-        let faqs = [];
+// Helper function to retry failed operations
+async function withRetry(operation, name, maxAttempts = CONFIG.RETRY_ATTEMPTS) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            await page.goto(`${business.websiteUrl}/faq`, { waitUntil: 'domcontentloaded' });
+            return await operation();
+        } catch (error) {
+            if (attempt === maxAttempts) {
+                throw error;
+            }
+            console.log(`⚠️ Attempt ${attempt} failed for ${name}. Retrying in ${CONFIG.RETRY_DELAY/1000}s...`);
+            await delay(CONFIG.RETRY_DELAY);
+        }
+    }
+}
 
-            // Check if selectors exist before trying to use them
-            if (business.selectors?.faqsSelector?.question && business.selectors?.faqsSelector?.answer) {
-                try {
-                    // Reduced timeout and made it optional
-                    await page.waitForSelector(business.selectors.faqsSelector.question, { visible: true, timeout: 5000 });
-                    await page.waitForSelector(business.selectors.faqsSelector.answer, { visible: true, timeout: 5000 });
+const scrapeBusinessData = async (business) => {
+    console.log(`🚀 Starting scrape for ${business.businessName} (${business.businessId})`);
+    const startTime = Date.now();
+    
+    const browser = await puppeteer.launch({ 
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process'
+        ]
+    });
+    
+    try {
+        const page = await browser.newPage();
+        
+        // Set longer timeouts
+        await page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
+        
+        // 1. Scrape Main Page
+        console.log(`🌍 Visiting main page: ${business.websiteUrl}`);
+        try {
+            await page.goto(business.websiteUrl, { 
+                waitUntil: 'domcontentloaded',
+                timeout: CONFIG.PAGE_TIMEOUT 
+            });
+            
+            // Simple delay instead of waitForTimeout
+            await delay(3000);
 
-                    const questions = await page.evaluate((questionSelector) => {
-                        const elements = document.querySelectorAll(questionSelector);
-                        return elements ? [...elements].map(el => el.textContent.trim()) : [];
+            // 2. Scrape Services
+            console.log('🔍 Scraping Services...');
+            const rawServices = await page.evaluate((serviceSelector) => {
+                return Array.from(document.querySelectorAll(serviceSelector))
+                    .map(el => el.textContent.trim())
+                    .filter(text => text.length > 0);
+            }, business.selectors.serviceSelector);
+
+            const services = rawServices.filter(text =>
+                text.length > 3 &&
+                !text.includes("Dr") &&
+                !text.match(/Doctor|Meet|Our Team|Reviews|Testimonials|News|About|Specialist|Physician|Surgeon|Contact/i)
+            );
+
+            console.log("✅ Services Found:", services);
+
+            // 3. Scrape Contact Details
+            console.log('📞 Scraping Contact Details...');
+            const contactDetails = await page.evaluate((selectors) => {
+                return {
+                    phone: document.querySelector(selectors.phone)?.textContent.trim() || "Not found",
+                    email: document.querySelector(selectors.email)?.textContent.trim() || "Not found"
+                };
+            }, business.selectors.contactSelector);
+
+            console.log(`✅ Contact Details Found:`, contactDetails);
+
+            // 4. Scrape FAQs
+            let faqs = [];
+            try {
+                console.log("❓ Attempting to scrape FAQs...");
+                await page.goto(`${business.websiteUrl}/faq`, { 
+                    waitUntil: 'domcontentloaded',
+                    timeout: CONFIG.PAGE_TIMEOUT 
+                });
+                
+                await delay(3000);
+
+                if (business.selectors?.faqsSelector?.question && business.selectors?.faqsSelector?.answer) {
+                    const questions = await page.evaluate((selector) => {
+                        return Array.from(document.querySelectorAll(selector))
+                            .map(el => el.textContent.trim());
                     }, business.selectors.faqsSelector.question);
 
-                    const answers = await page.evaluate((answerSelector) => {
-                        const elements = document.querySelectorAll(answerSelector);
-                        return elements ? [...elements].map(el => el.textContent.trim()) : [];
+                    const answers = await page.evaluate((selector) => {
+                        return Array.from(document.querySelectorAll(selector))
+                            .map(el => el.textContent.trim());
                     }, business.selectors.faqsSelector.answer);
 
                     faqs = questions.map((q, i) => ({
                         question: q,
                         answer: answers[i] || "No answer found"
                     }));
-                } catch (faqError) {
-                    console.log("⚠️ Could not find FAQs on page, continuing without them:", faqError.message);
                 }
-            } else {
-                console.log("⚠️ FAQ selectors not properly configured, skipping FAQ scraping");
+            } catch (faqError) {
+                console.log("⚠️ Could not scrape FAQs:", faqError.message);
+                // Continue without FAQs
             }
+
+            // Save all scraped data
+            const scrapedData = { services, contactDetails, faqs };
+            await saveScrapedData(business.businessId, scrapedData);
+
+            const duration = (Date.now() - startTime) / 1000;
+            console.log(`✅ Scraping completed in ${duration.toFixed(2)}s for ${business.businessName}`);
+
         } catch (navigationError) {
-            console.log("⚠️ Could not navigate to FAQ page, continuing without FAQs:", navigationError.message);
+            console.error('Navigation error:', navigationError.message);
+            throw navigationError;
         }
 
-        console.log("✅ FAQs Extracted:", faqs);
-
-        // ✅ Save Scraped Data
-        const scrapedData = { services, contactDetails, faqs };
-        console.log("⚡ Calling saveScrapedData...");
-        await saveScrapedData(business.businessId, scrapedData);
-
-        console.log("✅ Scraping and Saving Completed!");
-        await browser.close();
     } catch (error) {
-        console.error(`❌ Error during scraping: ${error.message}`);
+        console.error(`❌ Fatal error during scraping for ${business.businessName}:`, error);
+        throw error;
+    } finally {
         await browser.close();
     }
 };
