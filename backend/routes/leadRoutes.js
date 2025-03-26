@@ -13,8 +13,8 @@ router.get("/:businessId", authenticateToken, checkBusinessOwner, getLeads);
 // But if you want only authenticated users to create leads, secure it too:
 router.post("/", authenticateToken, createLeadHandler);
 
-// PUT /leads/:leadId - Update the status of a lead
+// PUT /leads/:businessId/:leadId - Update the status of a lead
 // This one should be secured so that only authorized users can update lead status.
-router.put("/leads/:businessId/:leadId", authenticateToken, checkBusinessOwner, updateLeadStatusHandler);
+router.put("/:businessId/:leadId", authenticateToken, checkBusinessOwner, updateLeadStatusHandler);
 
 export default router;
