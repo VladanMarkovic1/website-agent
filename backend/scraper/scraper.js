@@ -40,24 +40,40 @@ const scrapeBusinessData = async (business) => {
 
         // 3) Scrape FAQs Dynamically
         console.log("❓ Scraping FAQs...");
-        await page.goto(`${business.websiteUrl}/faq`, { waitUntil: 'domcontentloaded' });
+        let faqs = [];
+        try {
+            await page.goto(`${business.websiteUrl}/faq`, { waitUntil: 'domcontentloaded' });
 
-        // Wait for the question and answer selectors to appear
-        await page.waitForSelector(business.selectors.faqsSelector.question, { visible: true, timeout: 20000 });
-        await page.waitForSelector(business.selectors.faqsSelector.answer, { visible: true, timeout: 20000 });
+            // Check if selectors exist before trying to use them
+            if (business.selectors?.faqsSelector?.question && business.selectors?.faqsSelector?.answer) {
+                try {
+                    // Reduced timeout and made it optional
+                    await page.waitForSelector(business.selectors.faqsSelector.question, { visible: true, timeout: 5000 });
+                    await page.waitForSelector(business.selectors.faqsSelector.answer, { visible: true, timeout: 5000 });
 
-        const questions = await page.evaluate((questionSelector) => {
-        return [...document.querySelectorAll(questionSelector)].map(el => el.textContent.trim());
-        }, business.selectors.faqsSelector.question);
+                    const questions = await page.evaluate((questionSelector) => {
+                        const elements = document.querySelectorAll(questionSelector);
+                        return elements ? [...elements].map(el => el.textContent.trim()) : [];
+                    }, business.selectors.faqsSelector.question);
 
-        const answers = await page.evaluate((answerSelector) => {
-        return [...document.querySelectorAll(answerSelector)].map(el => el.textContent.trim());
-        }, business.selectors.faqsSelector.answer);
+                    const answers = await page.evaluate((answerSelector) => {
+                        const elements = document.querySelectorAll(answerSelector);
+                        return elements ? [...elements].map(el => el.textContent.trim()) : [];
+                    }, business.selectors.faqsSelector.answer);
 
-        const faqs = questions.map((q, i) => ({
-        question: q,
-        answer: answers[i] || "No answer found"
-        }));
+                    faqs = questions.map((q, i) => ({
+                        question: q,
+                        answer: answers[i] || "No answer found"
+                    }));
+                } catch (faqError) {
+                    console.log("⚠️ Could not find FAQs on page, continuing without them:", faqError.message);
+                }
+            } else {
+                console.log("⚠️ FAQ selectors not properly configured, skipping FAQ scraping");
+            }
+        } catch (navigationError) {
+            console.log("⚠️ Could not navigate to FAQ page, continuing without FAQs:", navigationError.message);
+        }
 
         console.log("✅ FAQs Extracted:", faqs);
 
