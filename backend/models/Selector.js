@@ -12,3 +12,4 @@ const SelectorsSchema = new mongoose.Schema({
 });
 
 export default mongoose.model("Selectors", SelectorsSchema);
+

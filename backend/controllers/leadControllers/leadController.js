@@ -1,19 +1,25 @@
 import Lead from "../../models/Lead.js";
+import Business from "../../models/Business.js";
 import { sendInstantConfirmation } from "../emailControllers/emailService.js";
 
 /**
  * Function to capture and store leads in MongoDB.
  * This is your core function that returns a response message.
  */
+
 export const saveLead = async (businessId, message, serviceInterest = "General Inquiry") => {
     try {
         console.log(`📥 Processing lead capture for business: ${businessId}, Service Interest: ${serviceInterest}`);
 
-        // Check if businessId is valid
-        if (!businessId) {
-            console.error("❌ Error: businessId is missing.");
-            return "⚠️ Error: Missing business ID.";
+        // First find the business by the string businessId
+        const business = await Business.findOne({ businessId: businessId });
+        if (!business) {
+            console.error("❌ Error: Business not found");
+            return "⚠️ Error: Invalid business ID.";
         }
+
+        // Use business._id for all database operations
+        const actualBusinessId = business._id;
 
         // Ensure message is valid before processing
         if (!message || typeof message !== "string") {
@@ -73,8 +79,8 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
             return null;
         }
 
-        // Check if lead already exists
-        const existingLead = await Lead.findOne({ businessId, phone });
+        // Check if lead already exists using actualBusinessId
+        const existingLead = await Lead.findOne({ businessId: actualBusinessId, phone });
         if (existingLead) {
             console.log(`⚠️ Lead already exists: ${name} - ${phone}`);
             return `📞 Thanks, ${name}! We already have your details and will contact you soon.`;
@@ -85,7 +91,7 @@ export const saveLead = async (businessId, message, serviceInterest = "General I
         const isPriorityHours = currentHour >= 9 && currentHour < 17; // 9 AM to 5 PM
 
         const newLead = new Lead({
-            businessId,
+            businessId: actualBusinessId, // Use the ObjectId instead of string businessId
             name,
             phone,
             email: email || null, // Make email optional
@@ -153,8 +159,21 @@ export const getLeads = async (req, res) => {
         if (!businessId) {
             return res.status(400).json({ error: "Missing business ID." });
         }
-        // Fetch leads specific to the business and sort by creation time descending.
-        const leads = await Lead.find({ businessId }).sort({ createdAt: -1 });
+
+        // First find the business (try both businessId string and _id)
+        const business = await Business.findOne({
+            $or: [
+                { businessId: businessId },  // Try string ID (revive-dental)
+                { _id: businessId }          // Try ObjectId
+            ]
+        });
+
+        if (!business) {
+            return res.status(404).json({ error: "Business not found." });
+        }
+
+        // Fetch leads using business._id
+        const leads = await Lead.find({ businessId: business._id }).sort({ createdAt: -1 });
         res.status(200).json({ success: true, leads });
     } catch (error) {
         console.error("❌ Error fetching leads:", error);

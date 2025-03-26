@@ -12,7 +12,7 @@ import chatbotRoutes from "./routes/chatbotRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import registrationRoutes from "./routes/registrationRoutes.js";
 import loginRoutes from "./routes/loginRoutes.js";
-
+import leadRoutes from "./routes/leadRoutes.js";
 dotenv.config();
 
 const startServer = async () => {
@@ -34,6 +34,7 @@ const startServer = async () => {
     app.use("/scraper", scraperRoutes);
     app.use("/api/services", serviceRoutes);
     app.use("/api/chatbot", chatbotRoutes);
+    app.use('/leads', leadRoutes);
     app.use("/admin", adminRoutes);           // Admin endpoints
     app.use("/", registrationRoutes);           // Registration endpoint
     app.use("/", loginRoutes);                  // Login endpoint
