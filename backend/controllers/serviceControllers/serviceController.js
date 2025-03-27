@@ -1,4 +1,24 @@
 import Service from "../../models/Service.js";
+import Business from '../../models/Business.js';
+
+export const getBusinessServices = async (req, res) => {
+    try {
+        const { businessId } = req.params;
+        
+        const business = await Business.findOne({ businessId });
+        if (!business) {
+            return res.status(404).json({ error: 'Business not found' });
+        }
+
+        return res.status(200).json({
+            success: true,
+            services: business.services || []
+        });
+    } catch (error) {
+        console.error('Error fetching business services:', error);
+        return res.status(500).json({ error: 'Failed to fetch business services' });
+    }
+};
 
 export const updateBusinessServices = async (req, res) => {
     const { businessId } = req.params;

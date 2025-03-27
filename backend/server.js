@@ -27,7 +27,15 @@ const startServer = async () => {
 
     // Security middleware
     app.use(helmet()); // Set secure HTTP headers
-    app.use(cors());   // Configure CORS as needed
+    
+    // Configure CORS
+    app.use(cors({
+        origin: 'http://localhost:5173', // Your frontend URL
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+        credentials: false
+    }));
+
     app.use(express.json());
 
     // Routes
@@ -36,8 +44,8 @@ const startServer = async () => {
     app.use("/chatbot", chatbotRoutes);
     app.use('/leads', leadRoutes);
     app.use("/admin", adminRoutes);           // Admin endpoints
-    app.use("/", registrationRoutes);           // Registration endpoint
-    app.use("/", loginRoutes);                  // Login endpoint
+    app.use("/", registrationRoutes);         // Registration endpoint
+    app.use("/", loginRoutes);                // Login endpoint
 
     // Initialize WebSocket Chat
     initWebSocket(io);
