@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import http from "http";
 import { Server } from "socket.io";
+import rateLimit from 'express-rate-limit';
 import connectDB from "./config/db.js";
 import initWebSocket from "./config/websocket.js";
 import scraperRoutes from "./routes/scraperRoutes.js";
@@ -36,16 +37,38 @@ const startServer = async () => {
         credentials: false
     }));
 
+    // Rate limiting middleware
+    const generalLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 100, // Limit each IP to 100 requests per windowMs
+        message: 'Too many requests from this IP, please try again after 15 minutes'
+    });
+
+    const authLimiter = rateLimit({
+        windowMs: 60 * 60 * 1000, // 1 hour
+        max: 5, // Limit each IP to 5 login/register attempts per hour
+        message: 'Too many authentication attempts from this IP, please try again after an hour'
+    });
+
+    const adminLimiter = rateLimit({
+        windowMs: 60 * 60 * 1000, // 1 hour
+        max: 30, // Limit each IP to 30 requests per hour for admin routes
+        message: 'Too many admin requests from this IP, please try again after an hour'
+    });
+
+    // Apply general rate limiting to all routes
+    app.use(generalLimiter);
+
     app.use(express.json());
 
-    // Routes
-    app.use("/scraper", scraperRoutes);
-    app.use("/services", serviceRoutes);
-    app.use("/chatbot", chatbotRoutes);
-    app.use('/leads', leadRoutes);
-    app.use("/admin", adminRoutes);           // Admin endpoints
-    app.use("/", registrationRoutes);         // Registration endpoint
-    app.use("/", loginRoutes);                // Login endpoint
+    // Routes with specific rate limits
+    app.use("/scraper", generalLimiter, scraperRoutes);
+    app.use("/services", generalLimiter, serviceRoutes);
+    app.use("/chatbot", generalLimiter, chatbotRoutes);
+    app.use('/leads', generalLimiter, leadRoutes);
+    app.use("/admin", adminLimiter, adminRoutes);           // Admin endpoints with stricter limits
+    app.use("/", authLimiter, registrationRoutes);         // Registration endpoint with auth limits
+    app.use("/", authLimiter, loginRoutes);                // Login endpoint with auth limits
 
     // Initialize WebSocket Chat
     initWebSocket(io);
