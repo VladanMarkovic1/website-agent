@@ -155,26 +155,17 @@ export const createLeadHandler = async (req, res) => {
  */
 export const getLeads = async (req, res) => {
     try {
-        const { businessId } = req.params;
-        if (!businessId) {
-            return res.status(400).json({ error: "Missing business ID." });
-        }
-
-        // First find the business (try both businessId string and _id)
-        const business = await Business.findOne({
-            $or: [
-                { businessId: businessId },  // Try string ID (revive-dental)
-                { _id: businessId }          // Try ObjectId
-            ]
-        });
-
+        // Use the business object that was attached by checkBusinessOwner middleware
+        const business = req.business;
+        
         if (!business) {
             return res.status(404).json({ error: "Business not found." });
         }
 
         // Fetch leads using business._id
         const leads = await Lead.find({ businessId: business._id }).sort({ createdAt: -1 });
-        res.status(200).json({ success: true, leads });
+        console.log(`Found ${leads.length} leads for business ${business.businessId}`);
+        res.status(200).json(leads);
     } catch (error) {
         console.error("❌ Error fetching leads:", error);
         res.status(500).json({ error: "Internal server error while retrieving leads." });
