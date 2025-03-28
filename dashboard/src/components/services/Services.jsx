@@ -50,7 +50,12 @@ const Services = () => {
 
   // Add a new service
   const addService = () => {
-    setServices([...services, { name: '', description: '', price: '' }]);
+    setServices([...services, { 
+      name: '', 
+      description: '', 
+      price: '',
+      manualOverride: false 
+    }]);
   };
 
   // Remove a service
@@ -61,7 +66,10 @@ const Services = () => {
   // Update the local state when a service field changes
   const handleServiceChange = (index, field, value) => {
     const updatedServices = [...services];
-    updatedServices[index] = { ...updatedServices[index], [field]: value };
+    updatedServices[index] = { 
+      ...updatedServices[index], 
+      [field]: field === 'manualOverride' ? value === 'true' : value 
+    };
     setServices(updatedServices);
   };
 
@@ -69,34 +77,33 @@ const Services = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!businessId) {
-      setError('No business information found.');
       return;
     }
 
-    // Clear any existing timeout
-    if (messageTimeoutRef.current) {
-      clearTimeout(messageTimeoutRef.current);
-    }
-
+    setLoading(true);
     try {
       await api.put(`/services/${businessId}`, { services });
-      setMessage('Services updated successfully!');
-      setError(''); // Clear any previous errors
+      setMessage('Services saved successfully!');
       
-      // Set new timeout and store the reference
-      messageTimeoutRef.current = setTimeout(() => {
+      // Clear success message after 3 seconds
+      setTimeout(() => {
         setMessage('');
-        messageTimeoutRef.current = null;
       }, 3000);
     } catch (err) {
       console.error('Error updating services:', err);
-      setError(err.response?.data?.error || 'Failed to update services.');
+      setError(err.response?.data?.error || 'Failed to save services.');
+      
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        setError('');
+      }, 3000);
     }
+    setLoading(false);
   };
 
   if (loading) return (
     <div className="flex justify-center items-center h-64">
-      <p className="text-lg">Loading services...</p>
+      <p className="text-lg">Processing...</p>
     </div>
   );
 
@@ -108,14 +115,14 @@ const Services = () => {
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 relative">
+          <span className="block sm:inline">{error}</span>
         </div>
       )}
       
       {message && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {message}
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 relative">
+          <span className="block sm:inline">{message}</span>
         </div>
       )}
 
@@ -160,6 +167,17 @@ const Services = () => {
                     value={service.price || ''}
                     onChange={(e) => handleServiceChange(index, 'price', e.target.value)}
                   />
+                </div>
+                <div className="mt-4">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={service.manualOverride || false}
+                      onChange={(e) => handleServiceChange(index, 'manualOverride', e.target.checked.toString())}
+                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                    />
+                    <span className="text-sm text-gray-700">Manual Override</span>
+                  </label>
                 </div>
               </div>
             ))}
