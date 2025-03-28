@@ -37,6 +37,8 @@ const startServer = async () => {
         credentials: false
     }));
 
+    app.use(express.json());
+
     // Rate limiting middleware
     const generalLimiter = rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
@@ -45,30 +47,30 @@ const startServer = async () => {
     });
 
     const authLimiter = rateLimit({
-        windowMs: 60 * 60 * 1000, // 1 hour
-        max: 5, // Limit each IP to 5 login/register attempts per hour
-        message: 'Too many authentication attempts from this IP, please try again after an hour'
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 20, // Increased from 5 to 20 attempts per 15 minutes
+        message: 'Too many authentication attempts from this IP, please try again after 15 minutes'
     });
 
     const adminLimiter = rateLimit({
-        windowMs: 60 * 60 * 1000, // 1 hour
-        max: 30, // Limit each IP to 30 requests per hour for admin routes
-        message: 'Too many admin requests from this IP, please try again after an hour'
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 50, // Increased from 30 to 50 requests per 15 minutes
+        message: 'Too many admin requests from this IP, please try again after 15 minutes'
     });
 
-    // Apply general rate limiting to all routes
+    // Auth routes first (without general rate limiting)
+    app.use("/auth", authLimiter, registrationRoutes);      // Registration endpoint with auth limits
+    app.use("/auth", authLimiter, loginRoutes);            // Login endpoint with auth limits
+
+    // Then apply general rate limiting to other routes
     app.use(generalLimiter);
 
-    app.use(express.json());
-
     // Routes with specific rate limits
-    app.use("/scraper", generalLimiter, scraperRoutes);
-    app.use("/services", generalLimiter, serviceRoutes);
-    app.use("/chatbot", generalLimiter, chatbotRoutes);
-    app.use('/leads', generalLimiter, leadRoutes);
+    app.use("/scraper", scraperRoutes);
+    app.use("/services", serviceRoutes);
+    app.use("/chatbot", chatbotRoutes);
+    app.use('/leads', leadRoutes);
     app.use("/admin", adminLimiter, adminRoutes);           // Admin endpoints with stricter limits
-    app.use("/", authLimiter, registrationRoutes);         // Registration endpoint with auth limits
-    app.use("/", authLimiter, loginRoutes);                // Login endpoint with auth limits
 
     // Initialize WebSocket Chat
     initWebSocket(io);
