@@ -22,7 +22,7 @@ export const sendInvitation = async (req, res) => {
     const invitationLink = `${process.env.FRONTEND_URL}/register?token=${token}`;
 
     // Send the invitation email using our invitation email service
-    await sendInvitationEmail(email, invitationLink);
+    const emailResult = await sendInvitationEmail(email, invitationLink);
 
     return res.status(201).json({
       success: true,
@@ -32,7 +32,8 @@ export const sendInvitation = async (req, res) => {
         token: invitation.token,
         businessId: invitation.businessId,
         expiresAt: invitation.expiresAt
-      }
+      },
+      emailPreviewUrl: emailResult.previewUrl
     });
   } catch (error) {
     console.error('Error sending invitation:', error);
