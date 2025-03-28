@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/api';
 import InputField from '../layout/InputField';
 import Button from '../layout/SubmitButton';
+import { HiPlus, HiTrash, HiSave } from 'react-icons/hi';
 
 const Services = () => {
   const [services, setServices] = useState([]);
@@ -103,93 +104,155 @@ const Services = () => {
 
   if (loading) return (
     <div className="flex justify-center items-center h-64">
-      <p className="text-lg">Processing...</p>
+      <div className="animate-pulse flex space-x-4">
+        <div className="h-12 w-12 bg-blue-400 rounded-full animate-bounce"></div>
+        <div className="h-12 w-12 bg-blue-500 rounded-full animate-bounce delay-100"></div>
+        <div className="h-12 w-12 bg-blue-600 rounded-full animate-bounce delay-200"></div>
+      </div>
     </div>
   );
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Services</h2>
-        <Button type="button" onClick={addService}>Add Service</Button>
-      </div>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 relative">
-          <span className="block sm:inline">{error}</span>
-        </div>
-      )}
-      
-      {message && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 relative">
-          <span className="block sm:inline">{message}</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {services.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-600">No services found. Click "Add Service" to create one.</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Services</h1>
+            <p className="mt-1 text-sm text-gray-500">Manage your dental services and pricing</p>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {services.map((service, index) => (
-              <div key={index} className="p-4 border rounded-lg bg-white shadow-sm">
-                <div className="flex justify-end mb-2">
-                  <button
-                    type="button"
-                    onClick={() => removeService(index)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Remove
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <InputField
-                    label="Service Name"
-                    name={`service-name-${index}`}
-                    type="text"
-                    value={service.name || ''}
-                    onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
-                    required
-                  />
-                  <InputField
-                    label="Description"
-                    name={`service-description-${index}`}
-                    type="text"
-                    value={service.description || ''}
-                    onChange={(e) => handleServiceChange(index, 'description', e.target.value)}
-                  />
-                  <InputField
-                    label="Price"
-                    name={`service-price-${index}`}
-                    type="text"
-                    value={service.price || ''}
-                    onChange={(e) => handleServiceChange(index, 'price', e.target.value)}
-                  />
-                </div>
-                <div className="mt-4">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={service.manualOverride || false}
-                      onChange={(e) => handleServiceChange(index, 'manualOverride', e.target.checked.toString())}
-                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                    />
-                    <span className="text-sm text-gray-700">Manual Override</span>
-                  </label>
-                </div>
-              </div>
-            ))}
+          <button
+            onClick={addService}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
+          >
+            <HiPlus className="w-5 h-5 mr-2" />
+            Add Service
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-500 flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            {error}
           </div>
         )}
         
-        {services.length > 0 && (
-          <div className="flex justify-end mt-6">
-            <Button type="submit">Save Changes</Button>
+        {message && (
+          <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-500 flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            {message}
           </div>
         )}
-      </form>
+
+        <form onSubmit={handleSubmit}>
+          {services.length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No services</h3>
+              <p className="mt-1 text-sm text-gray-500">Get started by creating a new service.</p>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={addService}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <HiPlus className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
+                  New Service
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {services.map((service, index) => (
+                <div 
+                  key={index}
+                  className="bg-gray-50 rounded-xl p-6 transition-all duration-200 hover:shadow-md"
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <h3 className="text-lg font-medium text-gray-900">Service #{index + 1}</h3>
+                    <button
+                      type="button"
+                      onClick={() => removeService(index)}
+                      className="inline-flex items-center px-3 py-1 text-sm text-red-600 hover:text-red-800 transition-colors duration-150"
+                    >
+                      <HiTrash className="w-4 h-4 mr-1" />
+                      Remove
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">Service Name</label>
+                      <input
+                        type="text"
+                        value={service.name || ''}
+                        onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        placeholder="e.g., Dental Cleaning"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">Description</label>
+                      <input
+                        type="text"
+                        value={service.description || ''}
+                        onChange={(e) => handleServiceChange(index, 'description', e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        placeholder="Brief description of the service"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">Price</label>
+                      <div className="mt-1 relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 sm:text-sm">$</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={service.price || ''}
+                          onChange={(e) => handleServiceChange(index, 'price', e.target.value)}
+                          className="block w-full pl-7 rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={service.manualOverride || false}
+                        onChange={(e) => handleServiceChange(index, 'manualOverride', e.target.checked.toString())}
+                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      />
+                      <span className="ml-2 text-sm text-gray-600">Manual Override</span>
+                    </label>
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex justify-end pt-6">
+                <button
+                  type="submit"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
+                >
+                  <HiSave className="w-5 h-5 mr-2" />
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          )}
+        </form>
+      </div>
     </div>
   );
 };
