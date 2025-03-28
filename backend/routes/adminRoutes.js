@@ -6,12 +6,12 @@ import Business from '../models/Business.js';
 
 const router = express.Router();
 
-// POST /admin/invite
-// Secured endpoint for admins to send invitation emails.
-router.post('/invite', authenticateToken, adminAuth, sendInvitation);
+// Apply authentication and admin role check to all routes
+router.use(authenticateToken);
+router.use(adminAuth);
 
 // Get all businesses (admin only)
-router.get('/businesses', authenticateToken, adminAuth, async (req, res) => {
+router.get('/businesses', async (req, res) => {
     try {
         const businesses = await Business.find({}, 'businessId businessName websiteUrl');
         res.json(businesses);
@@ -20,5 +20,8 @@ router.get('/businesses', authenticateToken, adminAuth, async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch businesses' });
     }
 });
+
+// Send invitation (admin only)
+router.post('/invite', sendInvitation);
 
 export default router;
