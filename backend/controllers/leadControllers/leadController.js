@@ -174,14 +174,33 @@ export const getLeads = async (req, res) => {
 
 /**
  * Express route handler for updating lead status.
- * Expects leadId in req.params and status (and optional notes) in req.body.
+ * Expects leadId in req.params and status in req.body.
  */
 export const updateLeadStatusHandler = async (req, res) => {
     try {
         const { leadId } = req.params;
-        const { status, notes } = req.body;
-        const updatedLead = await updateLeadStatus(leadId, status, notes);
-        res.status(200).json({ success: true, lead: updatedLead });
+        const { status } = req.body;
+
+        if (!status) {
+            return res.status(400).json({ error: "Status is required." });
+        }
+
+        const lead = await Lead.findById(leadId);
+        if (!lead) {
+            return res.status(404).json({ error: "Lead not found." });
+        }
+
+        // Update status and add to call history
+        lead.status = status;
+        lead.lastContactedAt = new Date();
+        lead.callHistory.push({
+            status,
+            notes: `Status updated to ${status}`,
+            timestamp: new Date()
+        });
+
+        await lead.save();
+        res.status(200).json(lead);
     } catch (error) {
         console.error("Error updating lead status:", error);
         res.status(500).json({ error: "Internal server error while updating lead status." });
@@ -189,33 +208,33 @@ export const updateLeadStatusHandler = async (req, res) => {
 };
 
 /**
- * Function to update lead status.
- * This function is used internally by the updateLeadStatusHandler.
+ * Express route handler for adding notes to a lead.
+ * Expects leadId in req.params and note in req.body.
  */
-export const updateLeadStatus = async (leadId, status, notes = "") => {
+export const addLeadNoteHandler = async (req, res) => {
     try {
-        const lead = await Lead.findByIdAndUpdate(
-            leadId,
-            { 
-                status,
-                lastContactedAt: new Date(),
-                $push: { 
-                    callHistory: {
-                        status,
-                        notes,
-                        timestamp: new Date()
-                    }
-                }
-            },
-            { new: true }
-        );
-        if (!lead) {
-            throw new Error('Lead not found');
+        const { leadId } = req.params;
+        const { note } = req.body;
+
+        if (!note) {
+            return res.status(400).json({ error: "Note content is required." });
         }
-        console.log(`✅ Lead ${leadId} status updated to: ${status}`);
-        return lead;
+
+        const lead = await Lead.findById(leadId);
+        if (!lead) {
+            return res.status(404).json({ error: "Lead not found." });
+        }
+
+        // Add note to call history
+        lead.callHistory.push({
+            notes: note,
+            timestamp: new Date()
+        });
+
+        await lead.save();
+        res.status(200).json(lead);
     } catch (error) {
-        console.error('❌ Error updating lead status:', error);
-        throw error;
+        console.error("Error adding lead note:", error);
+        res.status(500).json({ error: "Internal server error while adding note." });
     }
 };
