@@ -1,19 +1,20 @@
 import Service from "../../models/Service.js";
-import Business from '../../models/Business.js';
 
 export const getBusinessServices = async (req, res) => {
     try {
-        const { businessId } = req.params;
+        // Use the business object that was attached by checkBusinessOwner middleware
+        const business = req.business;
         
-        const business = await Business.findOne({ businessId });
         if (!business) {
-            return res.status(404).json({ error: 'Business not found' });
+            return res.status(404).json({ error: "Business not found." });
         }
 
-        return res.status(200).json({
-            success: true,
-            services: business.services || []
-        });
+        // Get services
+        const serviceDoc = await Service.findOne({ businessId: business.businessId });
+        console.log(`Fetching services for business ${business.businessId}`);
+        
+        // Return empty array if no services exist yet
+        return res.status(200).json(serviceDoc ? serviceDoc.services : []);
     } catch (error) {
         console.error('Error fetching business services:', error);
         return res.status(500).json({ error: 'Failed to fetch business services' });
@@ -21,52 +22,38 @@ export const getBusinessServices = async (req, res) => {
 };
 
 export const updateBusinessServices = async (req, res) => {
-    const { businessId } = req.params;
-    const { services } = req.body;
-
     try {
-        console.log(`🔹 PUT Request Received for businessId: ${businessId}`);
-        console.log(`🔹 updateBusinessServices called`);
-        console.log(`🔹 Business ID: ${businessId}`);
-        console.log(`🔹 Services Data:`, services);
+        // Use the business object that was attached by checkBusinessOwner middleware
+        const business = req.business;
+        const { services } = req.body;
 
-        // ✅ Find the existing services document
-        let existingServices = await Service.findOne({ businessId });
-
-        if (!existingServices) {
-            // If no document exists, create a new one
-            existingServices = new Service({ businessId, services: [] });
+        if (!business) {
+            return res.status(404).json({ error: "Business not found." });
         }
 
-        // ✅ Merge services (update existing & keep previous)
-        services.forEach((newService) => {
-            const index = existingServices.services.findIndex(
-                (s) => s.name === newService.name
-            );
+        console.log(`🔹 Updating services for business: ${business.businessId}`);
+        console.log(`🔹 Services Data:`, services);
 
-            if (index !== -1) {
-                // Update existing service
-                existingServices.services[index] = {
-                    ...existingServices.services[index],
-                    ...newService,
-                };
-            } else {
-                // Add new service
-                existingServices.services.push(newService);
-            }
-        });
+        // Find or create services document
+        let serviceDoc = await Service.findOne({ businessId: business.businessId });
+        if (!serviceDoc) {
+            serviceDoc = new Service({ businessId: business.businessId, services: [] });
+        }
 
-        // ✅ Save updated document
-        await existingServices.save();
+        // Update services
+        serviceDoc.services = services;
 
-        console.log(`✅ Services Updated Successfully:`, existingServices);
+        // Save changes
+        await serviceDoc.save();
+
+        console.log(`✅ Services Updated Successfully:`, serviceDoc);
         res.status(200).json({
             message: "Services updated successfully!",
-            services: existingServices.services,
+            services: serviceDoc.services,
         });
 
     } catch (error) {
         console.error(`❌ Error updating services:`, error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ error: "Internal server error" });
     }
 };

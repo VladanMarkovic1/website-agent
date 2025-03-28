@@ -30,12 +30,9 @@ async function createTransporter() {
 export const sendInstantConfirmation = async (leadData) => {
     try {
         // Log the received data
-        console.log('4. leadData at start of sendInstantConfirmation:', JSON.stringify(leadData, null, 2));
+        console.log('Sending confirmation email to:', leadData.email);
 
         const transport = await createTransporter();
-        
-        // Log the service value before creating mail options
-        console.log('5. Service before mailOptions:', leadData.service);
 
         const currentHour = new Date().getHours();
         const isDuringBusinessHours = currentHour >= 9 && currentHour < 17;
@@ -77,9 +74,6 @@ export const sendInstantConfirmation = async (leadData) => {
                 </div>
             `
         };
-
-        // Log the service value after creating mail options
-        console.log('6. Service after mailOptions:', leadData.service);
 
         const info = await transport.sendMail(mailOptions);
         const previewUrl = nodemailer.getTestMessageUrl(info);

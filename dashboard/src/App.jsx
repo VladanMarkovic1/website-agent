@@ -1,35 +1,58 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/LoginPage';
+import Register from './pages/RegistrationPage';
+import Dashboard from './pages/BusinessOwnerPage';
+import Leads from './components/leads/Leads';
+import Services from './components/services/Services';
+import Settings from './components/settings/Settings';
+import AdminPage from './pages/AdminPage';
+//import AdminPage from './pages/AdminPage';
+import ProtectedRoute from './components/auth/ProtectedRoutes';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+       
+        
+        {/* Protected Dashboard Routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        >
+          {/* Nested Dashboard Routes */}
+          <Route index element={<Navigate to="/dashboard/leads" replace />} />
+          <Route path="leads" element={<Leads />} />
+          <Route path="services" element={<Services />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+
+        {/* Protected Admin Route */}
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminPage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Redirect root to login page */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
+        {/* Redirect any unknown routes to login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
