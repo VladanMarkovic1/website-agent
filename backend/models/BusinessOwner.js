@@ -5,7 +5,7 @@ const BusinessOwnerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  businessId: { type: mongoose.Schema.Types.ObjectId, ref: "Business" },
+  businessId: { type: String, required: true },
   role: { type: String, default: "owner" }
 }, { timestamps: true });
 
