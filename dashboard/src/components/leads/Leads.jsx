@@ -286,31 +286,22 @@ const Leads = () => {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-2xl font-bold text-gray-900">Your Leads</h2>
-          
           {/* Search and Filter Controls */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search leads..."
-                value={filters.searchTerm}
-                onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
-                className="w-full sm:w-64 pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <HiOutlineSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            </div>
-            
+            <input
+              type="text"
+              placeholder="Search leads..."
+              value={filters.searchTerm}
+              onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+              className="w-full sm:w-64 pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="inline-flex items-center px-4 py-2 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <HiOutlineAdjustments className="h-5 w-5 mr-2" />
               Filters
-              {showFilters ? (
-                <HiOutlineChevronUp className="ml-2 h-5 w-5" />
-              ) : (
-                <HiOutlineChevronDown className="ml-2 h-5 w-5" />
-              )}
+              {showFilters ? <HiOutlineChevronUp className="ml-2 h-5 w-5" /> : <HiOutlineChevronDown className="ml-2 h-5 w-5" />}
             </button>
           </div>
         </div>

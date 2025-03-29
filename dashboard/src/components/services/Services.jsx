@@ -116,10 +116,7 @@ const Services = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Services</h1>
-            <p className="mt-1 text-sm text-gray-500">Manage your dental services and pricing</p>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900">Services</h1>
           <button
             onClick={addService}
             className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
@@ -129,50 +126,27 @@ const Services = () => {
           </button>
         </div>
 
-        {error && (
-          <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-500 flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-            {error}
-          </div>
-        )}
-        
-        {message && (
-          <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-500 flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            {message}
-          </div>
-        )}
+        {error && <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-500">{error}</div>}
+        {message && <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-500">{message}</div>}
 
         <form onSubmit={handleSubmit}>
           {services.length === 0 ? (
             <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">No services</h3>
               <p className="mt-1 text-sm text-gray-500">Get started by creating a new service.</p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={addService}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <HiPlus className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-                  New Service
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={addService}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              >
+                <HiPlus className="-ml-1 mr-2 h-5 w-5" />
+                New Service
+              </button>
             </div>
           ) : (
             <div className="space-y-6">
               {services.map((service, index) => (
-                <div 
-                  key={index}
-                  className="bg-gray-50 rounded-xl p-6 transition-all duration-200 hover:shadow-md"
-                >
+                <div key={index} className="bg-gray-50 rounded-xl p-6 transition-all duration-200 hover:shadow-md">
                   <div className="flex justify-between items-start mb-6">
                     <h3 className="text-lg font-medium text-gray-900">Service #{index + 1}</h3>
                     <button
@@ -184,54 +158,17 @@ const Services = () => {
                       Remove
                     </button>
                   </div>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">Service Name</label>
-                      <input
-                        type="text"
-                        value={service.name || ''}
-                        onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        placeholder="e.g., Dental Cleaning"
-                        required
-                      />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">Description</label>
-                      <input
-                        type="text"
-                        value={service.description || ''}
-                        onChange={(e) => handleServiceChange(index, 'description', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        placeholder="Brief description of the service"
-                      />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">Price</label>
-                      <div className="mt-1 relative rounded-md shadow-sm">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 sm:text-sm">$</span>
-                        </div>
-                        <input
-                          type="text"
-                          value={service.price || ''}
-                          onChange={(e) => handleServiceChange(index, 'price', e.target.value)}
-                          className="block w-full pl-7 rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
+                    <InputField label="Service Name" value={service.name} onChange={(e) => handleServiceChange(index, 'name', e.target.value)} required />
+                    <InputField label="Description" value={service.description} onChange={(e) => handleServiceChange(index, 'description', e.target.value)} />
+                    <InputField label="Price" value={service.price} onChange={(e) => handleServiceChange(index, 'price', e.target.value)} />
                   </div>
-
                   <div className="mt-4">
                     <label className="inline-flex items-center">
                       <input
                         type="checkbox"
-                        checked={service.manualOverride || false}
-                        onChange={(e) => handleServiceChange(index, 'manualOverride', e.target.checked.toString())}
+                        checked={service.manualOverride}
+                        onChange={(e) => handleServiceChange(index, 'manualOverride', e.target.checked)}
                         className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                       />
                       <span className="ml-2 text-sm text-gray-600">Manual Override</span>
@@ -239,15 +176,11 @@ const Services = () => {
                   </div>
                 </div>
               ))}
-
               <div className="flex justify-end pt-6">
-                <button
-                  type="submit"
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
-                >
+                <Button type="submit" className="w-full">
                   <HiSave className="w-5 h-5 mr-2" />
                   Save Changes
-                </button>
+                </Button>
               </div>
             </div>
           )}
