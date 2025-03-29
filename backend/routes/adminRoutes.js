@@ -1,8 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { adminAuth } from '../middleware/adminAuth.js';
-import { sendInvitation } from '../controllers/adminControllers/adminController.js';
-import Business from '../models/Business.js';
+import adminController from '../controllers/adminControllers/adminController.js';
 
 const router = express.Router();
 
@@ -11,17 +10,12 @@ router.use(authenticateToken);
 router.use(adminAuth);
 
 // Get all businesses (admin only)
-router.get('/businesses', async (req, res) => {
-    try {
-        const businesses = await Business.find({}, 'businessId businessName websiteUrl');
-        res.json(businesses);
-    } catch (error) {
-        console.error('Error fetching businesses:', error);
-        res.status(500).json({ error: 'Failed to fetch businesses' });
-    }
-});
+router.get('/businesses', adminController.getBusinesses);
+
+// Get all business owners (admin only)
+router.get('/business-owners', adminController.getBusinessOwners);
 
 // Send invitation (admin only)
-router.post('/invite', sendInvitation);
+router.post('/invite', adminController.sendInvitation);
 
 export default router;

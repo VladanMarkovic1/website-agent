@@ -10,7 +10,8 @@ import {
   HiOutlineGlobe,
   HiOutlineIdentification,
   HiOutlinePlusCircle,
-  HiOutlineRefresh
+  HiOutlineRefresh,
+  HiOutlineUser,
 } from 'react-icons/hi';
 
 const AdminPage = () => {
@@ -19,6 +20,7 @@ const AdminPage = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [businesses, setBusinesses] = useState([]);
+  const [businessOwners, setBusinessOwners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
@@ -37,8 +39,18 @@ const AdminPage = () => {
     }
   };
 
+  const fetchBusinessOwners = async () => {
+    try {
+      const response = await api.get('/admin/business-owners');
+      setBusinessOwners(response.data);
+    } catch (err) {
+      setError('Failed to fetch business owners');
+    }
+  };
+
   useEffect(() => {
     fetchBusinesses();
+    fetchBusinessOwners();
   }, []);
 
   const handleLogout = () => {
@@ -50,22 +62,15 @@ const AdminPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.post('/admin/invite', { 
-        email, 
-        businessId: selectedBusinessId 
-      });
+      await api.post('/admin/invite', { email, businessId: selectedBusinessId });
       setMessage('Invitation sent successfully!');
       setError('');
       setEmail('');
       setSelectedBusinessId('');
-      
-      // Show success message for 3 seconds
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send invitation.');
       setMessage('');
-      
-      // Clear error after 3 seconds
       setTimeout(() => setError(''), 3000);
     }
   };
@@ -187,19 +192,17 @@ const AdminPage = () => {
             </form>
           </div>
 
-          {/* Businesses List */}
+          {/* Business Owners List */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
-                <HiOutlineOfficeBuilding className="h-6 w-6 text-blue-600" />
-                <h2 className="ml-2 text-xl font-semibold text-gray-900">Available Businesses</h2>
+                <HiOutlineUser className="h-6 w-6 text-blue-600" />
+                <h2 className="ml-2 text-xl font-semibold text-gray-900">Business Owners</h2>
               </div>
               <button
-                onClick={fetchBusinesses}
+                onClick={fetchBusinessOwners}
                 disabled={refreshing}
-                className={`inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150 ${
-                  refreshing ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <HiOutlineRefresh className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
@@ -208,44 +211,41 @@ const AdminPage = () => {
 
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr className="bg-gray-50">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Business Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Business ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Website
+                      Status
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {businesses.length === 0 ? (
+                  {businessOwners.length === 0 ? (
                     <tr>
-                      <td colSpan="3" className="px-6 py-8 text-center text-sm text-gray-500">
-                        No businesses found
+                      <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500">
+                        No business owners found
                       </td>
                     </tr>
                   ) : (
-                    businesses.map((business) => (
-                      <tr key={business._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {business.businessName}
-                          </div>
+                    businessOwners.map((owner) => (
+                      <tr key={owner._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {owner.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {owner.businessName}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {business.businessId}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500 flex items-center">
-                            <HiOutlineGlobe className="mr-2 h-4 w-4" />
-                            {business.websiteUrl || 'N/A'}
-                          </div>
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            owner.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {owner.status}
+                          </span>
                         </td>
                       </tr>
                     ))
