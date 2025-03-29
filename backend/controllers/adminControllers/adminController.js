@@ -45,6 +45,14 @@ export const sendInvitation = async (req, res) => {
 
 export const getBusinessOwners = async (req, res) => {
   try {
+    // Log admin access
+    console.log(`Admin ${req.adminUser.email} accessed business owners list at ${req.adminUser.accessTime}`);
+
+    // Add request validation
+    if (req.query.limit && (isNaN(req.query.limit) || req.query.limit > 100)) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
+
     // Fetch business owners and join with businesses
     const businessOwners = await BusinessOwner.aggregate([
       {
@@ -91,13 +99,20 @@ export const getBusinessOwners = async (req, res) => {
       name: owner.name,
       email: owner.email,
       businessName: owner.businessName || 'No Business Assigned',
-      businessId: owner.businessId
+      businessId: owner.businessId,
+      // Remove any sensitive data
+      lastAccess: owner.createdAt
     }));
+
+    // Add response headers
+    res.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    res.set('Expires', '-1');
+    res.set('Pragma', 'no-cache');
 
     return res.status(200).json(sanitizedOwners);
   } catch (error) {
-    console.error('Error fetching business owners:', error);
-    return res.status(500).json({ error: 'Failed to fetch business owners' });
+    console.error('Error in getBusinessOwners:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
