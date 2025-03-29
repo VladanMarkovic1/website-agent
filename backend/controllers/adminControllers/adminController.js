@@ -45,26 +45,42 @@ export const sendInvitation = async (req, res) => {
 
 export const getBusinessOwners = async (req, res) => {
   try {
-    // Log admin access
-    console.log(`Admin ${req.adminUser.email} accessed business owners list at ${req.adminUser.accessTime}`);
-
-    // Add request validation
-    if (req.query.limit && (isNaN(req.query.limit) || req.query.limit > 100)) {
-      return res.status(400).json({ error: 'Invalid limit parameter' });
-    }
-
-    // Fetch business owners and join with businesses
-    const businessOwners = await BusinessOwner.aggregate([
+    // Start with invitations and join with business owners
+    const businessOwners = await Invitation.aggregate([
       {
-        $match: { 
-          role: 'owner'  // Changed from 'business-owner' to 'owner' based on your schema
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: '$email',
+          latestInvitation: { $first: '$$ROOT' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'businessowners',
+          let: { ownerEmail: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$email', '$$ownerEmail'] }
+              }
+            }
+          ],
+          as: 'owner'
         }
       },
       {
         $lookup: {
           from: 'businesses',
-          localField: 'businessId',
-          foreignField: 'businessId',
+          let: { businessId: '$latestInvitation.businessId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$businessId', '$$businessId'] }
+              }
+            }
+          ],
           as: 'business'
         }
       },
@@ -76,12 +92,13 @@ export const getBusinessOwners = async (req, res) => {
       },
       {
         $project: {
-          _id: 1,
-          email: 1,
-          name: 1,  // Added name field from your schema
+          _id: { $arrayElemAt: ['$owner._id', 0] },
+          email: '$_id',
+          name: { $arrayElemAt: ['$owner.name', 0] },
           businessName: '$business.businessName',
-          businessId: 1,
-          createdAt: 1
+          businessId: '$latestInvitation.businessId',
+          status: '$latestInvitation.status',
+          createdAt: '$latestInvitation.createdAt'
         }
       },
       {
@@ -89,30 +106,24 @@ export const getBusinessOwners = async (req, res) => {
       }
     ]);
 
-    if (!businessOwners) {
-      return res.status(404).json({ error: 'No business owners found' });
+    if (!businessOwners || businessOwners.length === 0) {
+      return res.status(404).json({ error: 'No business owners or invitations found' });
     }
 
-    // Remove sensitive information and format the response
+    // Format the response
     const sanitizedOwners = businessOwners.map(owner => ({
-      id: owner._id,
-      name: owner.name,
+      id: owner._id || 'pending_' + owner.email,
+      name: owner.name || 'Pending Registration',
       email: owner.email,
       businessName: owner.businessName || 'No Business Assigned',
       businessId: owner.businessId,
-      // Remove any sensitive data
-      lastAccess: owner.createdAt
+      status: owner.status
     }));
-
-    // Add response headers
-    res.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
-    res.set('Expires', '-1');
-    res.set('Pragma', 'no-cache');
 
     return res.status(200).json(sanitizedOwners);
   } catch (error) {
-    console.error('Error in getBusinessOwners:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Error fetching business owners:', error);
+    return res.status(500).json({ error: 'Failed to fetch business owners' });
   }
 };
 

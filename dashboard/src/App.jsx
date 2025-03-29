@@ -12,8 +12,8 @@ import ProtectedRoute from './components/auth/ProtectedRoutes';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <BrowserRouter future={{ v7_startTransition: true }}>
+      <Routes future={{ v7_relativeSplatPath: true }}>
         {/* Public Routes */}
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />

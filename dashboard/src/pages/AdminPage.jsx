@@ -25,32 +25,40 @@ const AdminPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
 
-  const fetchBusinesses = async () => {
-    try {
-      setRefreshing(true);
-      const response = await api.get('/admin/businesses');
-      setBusinesses(response.data);
-      setError('');
-    } catch (err) {
-      setError('Failed to fetch businesses');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const fetchBusinessOwners = async () => {
-    try {
-      const response = await api.get('/admin/business-owners');
-      setBusinessOwners(response.data);
-    } catch (err) {
-      setError('Failed to fetch business owners');
-    }
-  };
-
   useEffect(() => {
-    fetchBusinesses();
-    fetchBusinessOwners();
+    let isSubscribed = true;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [businessesResponse, ownersResponse] = await Promise.all([
+          api.get('/admin/businesses'),
+          api.get('/admin/business-owners')
+        ]);
+
+        if (isSubscribed) {
+          setBusinesses(businessesResponse.data);
+          setBusinessOwners(ownersResponse.data);
+          setError('');
+        }
+      } catch (err) {
+        if (isSubscribed) {
+          setError('Failed to fetch data');
+          console.error('Error fetching data:', err);
+        }
+      } finally {
+        if (isSubscribed) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {
+      isSubscribed = false;
+    };
   }, []);
 
   const handleLogout = () => {
@@ -62,16 +70,41 @@ const AdminPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/admin/invite', { email, businessId: selectedBusinessId });
-      setMessage('Invitation sent successfully!');
+      setMessage('');
       setError('');
+      
+      await api.post('/admin/invite', { 
+        email, 
+        businessId: selectedBusinessId 
+      });
+
+      setMessage('Invitation sent successfully!');
       setEmail('');
       setSelectedBusinessId('');
-      setTimeout(() => setMessage(''), 3000);
+      
+      // Refresh business owners list
+      const response = await api.get('/admin/business-owners');
+      setBusinessOwners(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send invitation.');
-      setMessage('');
-      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      const [businessesResponse, ownersResponse] = await Promise.all([
+        api.get('/admin/businesses'),
+        api.get('/admin/business-owners')
+      ]);
+      
+      setBusinesses(businessesResponse.data);
+      setBusinessOwners(ownersResponse.data);
+      setError('');
+    } catch (err) {
+      setError('Failed to refresh data');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -200,7 +233,7 @@ const AdminPage = () => {
                 <h2 className="ml-2 text-xl font-semibold text-gray-900">Business Owners</h2>
               </div>
               <button
-                onClick={fetchBusinessOwners}
+                onClick={handleRefresh}
                 disabled={refreshing}
                 className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
@@ -233,7 +266,7 @@ const AdminPage = () => {
                     </tr>
                   ) : (
                     businessOwners.map((owner) => (
-                      <tr key={owner._id} className="hover:bg-gray-50">
+                      <tr key={owner.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {owner.email}
                         </td>
@@ -242,9 +275,13 @@ const AdminPage = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            owner.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            owner.status === 'used' 
+                              ? 'bg-green-100 text-green-800' 
+                              : owner.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {owner.status}
+                            {owner.status || 'pending'}
                           </span>
                         </td>
                       </tr>
