@@ -3,7 +3,7 @@ import ChatWindow from './components/ChatBot/ChatWindow'
 import { FaRobot } from 'react-icons/fa'
 
 function App() {
-  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(true)
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
