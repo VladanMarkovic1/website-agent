@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/api';
 import InputField from '../layout/InputField';
 import Button from '../layout/SubmitButton';
-import { HiPlus, HiTrash, HiSave } from 'react-icons/hi';
+import { HiPlus, HiTrash, HiSave, HiRefresh } from 'react-icons/hi';
 
 const Services = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [isScraping, setIsScraping] = useState(false);
+  const [lastScrapeTime, setLastScrapeTime] = useState(null);
   const messageTimeoutRef = useRef(null);
 
   // Cleanup function for message timeout
@@ -48,6 +50,44 @@ const Services = () => {
 
     fetchServices();
   }, [businessId]);
+
+  // Handle website scraping
+  const handleScrape = async () => {
+    if (!businessId || isScraping) return;
+
+    try {
+      setIsScraping(true);
+      setMessage('Starting website scraping...');
+      
+      // Trigger scraping
+      await api.get(`/scraper/${businessId}`);
+      
+      // Wait for 10 seconds to allow scraping to complete
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      
+      // Fetch updated services
+      const response = await api.get(`/services/${businessId}`);
+      setServices(Array.isArray(response.data) ? response.data : []);
+      
+      setLastScrapeTime(new Date().toLocaleString());
+      setMessage('Website scraped successfully! Services have been updated.');
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setMessage('');
+      }, 5000);
+    } catch (err) {
+      console.error('Error during scraping:', err);
+      setError(err.response?.data?.error || 'Failed to scrape website.');
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setError('');
+      }, 5000);
+    } finally {
+      setIsScraping(false);
+    }
+  };
 
   // Add a new service
   const addService = () => {
@@ -116,14 +156,35 @@ const Services = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Services</h1>
-          <button
-            onClick={addService}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
-          >
-            <HiPlus className="w-5 h-5 mr-2" />
-            Add Service
-          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Services</h1>
+            {lastScrapeTime && (
+              <p className="text-sm text-gray-500 mt-1">
+                Last scraped: {lastScrapeTime}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-4">
+            <button
+              onClick={handleScrape}
+              disabled={isScraping}
+              className={`inline-flex items-center px-4 py-2 ${
+                isScraping 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-green-600 hover:bg-green-700'
+              } text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out`}
+            >
+              <HiRefresh className={`w-5 h-5 mr-2 ${isScraping ? 'animate-spin' : ''}`} />
+              {isScraping ? 'Scraping...' : 'Update from Website'}
+            </button>
+            <button
+              onClick={addService}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
+            >
+              <HiPlus className="w-5 h-5 mr-2" />
+              Add Service
+            </button>
+          </div>
         </div>
 
         {error && <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-500">{error}</div>}
@@ -133,15 +194,30 @@ const Services = () => {
           {services.length === 0 ? (
             <div className="text-center py-12">
               <h3 className="mt-2 text-sm font-medium text-gray-900">No services</h3>
-              <p className="mt-1 text-sm text-gray-500">Get started by creating a new service.</p>
-              <button
-                type="button"
-                onClick={addService}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <HiPlus className="-ml-1 mr-2 h-5 w-5" />
-                New Service
-              </button>
+              <p className="mt-1 text-sm text-gray-500">Get started by creating a new service or scraping from your website.</p>
+              <div className="mt-6 flex justify-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleScrape}
+                  disabled={isScraping}
+                  className={`inline-flex items-center px-4 py-2 ${
+                    isScraping 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-green-600 hover:bg-green-700'
+                  } text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out`}
+                >
+                  <HiRefresh className={`w-5 h-5 mr-2 ${isScraping ? 'animate-spin' : ''}`} />
+                  {isScraping ? 'Scraping...' : 'Scrape Website'}
+                </button>
+                <button
+                  type="button"
+                  onClick={addService}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  <HiPlus className="-ml-1 mr-2 h-5 w-5" />
+                  New Service
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
