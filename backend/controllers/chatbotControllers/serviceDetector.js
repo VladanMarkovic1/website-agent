@@ -18,6 +18,11 @@ const STOPWORDS = [
  * @returns {string|null} Detected service name or null if none found
  */
 export function detectService(message, availableServices) {
+  // Guard against empty or invalid services array
+  if (!Array.isArray(availableServices) || availableServices.length === 0) {
+    return null;
+  }
+
   // 1. Split and filter message words
   let words = message
     .toLowerCase()

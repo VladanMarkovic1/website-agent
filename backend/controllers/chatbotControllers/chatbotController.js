@@ -110,7 +110,6 @@ export const handleChatMessage = async (message, businessId) => {
                 return response;
             }
         }
-
         // 2. Fetch business data
         const businessData = await getBusinessDataForChatbot(businessId);
         if (!businessData) {
@@ -197,3 +196,4 @@ export const handleChatMessage = async (message, businessId) => {
         return "⚠️ Sorry, there was an error processing your request.";
     }
 };
+

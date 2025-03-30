@@ -31,10 +31,11 @@ const startServer = async () => {
     
     // Configure CORS
     app.use(cors({
-        origin: 'http://localhost:5173', // Your frontend URL
+        origin: ['http://localhost:5174', 'http://localhost:5173'], // Include both possible Vite ports
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-        credentials: false
+        allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials'],
+        credentials: true,
+        exposedHeaders: ['Access-Control-Allow-Origin']
     }));
 
     app.use(express.json());
