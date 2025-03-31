@@ -153,114 +153,148 @@ const Services = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Services</h1>
+    <div className="h-full w-full overflow-y-auto md:pt-0 pt-16 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 mb-8">
+          {/* Title section - desktop */}
+          <div className="hidden md:flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Services</h1>
+              {lastScrapeTime && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Last scraped: {lastScrapeTime}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-4">
+              <button
+                onClick={handleScrape}
+                disabled={isScraping}
+                className={`inline-flex items-center px-4 py-2 ${
+                  isScraping 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-green-600 hover:bg-green-700'
+                } text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out`}
+              >
+                <HiRefresh className={`w-5 h-5 mr-2 ${isScraping ? 'animate-spin' : ''}`} />
+                {isScraping ? 'Scraping...' : 'Update from Website'}
+              </button>
+              <button
+                onClick={addService}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
+              >
+                <HiPlus className="w-5 h-5 mr-2" />
+                Add Service
+              </button>
+            </div>
+          </div>
+
+          {/* Title section - mobile */}
+          <div className="md:hidden mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Services</h1>
             {lastScrapeTime && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs text-gray-500">
                 Last scraped: {lastScrapeTime}
               </p>
             )}
-          </div>
-          <div className="flex gap-4">
-            <button
-              onClick={handleScrape}
-              disabled={isScraping}
-              className={`inline-flex items-center px-4 py-2 ${
-                isScraping 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-green-600 hover:bg-green-700'
-              } text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out`}
-            >
-              <HiRefresh className={`w-5 h-5 mr-2 ${isScraping ? 'animate-spin' : ''}`} />
-              {isScraping ? 'Scraping...' : 'Update from Website'}
-            </button>
-            <button
-              onClick={addService}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
-            >
-              <HiPlus className="w-5 h-5 mr-2" />
-              Add Service
-            </button>
-          </div>
-        </div>
-
-        {error && <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-500">{error}</div>}
-        {message && <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-500">{message}</div>}
-
-        <form onSubmit={handleSubmit}>
-          {services.length === 0 ? (
-            <div className="text-center py-12">
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No services</h3>
-              <p className="mt-1 text-sm text-gray-500">Get started by creating a new service or scraping from your website.</p>
-              <div className="mt-6 flex justify-center gap-4">
-                <button
-                  type="button"
-                  onClick={handleScrape}
-                  disabled={isScraping}
-                  className={`inline-flex items-center px-4 py-2 ${
-                    isScraping 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-green-600 hover:bg-green-700'
-                  } text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out`}
-                >
-                  <HiRefresh className={`w-5 h-5 mr-2 ${isScraping ? 'animate-spin' : ''}`} />
-                  {isScraping ? 'Scraping...' : 'Scrape Website'}
-                </button>
-                <button
-                  type="button"
-                  onClick={addService}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <HiPlus className="-ml-1 mr-2 h-5 w-5" />
-                  New Service
-                </button>
-              </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleScrape}
+                disabled={isScraping}
+                className={`flex-1 inline-flex items-center justify-center px-3 py-2 ${
+                  isScraping 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-green-600 hover:bg-green-700'
+                } text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out`}
+              >
+                <HiRefresh className={`w-4 h-4 mr-1 ${isScraping ? 'animate-spin' : ''}`} />
+                {isScraping ? 'Scraping...' : 'Update from Website'}
+              </button>
+              <button
+                onClick={addService}
+                className="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out"
+              >
+                <HiPlus className="w-4 h-4 mr-1" />
+                Add Service
+              </button>
             </div>
-          ) : (
-            <div className="space-y-6">
-              {services.map((service, index) => (
-                <div key={index} className="bg-gray-50 rounded-xl p-6 transition-all duration-200 hover:shadow-md">
-                  <div className="flex justify-between items-start mb-6">
-                    <h3 className="text-lg font-medium text-gray-900">Service #{index + 1}</h3>
-                    <button
-                      type="button"
-                      onClick={() => removeService(index)}
-                      className="inline-flex items-center px-3 py-1 text-sm text-red-600 hover:text-red-800 transition-colors duration-150"
-                    >
-                      <HiTrash className="w-4 h-4 mr-1" />
-                      Remove
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <InputField label="Service Name" value={service.name} onChange={(e) => handleServiceChange(index, 'name', e.target.value)} required />
-                    <InputField label="Description" value={service.description} onChange={(e) => handleServiceChange(index, 'description', e.target.value)} />
-                    <InputField label="Price" value={service.price} onChange={(e) => handleServiceChange(index, 'price', e.target.value)} />
-                  </div>
-                  <div className="mt-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={service.manualOverride}
-                        onChange={(e) => handleServiceChange(index, 'manualOverride', e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      />
-                      <span className="ml-2 text-sm text-gray-600">Manual Override</span>
-                    </label>
-                  </div>
+          </div>
+
+          {error && <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-500">{error}</div>}
+          {message && <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-500">{message}</div>}
+
+          <form onSubmit={handleSubmit}>
+            {services.length === 0 ? (
+              <div className="text-center py-12">
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No services</h3>
+                <p className="mt-1 text-sm text-gray-500">Get started by creating a new service or scraping from your website.</p>
+                <div className="mt-6 flex flex-col md:flex-row justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={handleScrape}
+                    disabled={isScraping}
+                    className={`inline-flex items-center justify-center px-4 py-2 ${
+                      isScraping 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-green-600 hover:bg-green-700'
+                    } text-white text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out`}
+                  >
+                    <HiRefresh className={`w-5 h-5 mr-2 ${isScraping ? 'animate-spin' : ''}`} />
+                    {isScraping ? 'Scraping...' : 'Scrape Website'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addService}
+                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <HiPlus className="-ml-1 mr-2 h-5 w-5" />
+                    New Service
+                  </button>
                 </div>
-              ))}
-              <div className="flex justify-end pt-6">
-                <Button type="submit" className="w-full">
-                  <HiSave className="w-5 h-5 mr-2" />
-                  Save Changes
-                </Button>
               </div>
-            </div>
-          )}
-        </form>
+            ) : (
+              <div className="space-y-6">
+                {services.map((service, index) => (
+                  <div key={index} className="bg-gray-50 rounded-xl p-4 md:p-6 transition-all duration-200 hover:shadow-md">
+                    <div className="flex justify-between items-start mb-6">
+                      <h3 className="text-lg font-medium text-gray-900">Service #{index + 1}</h3>
+                      <button
+                        type="button"
+                        onClick={() => removeService(index)}
+                        className="inline-flex items-center px-3 py-1 text-sm text-red-600 hover:text-red-800 transition-colors duration-150"
+                      >
+                        <HiTrash className="w-4 h-4 mr-1" />
+                        Remove
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                      <InputField label="Service Name" value={service.name} onChange={(e) => handleServiceChange(index, 'name', e.target.value)} required />
+                      <InputField label="Description" value={service.description} onChange={(e) => handleServiceChange(index, 'description', e.target.value)} />
+                      <InputField label="Price" value={service.price} onChange={(e) => handleServiceChange(index, 'price', e.target.value)} />
+                    </div>
+                    <div className="mt-4">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={service.manualOverride}
+                          onChange={(e) => handleServiceChange(index, 'manualOverride', e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        />
+                        <span className="ml-2 text-sm text-gray-600">Manual Override</span>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end pt-6">
+                  <Button type="submit" className="w-full md:w-auto">
+                    <HiSave className="w-5 h-5 mr-2" />
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            )}
+          </form>
+        </div>
       </div>
     </div>
   );
