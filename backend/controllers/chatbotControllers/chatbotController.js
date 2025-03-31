@@ -83,18 +83,21 @@ export const handleChatMessage = async (message, businessId) => {
                 const serviceInterest = memory.currentService || "General Inquiry";
 
                 try {
-                    // ➜ Capture the lead and use the exact message returned by saveLead
+                    // Save the lead with the original message and reason
                     const leadResponse = await saveLead(
                         businessId,
                         `name: ${name}, phone: ${phone}, email: ${email}`,
-                        serviceInterest
+                        serviceInterest,
+                        {
+                            initialMessage: message,
+                            reason: memory.userMessages?.join(" ") || message // Include conversation history if available
+                        }
                     );
                     cleanupSession(businessId);
 
                     // We store the leadResponse in chat memory/log as well
                     storeBotResponse(businessId, leadResponse, serviceInterest);
 
-                    // ➜ Return the EXACT message from saveLead
                     return leadResponse;
 
                 } catch (error) {

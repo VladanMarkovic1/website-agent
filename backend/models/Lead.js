@@ -22,6 +22,10 @@ const leadSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    reason: {
+        type: String,
+        required: true
+    },
     status: {
         type: String,
         enum: ['new', 'attempted-contact', 'contacted', 'scheduled', 'completed', 'no-response'],
@@ -103,7 +107,7 @@ const leadSchema = new mongoose.Schema({
     interactions: [{
         type: {
             type: String,
-            enum: ['email', 'call', 'sms', 'consultation'],
+            enum: ['email', 'call', 'sms', 'consultation', 'chatbot'],
             required: true
         },
         status: String,
@@ -111,7 +115,9 @@ const leadSchema = new mongoose.Schema({
             type: Date,
             default: Date.now
         },
-        notes: String
+        notes: String,
+        message: String,
+        service: String
     }]
 });
 
