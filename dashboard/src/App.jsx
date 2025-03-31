@@ -7,7 +7,6 @@ import Leads from './components/leads/Leads';
 import Services from './components/services/Services';
 import Settings from './components/settings/Settings';
 import AdminPage from './pages/AdminPage';
-//import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/auth/ProtectedRoutes';
 
 function App() {
@@ -18,7 +17,6 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
        
-        
         {/* Protected Dashboard Routes */}
         <Route 
           path="/dashboard" 

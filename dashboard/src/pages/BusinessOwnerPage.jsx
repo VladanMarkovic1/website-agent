@@ -32,16 +32,16 @@ const BusinessOwnerPage = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar - Visible on desktop, hidden on mobile */}
-      <aside className={`w-56 bg-gradient-to-b from-blue-600 to-indigo-700 h-screen flex-shrink-0 fixed lg:relative top-0 left-0 z-20 transform transition-transform duration-200 ease-in-out ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* Sidebar - Always visible on desktop, toggleable on mobile */}
+      <aside className={`fixed top-0 left-0 h-screen overflow-y-auto z-50 w-52 bg-gradient-to-b from-blue-600 to-indigo-700 transition-transform duration-200 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}>
         <div className="p-4">
           {/* Sidebar Header */}
           <div className="flex items-center justify-between mb-6">
-            <span className="text-xl font-semibold text-white">Dashboard</span>
-            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-white">
+            <span className="text-lg font-semibold text-white">Dashboard</span>
+            <button onClick={() => setIsSidebarOpen(false)} className="text-white md:hidden">
               <HiOutlineX className="h-6 w-6" />
             </button>
           </div>
@@ -74,12 +74,12 @@ const BusinessOwnerPage = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-hidden relative w-full">
+      <main className="flex-1 md:ml-52 min-w-0 overflow-hidden">
         {/* Mobile Header */}
-        <div className="lg:hidden fixed top-0 left-0 p-4 z-30 bg-white/80 backdrop-blur-sm w-full flex items-center">
+        <div className="md:hidden fixed top-0 left-0 right-0 p-4 z-30 bg-white shadow-sm w-full flex items-center">
           <button 
             onClick={() => setIsSidebarOpen(true)}
-            className="text-gray-600 hover:text-gray-900 p-2"
+            className="text-gray-600 hover:text-gray-900 p-2 inline-flex"
           >
             <HiOutlineMenuAlt2 className="h-6 w-6" />
           </button>
@@ -87,20 +87,24 @@ const BusinessOwnerPage = () => {
         </div>
 
         {/* Main Content Area */}
-        <div className="h-screen p-4 pt-20 lg:p-4">
-          <div className="hidden lg:flex justify-between items-center mb-4">
+        <div className="h-full p-4 lg:p-6">
+          {/* Desktop Header */}
+          <div className="hidden md:flex justify-between items-center mb-6 pt-4">
             <h1 className="text-2xl font-bold text-gray-900">Welcome, {user.name}</h1>
           </div>
-          <div className="h-[calc(100vh-theme(spacing.32))]">
+          {/* Mobile Spacing */}
+          <div className="md:hidden h-16"></div>
+          {/* Content Area */}
+          <div className="h-[calc(100vh-theme(spacing.32))] overflow-y-auto">
             <Outlet />
           </div>
         </div>
       </main>
 
-      {/* Overlay - Only shows on mobile */}
+      {/* Overlay - Shows when mobile sidebar is open */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 lg:hidden z-10"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}

@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  @media screen and (max-width: 768px) {
+    html {
+      min-height: 100%;
+      min-width: 100%;
+      overflow-x: hidden;
+    }
+    body {
+      min-height: 100%;
+      min-width: 100%;
+      overflow-x: hidden;
+    }
+  }
+}
