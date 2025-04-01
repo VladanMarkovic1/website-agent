@@ -51,12 +51,24 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         const isFirstMessage = !messageHistory || messageHistory.length === 0;
         const messageLower = message.toLowerCase().trim();
         
-        // For first message or greeting, just return welcome
-        if (isFirstMessage || messageLower.includes('hi') || messageLower.includes('hello')) {
+        // Only send welcome for actual greetings
+        const isGreeting = messageLower === 'hi' || 
+                          messageLower === 'hello' || 
+                          messageLower === 'hey' ||
+                          messageLower === 'good morning' ||
+                          messageLower === 'good afternoon' ||
+                          messageLower === 'good evening';
+        
+        if (isGreeting) {
             return RESPONSE_TEMPLATES.greeting.replace('{businessName}', businessData.businessName);
         }
 
-        // Check for emergency situations first
+        // Check for pain/hurt first as highest priority
+        if (messageLower.includes('pain') || messageLower.includes('hurt') || messageLower.includes('ache')) {
+            return RESPONSE_TEMPLATES.emergency;
+        }
+
+        // Check for emergency situations
         if (messageLower.includes('prosthesis') && (messageLower.includes('broke') || messageLower.includes('fix'))) {
             return RESPONSE_TEMPLATES.prosthesis_emergency;
         }
@@ -67,6 +79,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             if (messageLower.includes('crown')) device = 'crown';
             if (messageLower.includes('bridge')) device = 'bridge';
             if (messageLower.includes('prosthesis')) device = 'prosthesis';
+            if (messageLower.includes('teeth') || messageLower.includes('tooth')) device = 'tooth';
             return RESPONSE_TEMPLATES.broken_dental_work.replace('{device}', device);
         }
 
@@ -89,35 +102,6 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             return RESPONSE_TEMPLATES.contact_request.standard;
         }
 
-        // Emergency keywords check
-        const emergencyKeywords = ['emergency', 'pain', 'urgent', 'broke', 'broken', 'accident', 'hurt'];
-        const isEmergency = emergencyKeywords.some(keyword => messageLower.includes(keyword));
-        
-        if (isEmergency) {
-            return RESPONSE_TEMPLATES.emergency;
-        }
-
-        // Check for specific dental services
-        if (messageLower.includes('filling')) {
-            return RESPONSE_TEMPLATES.filling_specific;
-        }
-
-        // For serious procedures
-        const isSerious = messageLower.includes('implant') || 
-                         messageLower.includes('surgery') || 
-                         messageLower.includes('jaw') ||
-                         messageLower.includes('reconstruction');
-        
-        if (isSerious) {
-            const procedure = messageLower.includes('jaw') ? 'jaw implementation' :
-                            messageLower.includes('implant') ? 'dental implants' :
-                            'this dental procedure';
-            
-            return RESPONSE_TEMPLATES.serious_procedure
-                .replace('{procedure}', procedure)
-                .replace('{businessName}', businessData.businessName);
-        }
-
         // Default OpenAI prompt for other cases
         const prompt = `
             You are a dental office assistant for ${businessData.businessName}. 
@@ -135,6 +119,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             5. Maximum 2-3 sentences per response
             6. Focus on helping with the specific issue mentioned
             7. Don't try to categorize the problem into a service
+            8. For tooth pain or discomfort, treat as urgent
             
             Current conversation:
             ${messageHistory.map(m => `${m.isUser ? 'User' : 'Assistant'}: ${m.message}`).join('\n')}
@@ -153,7 +138,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         // Prepare context
         const contextToInclude = `
 CONTEXT:
-Emergency Situation: ${isEmergency}
+Emergency Situation: ${messageLower.includes('emergency')}
 Is Affirmative Response: ${isAffirmative}
 Was Asking to Schedule: ${wasAskingToSchedule}
 
@@ -170,7 +155,7 @@ RESPONSE STYLE:
 - Direct and focused
 - No medical advice
 - Always ask for name, phone, and email together
-- ${isEmergency ? 'Immediate scheduling focus' : 'Simple and brief'}`;
+- ${messageLower.includes('emergency') ? 'Immediate scheduling focus' : 'Simple and brief'}`;
 
         const response = await openai.chat.completions.create({
             model: "gpt-4",
@@ -195,7 +180,7 @@ RESPONSE STYLE:
             aiResponse = aiResponse.replace(/[*#_`]/g, '');
             
             // For emergencies without scheduling context
-            if (isEmergency && !wasAskingToSchedule && !aiResponse.toLowerCase().includes("schedule") && !aiResponse.toLowerCase().includes("appointment")) {
+            if (messageLower.includes('emergency') && !wasAskingToSchedule && !aiResponse.toLowerCase().includes("schedule") && !aiResponse.toLowerCase().includes("appointment")) {
                 aiResponse = "I understand this is urgent. Would you like to schedule an emergency appointment?";
             }
 
