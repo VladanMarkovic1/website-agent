@@ -34,8 +34,8 @@ const BusinessOwnerPage = () => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-x-auto">
       {/* Sidebar - Always visible on desktop, toggleable on mobile/tablet */}
-      <aside className={`fixed top-0 left-0 h-screen overflow-y-auto z-50 w-48 lg:w-52 xl:w-72 bg-gradient-to-b from-blue-600 to-indigo-700 transition-transform duration-200 ease-in-out ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      <aside className={`fixed top-0 left-0 h-screen overflow-y-auto z-50 md:w-48 lg:w-52 xl:w-72 bg-gradient-to-b from-blue-600 to-indigo-700 transition-transform duration-200 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0 w-80' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="p-4">
           {/* Sidebar Header */}
