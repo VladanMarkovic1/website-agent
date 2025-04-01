@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/api';
 import InputField from '../layout/InputField';
 import Button from '../layout/SubmitButton';
-import { HiPlus, HiTrash, HiSave, HiRefresh } from 'react-icons/hi';
+import { HiPlus, HiTrash, HiSave, HiRefresh, HiExclamation, HiWifi } from 'react-icons/hi';
 
 const Services = () => {
   const [services, setServices] = useState([]);
@@ -11,7 +11,23 @@ const Services = () => {
   const [message, setMessage] = useState('');
   const [isScraping, setIsScraping] = useState(false);
   const [lastScrapeTime, setLastScrapeTime] = useState(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [retryCount, setRetryCount] = useState(0);
   const messageTimeoutRef = useRef(null);
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Cleanup function for message timeout
   useEffect(() => {
@@ -26,11 +42,17 @@ const Services = () => {
   const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
   const businessId = user?.businessId;
 
-  // Fetch services on component mount
+  // Fetch services on component mount or when retry is triggered
   useEffect(() => {
     const fetchServices = async () => {
       if (!businessId) {
         setError('No business information found.');
+        setLoading(false);
+        return;
+      }
+
+      if (isOffline) {
+        setError('You are currently offline. Please check your internet connection.');
         setLoading(false);
         return;
       }
@@ -43,17 +65,25 @@ const Services = () => {
       } catch (err) {
         console.error('Error fetching services:', err);
         setError(err.response?.data?.error || 'Failed to fetch services.');
+        
+        // If error is related to security software, show more helpful message
+        if (err.response?.data?.error?.includes('security software')) {
+          setError(
+            'Your security software (like Kaspersky) is blocking connections to our server. ' +
+            'Please add this website to your trusted sites or temporarily disable web protection.'
+          );
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchServices();
-  }, [businessId]);
+  }, [businessId, isOffline, retryCount]);
 
   // Handle website scraping
   const handleScrape = async () => {
-    if (!businessId || isScraping) return;
+    if (!businessId || isScraping || isOffline) return;
 
     try {
       setIsScraping(true);
@@ -89,6 +119,13 @@ const Services = () => {
     }
   };
 
+  // Retry connection
+  const handleRetry = () => {
+    setLoading(true);
+    setError('');
+    setRetryCount(prev => prev + 1);
+  };
+
   // Add a new service
   const addService = () => {
     setServices([...services, { 
@@ -117,7 +154,7 @@ const Services = () => {
   // Submit updated services to the backend
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!businessId) {
+    if (!businessId || isOffline) {
       return;
     }
 
@@ -142,6 +179,33 @@ const Services = () => {
     setLoading(false);
   };
 
+  // Show network error state
+  if (isOffline) {
+    return (
+      <div className="h-full w-full overflow-y-auto md:pt-0 pt-16 pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 mb-8">
+            <div className="flex flex-col items-center justify-center py-12">
+              <HiWifi className="w-16 h-16 text-gray-400 mb-4" />
+              <h2 className="text-xl font-bold text-gray-700 mb-2">You're offline</h2>
+              <p className="text-gray-500 text-center max-w-md mb-6">
+                We can't load your services because you appear to be offline. Please check your 
+                internet connection and try again.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+              >
+                <HiRefresh className="w-5 h-5 mr-2" />
+                Refresh page
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-pulse flex space-x-4">
@@ -151,6 +215,40 @@ const Services = () => {
       </div>
     </div>
   );
+
+  // Show error state with retry option
+  if (error && error.includes('security software')) {
+    return (
+      <div className="h-full w-full overflow-y-auto md:pt-0 pt-16 pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
+          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 mb-8">
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="bg-red-100 p-3 rounded-full mb-4">
+                <HiExclamation className="w-12 h-12 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-700 mb-2">Connection Blocked</h2>
+              <p className="text-gray-500 text-center max-w-md mb-2">
+                Your security software (like Kaspersky) is blocking connections to our server.
+              </p>
+              <p className="text-gray-500 text-center max-w-md mb-6">
+                Please add this website to your trusted sites or temporarily disable web protection 
+                to use all features.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleRetry}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+                >
+                  <HiRefresh className="w-5 h-5 mr-2" />
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full overflow-y-auto md:pt-0 pt-16 pb-16">
@@ -220,7 +318,20 @@ const Services = () => {
             </div>
           </div>
 
-          {error && <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-500">{error}</div>}
+          {error && <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-500 flex items-start">
+            <HiExclamation className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+            <div>
+              <p>{error}</p>
+              <button 
+                onClick={handleRetry}
+                className="mt-2 text-blue-600 hover:text-blue-800 font-medium flex items-center"
+              >
+                <HiRefresh className="w-4 h-4 mr-1" />
+                Try again
+              </button>
+            </div>
+          </div>}
+          
           {message && <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-500">{message}</div>}
 
           <form onSubmit={handleSubmit}>

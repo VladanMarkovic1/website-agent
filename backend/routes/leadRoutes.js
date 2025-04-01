@@ -3,6 +3,7 @@ import { getLeads, createLeadHandler, updateLeadStatusHandler } from "../control
 import { authenticateToken } from "../middleware/auth.js";
 import { checkBusinessOwner } from "../middleware/checkBusinessOwner.js";
 import Lead from "../models/Lead.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -36,7 +37,20 @@ router.post("/:businessId/notes/:leadId", authenticateToken, checkBusinessOwner,
       return res.status(400).json({ error: "Note content is required" });
     }
 
-    const lead = await Lead.findOne({ _id: leadId, businessId: business._id });
+    let lead;
+    try {
+      lead = await Lead.findOne({ 
+        _id: new mongoose.Types.ObjectId(leadId), 
+        businessId: business.businessId 
+      });
+    } catch (err) {
+      // Handle invalid ObjectId format
+      if (err.name === 'CastError' || err.name === 'BSONError') {
+        return res.status(404).json({ error: "Invalid lead ID format" });
+      }
+      throw err; // Re-throw other errors
+    }
+
     console.log('Found lead:', lead ? 'yes' : 'no');
     
     if (!lead) {
