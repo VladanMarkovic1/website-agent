@@ -307,6 +307,7 @@ const Leads = () => {
   const LeadDetailsModal = ({ lead, onClose }) => {
     const textareaRef = React.useRef();
     const [isAddingNote, setIsAddingNote] = useState(false);
+    const [isDeletingNote, setIsDeletingNote] = useState(false);
     const [noteError, setNoteError] = useState('');
     const [currentLead, setCurrentLead] = useState(lead);
     
@@ -346,6 +347,34 @@ const Leads = () => {
         }
       } finally {
         setIsAddingNote(false);
+      }
+    };
+
+    const removeNote = async (noteId) => {
+      if (!window.confirm('Are you sure you want to remove this note?')) {
+        return;
+      }
+
+      setIsDeletingNote(true);
+      setNoteError('');
+      
+      try {
+        const response = await api.delete(`/leads/${businessId}/notes/${currentLead._id}/${noteId}`);
+
+        if (response.data) {
+          // Update both the leads array and the current lead in the modal
+          setLeads(leads.map(l => l._id === currentLead._id ? response.data : l));
+          setCurrentLead(response.data);
+          setSelectedLead(response.data);
+          
+          setSuccessMessage('Note removed successfully!');
+          setTimeout(() => setSuccessMessage(''), 3000);
+        }
+      } catch (err) {
+        console.error('Error removing note:', err.response || err);
+        setNoteError(err.response?.data?.error || 'Failed to remove note. Please try again.');
+      } finally {
+        setIsDeletingNote(false);
       }
     };
     
@@ -434,12 +463,26 @@ const Leads = () => {
               <div className="space-y-3">
                 {currentLead.callHistory && currentLead.callHistory.length > 0 ? (
                   currentLead.callHistory.map((entry, index) => (
-                    <div key={index} className="bg-gray-50 rounded-lg p-3">
+                    <div key={entry._id || index} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex justify-between items-start mb-1">
-                        <p className="text-sm text-gray-700">{entry.notes}</p>
-                        <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">
-                          {new Date(entry.timestamp).toLocaleString()}
-                        </span>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-700">{entry.notes}</p>
+                          <span className="text-xs text-gray-500 block mt-1">
+                            {new Date(entry.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        {entry._id && (
+                          <button
+                            onClick={() => removeNote(entry._id)}
+                            disabled={isDeletingNote}
+                            className="ml-2 p-1 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50"
+                            title="Remove note"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                       {entry.status && (
                         <p className="text-xs text-gray-500">Status: {entry.status}</p>

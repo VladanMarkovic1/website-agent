@@ -3,6 +3,7 @@ import { getLeads, createLeadHandler, updateLeadStatusHandler } from "../control
 import { authenticateToken } from "../middleware/auth.js";
 import { checkBusinessOwner } from "../middleware/checkBusinessOwner.js";
 import { addNoteForLeadController } from "../controllers/leadControllers/addNoteForLeadController.js";
+import { removeNoteFromLeadController } from "../controllers/leadControllers/removeNoteFromLeadController.js";
 
 const router = express.Router();
 
@@ -20,5 +21,8 @@ router.put("/:businessId/:leadId", authenticateToken, checkBusinessOwner, update
 
 // POST /leads/:businessId/notes/:leadId - Add a note to a lead
 router.post("/:businessId/notes/:leadId", authenticateToken, checkBusinessOwner, addNoteForLeadController);
+
+// DELETE /leads/:businessId/notes/:leadId/:noteId - Remove a note from a lead
+router.delete("/:businessId/notes/:leadId/:noteId", authenticateToken, checkBusinessOwner, removeNoteFromLeadController);
 
 export default router;
