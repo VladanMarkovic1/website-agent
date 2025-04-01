@@ -63,10 +63,22 @@ export const handleChatMessage = async (message, businessId) => {
             return "⚠️ Error: Business ID is missing.";
         }
 
-        // Retrieve session memory for this business/user
+        // 1. Fetch business data first
+        const businessData = await getBusinessDataForChatbot(businessId);
+        if (!businessData) {
+            return "⚠️ Sorry, I couldn't fetch business details at the moment.";
+        }
+
+        console.log("📊 Business data fetched:", {
+            name: businessData.businessName,
+            servicesCount: businessData.services?.length,
+            faqsCount: businessData.faqs?.length
+        });
+
+        // 2. Retrieve session memory for this business/user
         const memory = getSessionMemory(businessId);
 
-        // 1. Check for contact info (partial or complete)
+        // 3. Check for contact info (partial or complete)
         const contactInfo = extractContactInfo(message);
         if (contactInfo) {
             const { name, phone, email } = contactInfo;
@@ -79,18 +91,35 @@ export const handleChatMessage = async (message, businessId) => {
                 // We have all three: name, phone, email
                 console.log("✅ Complete contact info detected:", contactInfo);
 
-                // Use the previously stored service in memory, or default to "General Inquiry"
-                const serviceInterest = memory.currentService || "General Inquiry";
+                // Get user's initial concern/problem (first message that's not a greeting or contact info)
+                const userConcern = memory.messageHistory
+                    .filter(msg => msg.isUser && 
+                        !msg.message.toLowerCase().includes('hello') && 
+                        !msg.message.toLowerCase().includes('hi') &&
+                        !extractContactInfo(msg.message))
+                    .map(msg => msg.message)
+                    .find(msg => msg); // Get first non-empty message
+
+                // Get the service that was detected from the user's concern
+                const concernService = userConcern ? detectService(userConcern, businessData.services) : null;
+                
+                // Use the service detected from concern, or current service, or default
+                const serviceInterest = concernService || memory.currentService || "General Inquiry";
 
                 try {
-                    // Save the lead with the original message and reason
+                    // Format the context to include both concern and detected service
+                    const contextReason = userConcern ? 
+                        `Patient's Concern: ${userConcern}\nDetected Service: ${serviceInterest}` : 
+                        "General inquiry about dental services";
+
+                    // Save the lead with proper context
                     const leadResponse = await saveLead(
                         businessId,
                         `name: ${name}, phone: ${phone}, email: ${email}`,
                         serviceInterest,
                         {
-                            initialMessage: message,
-                            reason: memory.userMessages?.join(" ") || message // Include conversation history if available
+                            initialMessage: userConcern || message,
+                            reason: contextReason
                         }
                     );
                     cleanupSession(businessId);
@@ -113,19 +142,22 @@ export const handleChatMessage = async (message, businessId) => {
                 return response;
             }
         }
-        // 2. Fetch business data
-        const businessData = await getBusinessDataForChatbot(businessId);
-        if (!businessData) {
-            return "⚠️ Sorry, I couldn't fetch business details at the moment.";
-        }
 
-        console.log("📊 Business data fetched:", {
-            name: businessData.businessName,
-            servicesCount: businessData.services?.length,
-            faqsCount: businessData.faqs?.length
-        });
+        // 4. Check for emergency keywords
+        const isEmergency = message.toLowerCase().includes('emergency') || 
+                          message.toLowerCase().includes('pain') ||
+                          message.toLowerCase().includes('urgent');
 
-        // 3. Attempt to detect a new service
+        // 5. Check if user has shown interest through specific keywords or questions
+        const hasShownInterest = message.toLowerCase().includes('appointment') ||
+                                message.toLowerCase().includes('schedule') ||
+                                message.toLowerCase().includes('book') ||
+                                message.toLowerCase().includes('cost') ||
+                                message.toLowerCase().includes('price') ||
+                                message.toLowerCase().includes('available') ||
+                                (memory.messageHistory?.length > 2 && message.length > 20);
+
+        // 6. Attempt to detect a new service
         let detectedServiceName = detectService(message, businessData.services);
         let relevantService = null;
 
@@ -138,7 +170,7 @@ export const handleChatMessage = async (message, businessId) => {
             relevantService = getServiceDetails(memory.currentService, businessData.services);
         }
 
-        // 4. Respond based on the relevant service or fallback to GPT
+        // 7. Generate response
         let finalResponse = "";
 
         if (relevantService) {
@@ -181,22 +213,17 @@ export const handleChatMessage = async (message, businessId) => {
         } else {
             // No service found, fallback to GPT
             console.log("ℹ️ No specific service data found, using GPT fallback");
-            const gptResponse = await generateAIResponse(message, businessData);
+            const gptResponse = await generateAIResponse(message, businessData, memory.messageHistory || []);
             finalResponse = gptResponse;
             updateSessionMemory(businessId, message, null);
             storeBotResponse(businessId, finalResponse, null);
         }
 
-        // 5. Append universal CTA if user hasn't given contact info yet
-        if (finalResponse) {
-            finalResponse += "\n\nPlease provide your name, phone number, and email address so we can reach out to you as soon as possible.";
-        }
-
-        return finalResponse || "⚠️ Sorry, I couldn't generate a response at this time.";
+        return finalResponse;
 
     } catch (error) {
         console.error("❌ Error handling chat message:", error);
-        return "⚠️ Sorry, there was an error processing your request.";
+        return "⚠️ Sorry, there was an error processing your request. Please try again.";
     }
 };
 

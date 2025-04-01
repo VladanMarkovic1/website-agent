@@ -63,177 +63,111 @@ const determinePriority = () => {
     return isPriorityHours ? "high" : "normal";
 };
 
-export const saveLead = async (businessId, message, service, additionalInfo = {}) => {
+// Helper functions
+const extractUserConcern = (messageHistory) => {
+    if (!messageHistory || messageHistory.length === 0) return null;
+    
+    // Find first non-greeting user message
+    return messageHistory
+        .filter(msg => msg.isUser && 
+            !msg.message.toLowerCase().includes('hello') && 
+            !msg.message.toLowerCase().includes('hi'))
+        .map(msg => msg.message)
+        .find(msg => msg) || null;
+};
+
+const formatLeadContext = (initialMessage, detectedService, messageHistory) => {
+    const userConcern = extractUserConcern(messageHistory);
+    return {
+        initialMessage: initialMessage || userConcern || "No initial message",
+        reason: userConcern ? 
+            `Patient's Concern: ${userConcern}\nDetected Service: ${detectedService || 'General Inquiry'}` : 
+            "General inquiry about dental services"
+    };
+};
+
+export const saveLead = async (businessId, contactInfo, serviceInterest, context = {}) => {
     try {
-        // First find the business by the string businessId
-        const business = await Business.findOne({ businessId: businessId });
+        console.log("🔍 Finding business:", { businessId });
+        const business = await Business.findOne({ businessId });
+        
         if (!business) {
             console.error("❌ Business not found:", businessId);
-            throw new Error("Business not found");
+            return "⚠️ Sorry, there was an error processing your request. Please try again.";
         }
 
-        console.log("🔍 Found business:", {
+        console.log("📝 Business found:", {
             businessId: business.businessId,
             businessObjectId: business._id
         });
 
-        // Extract contact info from the message
-        const contactInfo = extractContactInfo(message);
-        if (!contactInfo.name || !contactInfo.phone || !contactInfo.email) {
-            throw new Error("Missing required contact information");
+        // Parse contact info
+        const { name, phone, email } = typeof contactInfo === 'string' ? 
+            extractContactInfo(contactInfo) : contactInfo;
+
+        if (!name || !phone || !email) {
+            return "⚠️ Please provide complete contact information (name, phone, and email).";
         }
 
-        // Extract the actual message content by removing contact info
-        const messageWithoutContacts = message
-            .replace(new RegExp(`${contactInfo.name}`, 'gi'), '')
-            .replace(new RegExp(`${contactInfo.phone}`, 'g'), '')
-            .replace(new RegExp(`${contactInfo.email}`, 'g'), '')
-            .replace(/name:|phone:|email:/gi, '')
-            .replace(/,+/g, ',')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        // Generate a meaningful reason based on service and message content
-        const generateReason = (msg, svc) => {
-            const lowercaseMsg = msg.toLowerCase();
-            
-            // Check for emergency indicators
-            if (lowercaseMsg.includes('emergency') || lowercaseMsg.includes('urgent') || 
-                lowercaseMsg.includes('pain') || lowercaseMsg.includes('accident')) {
-                return `Urgent ${svc} request - Requires immediate attention`;
-            }
-            
-            // Check for consultation/information requests
-            if (lowercaseMsg.includes('consult') || lowercaseMsg.includes('information') || 
-                lowercaseMsg.includes('details') || lowercaseMsg.includes('learn')) {
-                return `Requesting consultation/information about ${svc}`;
-            }
-            
-            // Check for pricing inquiries
-            if (lowercaseMsg.includes('price') || lowercaseMsg.includes('cost') || 
-                lowercaseMsg.includes('fee') || lowercaseMsg.includes('charge')) {
-                return `Inquiring about ${svc} pricing`;
-            }
-            
-            // Check for scheduling/availability
-            if (lowercaseMsg.includes('schedule') || lowercaseMsg.includes('book') || 
-                lowercaseMsg.includes('appoint') || lowercaseMsg.includes('available')) {
-                return `Wants to schedule ${svc}`;
-            }
-            
-            // Default reason
-            return `General inquiry about ${svc}`;
+        // Format context properly
+        const formattedContext = {
+            initialMessage: context.initialMessage || "No initial message provided",
+            reason: context.reason || `Interest in: ${serviceInterest || 'General Inquiry'}`
         };
 
-        // Check for existing lead with same email or phone using businessId
+        // Check for existing lead with same email or phone
         const existingLead = await Lead.findOne({
             businessId: business.businessId,
-            $or: [
-                { email: contactInfo.email },
-                { phone: contactInfo.phone }
-            ]
+            $or: [{ email }, { phone }]
         });
 
         if (existingLead) {
             console.log("📝 Updating existing lead:", existingLead._id);
-            // Update existing lead
-            existingLead.service = service;
-            existingLead.lastContactedAt = new Date();
-            existingLead.reason = generateReason(messageWithoutContacts, service);
             
-            // Add interaction for the update
-            existingLead.interactions.push({
-                type: 'chatbot',
-                message: messageWithoutContacts,
-                service: service,
-                timestamp: new Date()
-            });
-
-            // Add the user's specific concern as a note
-            const userConcern = extractUserConcern(messageWithoutContacts);
-            existingLead.callHistory.push({
-                notes: `Follow-up Contact - Patient's Concern: ${userConcern}`,
-                timestamp: new Date()
-            });
-
+            // Update existing lead
+            existingLead.name = name;
+            existingLead.phone = phone;
+            existingLead.email = email;
+            existingLead.service = serviceInterest || existingLead.service;
+            existingLead.reason = formattedContext.reason;
+            existingLead.lastContact = new Date();
+            existingLead.contactCount += 1;
+            
             await existingLead.save();
-            return `I've updated your information. Someone from our team will be in touch about ${service}.`;
+            
+            return "✅ Thank you! We've updated your information. Our team will contact you shortly about your dental needs.";
         }
 
-        // Extract user's concern from the message
-        const extractUserConcern = (msg) => {
-            const lowercaseMsg = msg.toLowerCase();
-            const concernIndicators = {
-                pain: /(?:tooth|teeth|mouth|jaw|gum)?\s*(?:pain|hurt|hurts|hurting|ache|aches|aching)/i,
-                emergency: /(?:emergency|urgent|broken|chipped|knocked|fell|accident)/i,
-                cosmetic: /(?:whiten|whitening|straight|straighten|align|veneers|smile|look)/i,
-                cleaning: /(?:clean|cleaning|checkup|check-up|check up|routine|regular)/i,
-                specific: /(?:cavity|cavities|filling|crown|root canal|implant|bridge|denture)/i
-            };
-
-            let concerns = [];
-            
-            // Check each type of concern
-            for (const [type, pattern] of Object.entries(concernIndicators)) {
-                const match = msg.match(pattern);
-                if (match) {
-                    // Extract the full phrase around the match for context
-                    const start = Math.max(0, match.index - 20);
-                    const end = Math.min(msg.length, match.index + match[0].length + 20);
-                    const context = msg.slice(start, end).trim();
-                    concerns.push(context);
-                }
-            }
-
-            // If no specific concerns found, take the first meaningful sentence
-            if (concerns.length === 0) {
-                const sentences = msg.split(/[.!?]+/).filter(s => s.trim().length > 0);
-                if (sentences.length > 0) {
-                    concerns.push(sentences[0].trim());
-                }
-            }
-
-            return concerns.join('; ');
-        };
-
-        const userConcern = extractUserConcern(messageWithoutContacts);
-        
-        // Create new lead using businessId string
-        const priority = determinePriority();
-        const newLead = new Lead({
+        // Create new lead with required fields
+        const lead = new Lead({
             businessId: business.businessId,
-            name: contactInfo.name,
-            phone: contactInfo.phone,
-            email: contactInfo.email,
-            service,
-            priority,
-            reason: generateReason(messageWithoutContacts, service),
-            interactions: [{
-                type: 'chatbot',
-                message: messageWithoutContacts,
-                service: service,
-                timestamp: new Date()
-            }],
-            callHistory: [{
-                notes: `Initial Contact - Patient's Concern: ${userConcern}`,
-                timestamp: new Date()
-            }]
+            name,
+            phone,
+            email,
+            service: serviceInterest || 'General Inquiry',
+            reason: formattedContext.reason,
+            source: 'chatbot',
+            status: 'new',
+            lastContact: new Date(),
+            contactCount: 1,
+            context: formattedContext,
+            priority: determinePriority()
         });
 
-        console.log("✨ Creating new lead:", {
-            businessId: newLead.businessId,
-            name: newLead.name,
-            service: newLead.service,
-            reason: newLead.reason,
-            concern: userConcern
+        console.log("Creating new lead with data:", {
+            businessId: lead.businessId,
+            service: lead.service,
+            reason: lead.reason
         });
 
-        await newLead.save();
-        return `Thanks! We'll contact you soon about ${service}. We'll send more information to ${contactInfo.email}.`;
+        await lead.save();
+        console.log("✅ New lead saved successfully");
+
+        return "✅ Thank you! Our dental team will contact you shortly to schedule your appointment.";
 
     } catch (error) {
-        console.error('❌ Error saving lead:', error);
-        throw error;
+        console.error("❌ Error saving lead:", error);
+        return "⚠️ Sorry, there was an error processing your request. Please try again.";
     }
 };
 
