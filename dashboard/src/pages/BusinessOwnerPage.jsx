@@ -32,10 +32,10 @@ const BusinessOwnerPage = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Sidebar - Always visible on desktop, toggleable on mobile */}
-      <aside className={`fixed top-0 left-0 h-screen overflow-y-auto z-50 w-72 bg-gradient-to-b from-blue-600 to-indigo-700 transition-transform duration-200 ease-in-out ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+    <div className="flex h-screen bg-gray-50 overflow-x-auto">
+      {/* Sidebar - Always visible on desktop, toggleable on mobile/tablet */}
+      <aside className={`fixed top-0 left-0 h-screen overflow-y-auto z-50 w-48 lg:w-52 xl:w-72 bg-gradient-to-b from-blue-600 to-indigo-700 transition-transform duration-200 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="p-4">
           {/* Sidebar Header */}
@@ -74,7 +74,7 @@ const BusinessOwnerPage = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-hidden">
+      <main className="flex-1 min-w-0 overflow-hidden lg:ml-52 xl:ml-72">
         {/* Mobile/Tablet Header */}
         <div className="lg:hidden fixed top-0 left-0 right-0 p-4 z-30 bg-white shadow-sm w-full flex items-center">
           <button 
