@@ -34,18 +34,36 @@ export function detectQuestionType(message) {
  * @returns {Object|null} Extracted contact info or null
  */
 export function extractContactInfo(message) {
+    // Handle comma-separated format (name, phone, email)
+    const parts = message.split(',').map(part => part.trim());
+    if (parts.length === 3) {
+        const [name, phone, email] = parts;
+        // Validate each part
+        if (
+            name && // Name exists
+            /^\d[\d\s-]{7,}$/.test(phone.replace(/\s+/g, '')) && // Phone number validation
+            /^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$/i.test(email) // Email validation
+        ) {
+            return {
+                name,
+                phone: phone.replace(/\s+/g, ''),
+                email
+            };
+        }
+    }
+
     // Handle structured format (name: xxx, phone: xxx, email: xxx)
     const structuredMatch = {
-        name: message.match(/name:\s*([^,]+)/i)?.[1],
-        phone: message.match(/phone:\s*([^,]+)/i)?.[1],
-        email: message.match(/email:\s*([^,]+)/i)?.[1]
+        name: message.match(/name:\s*([^,]+)/i)?.[1]?.trim(),
+        phone: message.match(/phone:\s*([^,]+)/i)?.[1]?.trim(),
+        email: message.match(/email:\s*([^,]+)/i)?.[1]?.trim()
     };
 
     if (structuredMatch.name && structuredMatch.phone && structuredMatch.email) {
         return structuredMatch;
     }
 
-    // Handle natural format (name, phone, email)
+    // Handle natural format
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i;
     const phoneRegex = /(\d[\d\s-]{7,})/;
     const nameRegex = /([A-Z][a-z]+)/;

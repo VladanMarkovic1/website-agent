@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
+import { extractContactInfo } from "./memoryHelpers.js";
 
 dotenv.config();
 
@@ -33,24 +34,119 @@ const CONVERSATION_STAGES = {
 
 // Enhanced response templates for different stages
 const RESPONSE_TEMPLATES = {
-    greeting: "Hello! How can I assist you with your dental needs today?",
-    
+    greeting: {
+        initial: "Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs.",
+        followUp: "Is there a specific dental service you'd like to know more about?"
+    },
     services_list: "Here are the dental services we offer:\n{services_list}\n\nWhich service would you like to know more about?",
     
     service_info: {
-        details: "{service_details}\n\nWould you like to schedule this service?",
-        contact: "To help you schedule {service_name}, I'll need your name, phone number, and email address."
+        "Cosmetic Dentistry": {
+            description: "Yes! We offer a comprehensive range of cosmetic dentistry services including professional teeth whitening, porcelain veneers, dental bonding, smile makeovers, and Invisalign clear aligners.\n\n" +
+                "I'd be happy to help you schedule a consultation with our cosmetic dentistry specialist. Could you please provide:\n" +
+                "• Your name\n" +
+                "• Phone number\n" +
+                "• Email\n\n" +
+                "This will help us contact you and discuss your specific cosmetic dentistry needs.",
+            followUp: "Which cosmetic dental service interests you the most?"
+        }
     },
     
     dental_concerns: {
-        discoloration: "I understand your concern about the discoloration on your tooth. Would you like me to help you schedule an examination?",
-        cavity: "I understand your concern about what might be a cavity. Would you like me to help you schedule an examination?",
-        general: "I understand your dental concern. Would you like me to help you schedule an examination?"
+        discoloration: "I understand your concern about the discoloration on your tooth. To schedule an examination, please provide your:\n• Name\n• Phone number\n• Email",
+        cavity: "I understand your concern about what might be a cavity. To schedule an examination, please provide your:\n• Name\n• Phone number\n• Email",
+        general: "I understand your dental concern. To schedule an examination, please provide your:\n• Name\n• Phone number\n• Email"
     }
+};
+
+const handleServiceInquiry = async (message, context) => {
+    const normalizedMessage = message.toLowerCase();
+    const services = context.services || [];
+    
+    // Find matching service from database
+    const matchingService = services.find(service => {
+        const serviceName = service.name.toLowerCase();
+        // Check for exact service name
+        if (normalizedMessage.includes(serviceName)) {
+            return true;
+        }
+        
+        // Check for common variations
+        if (serviceName === 'cosmetic dentistry' && 
+            (normalizedMessage.includes('cosmetic') || 
+             normalizedMessage.includes('consmetic') || 
+             normalizedMessage.includes('aesthetic'))) {
+            return true;
+        }
+        
+        // Check for specific treatments that are part of services
+        if (serviceName === 'cosmetic dentistry' && 
+            (normalizedMessage.includes('veneer') || 
+             normalizedMessage.includes('whitening') || 
+             normalizedMessage.includes('bonding') || 
+             normalizedMessage.includes('invisalign'))) {
+            return true;
+        }
+        
+        return false;
+    });
+
+    if (matchingService) {
+        const response = `${matchingService.description}\n\nWould you like to schedule an appointment for ${matchingService.name}? To help you better, please provide your:\n• Name\n• Phone number\n• Email`;
+        
+        return {
+            response,
+            detectedService: matchingService.name,
+            shouldAskContact: true
+        };
+    }
+
+    // Only if no specific service was found, check for general service inquiry
+    if (normalizedMessage.includes('service') || 
+        normalizedMessage.includes('provide') || 
+        normalizedMessage.includes('offer')) {
+        
+        const serviceList = services.map(s => `• ${s.name}`).join('\n');
+        return {
+            response: `We offer the following dental services:\n\n${serviceList}\n\nWhich service would you like to know more about?`,
+            detectedService: null,
+            shouldAskContact: false
+        };
+    }
+
+    return null;
 };
 
 export const generateAIResponse = async (message, businessData, messageHistory = []) => {
     try {
+        // Check for contact information first
+        const contactInfo = extractContactInfo(message);
+        if (contactInfo && contactInfo.name && contactInfo.phone && contactInfo.email) {
+            // Get the last detected service from message history
+            const lastServiceMessage = messageHistory
+                .reverse()
+                .find(msg => msg.detectedService);
+            
+            const serviceInterest = lastServiceMessage?.detectedService || 'General Inquiry';
+            
+            return {
+                type: 'CONTACT_INFO',
+                contactInfo,
+                serviceInterest,
+                response: `Thank you ${contactInfo.name}! I've received your contact information. Our team will reach out to you shortly at ${contactInfo.email} or ${contactInfo.phone} to schedule your appointment.`
+            };
+        }
+
+        // If no contact info, proceed with service inquiries
+        const serviceInquiryResponse = await handleServiceInquiry(message, businessData);
+        if (serviceInquiryResponse) {
+            return {
+                type: 'SERVICE_INQUIRY',
+                detectedService: serviceInquiryResponse.detectedService,
+                response: serviceInquiryResponse.response
+            };
+        }
+
         const messageLower = message.toLowerCase().trim();
         
         // Define common variables at the top
@@ -61,126 +157,12 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         const wasAskingToSchedule = lastBotMessage.includes('would you like to schedule');
         const isAffirmative = ['yes', 'yeah', 'sure', 'okay', 'ok', 'yep', 'yup'].includes(messageLower);
 
-        // If user confirmed scheduling, find which service they were asking about
+        // If user confirmed scheduling, ask for contact info
         if (wasAskingToSchedule && isAffirmative) {
-            // Find the service name from the last bot message
-            const serviceMatch = businessData.services.find(service => 
-                lastBotMessage.includes(service.name.toLowerCase())
-            );
-            
-            if (serviceMatch) {
-                return RESPONSE_TEMPLATES.service_info.contact
-                    .replace('{service_name}', serviceMatch.name);
-            }
-        }
-        
-        // Check for services inquiry
-        if (messageLower.includes('what services') || 
-            messageLower.includes('which services') || 
-            messageLower.includes('services you offer') ||
-            messageLower.includes('services do you offer') ||
-            messageLower.includes('services available') ||
-            messageLower.includes('available services') ||
-            messageLower.includes('which service you') ||
-            messageLower.includes('what service you') ||
-            messageLower.includes('service you guys') ||
-            messageLower.includes('services you guys') ||
-            (messageLower.includes('service') && messageLower.includes('offer'))) {
-            
-            const servicesList = businessData.services
-                .map(service => `• ${service.name}${service.price ? ` - ${service.price}` : ''}`)
-                .join('\n');
-
-            return RESPONSE_TEMPLATES.services_list.replace('{services_list}', servicesList);
-        }
-
-        // Check for service interest or inquiry
-        let serviceMatch = null;
-        const interestPhrases = [
-            'interested in',
-            'want to know about',
-            'tell me about',
-            'explain me more about',
-            'explain more about',
-            'can you explain',
-            'what about',
-            'how about',
-            'more about',
-            'learn about',
-            'know about'
-        ];
-
-        // First, try to find exact service match
-        for (const service of businessData.services) {
-            const serviceName = service.name.toLowerCase();
-            const cleanMessage = messageLower.replace(/[^a-z0-9\s]/g, '');
-            const cleanService = serviceName.replace(/[^a-z0-9\s]/g, '');
-            
-            // Check for direct mention
-            if (cleanMessage.includes(cleanService)) {
-                serviceMatch = service;
-                break;
-            }
-
-            // Check for interest phrases
-            for (const phrase of interestPhrases) {
-                if (messageLower.includes(phrase)) {
-                    const afterPhrase = messageLower.split(phrase)[1]?.trim();
-                    if (afterPhrase && afterPhrase.replace(/[^a-z0-9\s]/g, '').includes(cleanService)) {
-                        serviceMatch = service;
-                        break;
-                    }
-                }
-            }
-            if (serviceMatch) break;
-        }
-
-        if (serviceMatch) {
-            console.log("Found service match:", serviceMatch.name);
-            
-            // Build comprehensive service information
-            let serviceInfo = '';
-            
-            // Add description if available
-            if (serviceMatch.description) {
-                serviceInfo += serviceMatch.description + "\n\n";
-            }
-            
-            // Add price if available
-            if (serviceMatch.price) {
-                serviceInfo += `Price: ${serviceMatch.price}\n\n`;
-            }
-            
-            // Add duration if available
-            if (serviceMatch.duration) {
-                serviceInfo += `Duration: ${serviceMatch.duration}\n\n`;
-            }
-            
-            // Add benefits if available
-            if (serviceMatch.benefits && serviceMatch.benefits.length > 0) {
-                serviceInfo += "Benefits:\n";
-                serviceMatch.benefits.forEach(benefit => {
-                    serviceInfo += `• ${benefit}\n`;
-                });
-                serviceInfo += "\n";
-            }
-            
-            // Add procedure steps if available
-            if (serviceMatch.steps && serviceMatch.steps.length > 0) {
-                serviceInfo += "Procedure Steps:\n";
-                serviceMatch.steps.forEach((step, index) => {
-                    serviceInfo += `${index + 1}. ${step}\n`;
-                });
-                serviceInfo += "\n";
-            }
-
-            // If no information is available, use a generic message
-            if (!serviceInfo.trim()) {
-                serviceInfo = "This is one of our professional dental services. Please ask our staff for more details.";
-            }
-
-            return RESPONSE_TEMPLATES.service_info.details
-                .replace('{service_details}', serviceInfo.trim());
+            return {
+                type: 'ASKING_CONTACT',
+                response: "Great! To help you schedule an appointment, please provide your:\n• Name\n• Phone number\n• Email"
+            };
         }
 
         // Only show greeting for actual greetings
@@ -192,7 +174,10 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                           messageLower === 'good evening';
         
         if (isGreeting) {
-            return RESPONSE_TEMPLATES.greeting;
+            return {
+                type: 'GREETING',
+                response: RESPONSE_TEMPLATES.greeting.initial
+            };
         }
 
         // Check for dental concerns
@@ -203,29 +188,38 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             messageLower.includes('mouth');
 
         if (hasDentalConcern) {
+            let concernType = 'general';
             // Check for specific concerns
             if (messageLower.includes('brown') || 
                 messageLower.includes('black') || 
                 messageLower.includes('dark') || 
                 messageLower.includes('stain') || 
                 messageLower.includes('color')) {
-                return RESPONSE_TEMPLATES.dental_concerns.discoloration;
-            }
-            
-            if (messageLower.includes('cavity') || 
+                concernType = 'discoloration';
+            } else if (messageLower.includes('cavity') || 
                 messageLower.includes('hole') || 
                 messageLower.includes('decay')) {
-                return RESPONSE_TEMPLATES.dental_concerns.cavity;
+                concernType = 'cavity';
             }
 
-            return RESPONSE_TEMPLATES.dental_concerns.general;
+            return {
+                type: 'DENTAL_CONCERN',
+                concernType,
+                response: RESPONSE_TEMPLATES.dental_concerns[concernType]
+            };
         }
 
-        // For any other messages
-        return "How can I assist you with your dental needs today?";
+        // For any other messages, ask how we can help
+        return {
+            type: 'DEFAULT',
+            response: RESPONSE_TEMPLATES.greeting.followUp
+        };
 
     } catch (error) {
         console.error("❌ Error generating AI response:", error);
-        return "How can I assist you today?";
+        return {
+            type: 'ERROR',
+            response: "I apologize, but I'm having trouble understanding. Could you please rephrase your question about our dental services?"
+        };
     }
 };

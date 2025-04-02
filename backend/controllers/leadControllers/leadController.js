@@ -60,22 +60,46 @@ const extractContactInfo = (message) => {
 const extractUserConcern = (messageHistory) => {
     if (!messageHistory || messageHistory.length === 0) return null;
     
-    // Find first non-greeting user message
-    return messageHistory
+    // Find first non-greeting user message that indicates a dental concern
+    const concernMessage = messageHistory
         .filter(msg => msg.isUser && 
             !msg.message.toLowerCase().includes('hello') && 
             !msg.message.toLowerCase().includes('hi'))
         .map(msg => msg.message)
-        .find(msg => msg) || null;
+        .find(msg => msg);
+
+    // Check for emergency keywords
+    const emergencyKeywords = ['broken', 'pain', 'bleeding', 'swelling', 'accident', 'emergency'];
+    const isEmergency = emergencyKeywords.some(keyword => 
+        concernMessage?.toLowerCase().includes(keyword)
+    );
+
+    return {
+        message: concernMessage || null,
+        isEmergency
+    };
 };
 
 const formatLeadContext = (initialMessage, detectedService, messageHistory) => {
     const userConcern = extractUserConcern(messageHistory);
+    
+    // Create a more empathetic response based on the concern
+    let formattedReason = "";
+    if (userConcern?.isEmergency) {
+        formattedReason = `URGENT DENTAL CARE NEEDED - Patient reported: ${userConcern.message}\n` +
+            `This appears to be a dental emergency requiring immediate attention.\n` +
+            `Service Category: ${detectedService || 'Emergency Dental Care'}\n` +
+            `Priority: Immediate follow-up recommended`;
+    } else {
+        formattedReason = userConcern?.message ? 
+            `Patient's Concern: ${userConcern.message}\n` +
+            `Service Interest: ${detectedService || 'General Dental Care'}` : 
+            "General inquiry about dental services";
+    }
+
     return {
-        initialMessage: initialMessage || userConcern || "No initial message",
-        reason: userConcern ? 
-            `Patient's Concern: ${userConcern}\nDetected Service: ${detectedService || 'General Inquiry'}` : 
-            "General inquiry about dental services"
+        initialMessage: userConcern?.message || initialMessage || "No initial message",
+        reason: formattedReason
     };
 };
 
@@ -86,20 +110,20 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
         
         if (!business) {
             console.error("❌ Business not found:", businessId);
-            return "⚠️ Sorry, there was an error processing your request. Please try again.";
+            return "I apologize, but I'm having trouble connecting to our system. Please call our office directly for immediate assistance.";
         }
-
-        console.log("📝 Business found:", {
-            businessId: business.businessId,
-            businessObjectId: business._id
-        });
 
         // Parse contact info
         const { name, phone, email } = typeof contactInfo === 'string' ? 
             extractContactInfo(contactInfo) : contactInfo;
 
         if (!name || !phone || !email) {
-            return "⚠️ Please provide complete contact information (name, phone, and email).";
+            const missingFields = [];
+            if (!name) missingFields.push("name");
+            if (!phone) missingFields.push("phone number");
+            if (!email) missingFields.push("email");
+            
+            return `I understand this is concerning, and I want to help you right away. Could you please provide your ${missingFields.join(", ")} so our dental team can contact you as soon as possible?`;
         }
 
         // Format context properly
@@ -108,7 +132,7 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
             reason: context.reason || `Interest in: ${serviceInterest || 'General Inquiry'}`
         };
 
-        // Check for existing lead with same email or phone
+        // Check for existing lead
         const existingLead = await Lead.findOne({
             businessId: business.businessId,
             $or: [{ email }, { phone }]
@@ -117,7 +141,6 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
         if (existingLead) {
             console.log("📝 Updating existing lead:", existingLead._id);
             
-            // Update existing lead
             existingLead.name = name;
             existingLead.phone = phone;
             existingLead.email = email;
@@ -128,7 +151,7 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
             
             await existingLead.save();
             
-            return "✅ Thank you! We've updated your information. Our team will contact you shortly about your dental needs.";
+            return `Thank you, ${name}. I've updated your information and marked this as urgent. Our dental team will contact you very soon to address your dental emergency. If you need immediate assistance, please don't hesitate to call our office directly.`;
         }
 
         // Create new lead with required fields
@@ -137,7 +160,7 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
             name,
             phone,
             email,
-            service: serviceInterest || 'General Inquiry',
+            service: serviceInterest || 'Emergency Dental Care',
             reason: formattedContext.reason,
             source: 'chatbot',
             status: 'new',
@@ -155,11 +178,19 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
         await lead.save();
         console.log("✅ New lead saved successfully");
 
-        return "✅ Thank you! Our dental team will contact you shortly to schedule your appointment.";
+        // Provide a more empathetic response based on the context
+        const isEmergency = formattedContext.reason.includes('URGENT') || 
+                           formattedContext.reason.toLowerCase().includes('emergency');
+
+        if (isEmergency) {
+            return `I understand this is a stressful situation, ${name}. I've marked this as urgent, and our dental team will contact you very soon. If you're in severe pain or experiencing significant bleeding, please don't wait - call our emergency dental line immediately. We're here to help you through this.`;
+        } else {
+            return `Thank you for reaching out, ${name}. I've passed your information to our dental team, and they will contact you soon to discuss your dental care needs. We look forward to helping you achieve your best smile!`;
+        }
 
     } catch (error) {
         console.error("❌ Error saving lead:", error);
-        return "⚠️ Sorry, there was an error processing your request. Please try again.";
+        return "I apologize, but I'm having trouble processing your request. For immediate assistance, please call our office directly. Your dental care is important to us.";
     }
 };
 
