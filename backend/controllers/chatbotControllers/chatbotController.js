@@ -77,8 +77,42 @@ export const handleChatMessage = async (message, businessId) => {
 
         // 2. Retrieve session memory for this business/user
         const memory = getSessionMemory(businessId);
+        let finalResponse = "";
 
-        // 3. Check for contact info (partial or complete)
+        // Check if asking about services in general
+        const isServicesInquiry = message.toLowerCase().includes('what services') || 
+                                 message.toLowerCase().includes('which services') ||
+                                 message.toLowerCase().includes('services you offer') ||
+                                 message.toLowerCase().includes('services do you offer') ||
+                                 message.toLowerCase().includes('services available') ||
+                                 message.toLowerCase().includes('available services');
+
+        if (isServicesInquiry) {
+            console.log("📋 Services inquiry detected");
+            finalResponse = await generateAIResponse(message, businessData, memory.messageHistory || []);
+            updateSessionMemory(businessId, message, null);
+            storeBotResponse(businessId, finalResponse, null);
+            return finalResponse;
+        }
+
+        // Check for service interest or specific service inquiry first
+        const detectedServiceName = detectService(message, businessData.services);
+        let relevantService = null;
+
+        if (detectedServiceName) {
+            // If a new service was found, update memory
+            relevantService = getServiceDetails(detectedServiceName, businessData.services);
+            memory.currentService = relevantService?.name || null;
+            memory.hasShownServiceInfo = false; // Reset when new service is detected
+            
+            // Generate and return service information
+            finalResponse = await generateAIResponse(message, businessData, memory.messageHistory || []);
+            updateSessionMemory(businessId, message, relevantService?.name);
+            storeBotResponse(businessId, finalResponse, relevantService?.name);
+            return finalResponse;
+        }
+
+        // Now check for contact info (only if not asking about services)
         const contactInfo = extractContactInfo(message);
         if (contactInfo) {
             const { name, phone, email } = contactInfo;
@@ -91,42 +125,47 @@ export const handleChatMessage = async (message, businessId) => {
                 // We have all three: name, phone, email
                 console.log("✅ Complete contact info detected:", contactInfo);
 
-                // Get user's initial concern/problem (first message that's not a greeting or contact info)
-                const userConcern = memory.messageHistory
-                    .filter(msg => msg.isUser && 
-                        !msg.message.toLowerCase().includes('hello') && 
-                        !msg.message.toLowerCase().includes('hi') &&
-                        !extractContactInfo(msg.message))
-                    .map(msg => msg.message)
-                    .find(msg => msg); // Get first non-empty message
-
-                // Get the service that was detected from the user's concern
-                const concernService = userConcern ? detectService(userConcern, businessData.services) : null;
-                
-                // Use the service detected from concern, or current service, or default
-                const serviceInterest = concernService || memory.currentService || "General Inquiry";
-
                 try {
-                    // Format the context to include both concern and detected service
-                    const contextReason = userConcern ? 
-                        `Patient's Concern: ${userConcern}\nDetected Service: ${serviceInterest}` : 
-                        "General inquiry about dental services";
+                    // Format the contact info properly for lead saving
+                    const formattedContactInfo = {
+                        name: name.trim(),
+                        phone: phone.trim(),
+                        email: email.trim()
+                    };
 
-                    // Save the lead with proper context
+                    // Get user's initial concern/problem (first message that's not a greeting or contact info)
+                    const userConcern = memory.messageHistory
+                        .filter(msg => msg.isUser && 
+                            !msg.message.toLowerCase().includes('hello') && 
+                            !msg.message.toLowerCase().includes('hi') &&
+                            !extractContactInfo(msg.message))
+                        .map(msg => msg.message)
+                        .find(msg => msg); // Get first non-empty message
+
+                    // Get the service that was detected from the user's concern
+                    const concernService = userConcern ? detectService(userConcern, businessData.services) : null;
+                    
+                    // Use the service detected from concern, or current service, or default
+                    const serviceInterest = concernService || memory.currentService || "General Inquiry";
+
+                    // Format the context to include both concern and detected service
+                    const context = {
+                        initialMessage: userConcern || message,
+                        reason: userConcern ? 
+                            `Patient's Concern: ${userConcern}\nDetected Service: ${serviceInterest}` : 
+                            "General inquiry about dental services"
+                    };
+
+                    // Save the lead with proper formatting
                     const leadResponse = await saveLead(
                         businessId,
-                        `name: ${name}, phone: ${phone}, email: ${email}`,
+                        formattedContactInfo,  // Pass as object instead of string
                         serviceInterest,
-                        {
-                            initialMessage: userConcern || message,
-                            reason: contextReason
-                        }
+                        context
                     );
+
                     cleanupSession(businessId);
-
-                    // We store the leadResponse in chat memory/log as well
                     storeBotResponse(businessId, leadResponse, serviceInterest);
-
                     return leadResponse;
 
                 } catch (error) {
@@ -136,10 +175,10 @@ export const handleChatMessage = async (message, businessId) => {
             } else {
                 // Partial contact info
                 console.log("ℹ️ Partial contact info detected:", contactInfo);
-                const response = `It looks like I still need your ${missingFields.join(" and ")}. Could you please share that?`;
+                finalResponse = `It looks like I still need your ${missingFields.join(" and ")}. Could you please share that?`;
 
-                storeBotResponse(businessId, response, memory.currentService);
-                return response;
+                storeBotResponse(businessId, finalResponse, memory.currentService);
+                return finalResponse;
             }
         }
 
@@ -157,73 +196,20 @@ export const handleChatMessage = async (message, businessId) => {
                                 message.toLowerCase().includes('available') ||
                                 (memory.messageHistory?.length > 2 && message.length > 20);
 
-        // 6. Attempt to detect a new service
-        let detectedServiceName = detectService(message, businessData.services);
-        let relevantService = null;
-
-        if (detectedServiceName) {
-            // If a new service was found, update memory
-            relevantService = getServiceDetails(detectedServiceName, businessData.services);
-            memory.currentService = relevantService?.name || null;
-        } else if (memory.currentService) {
-            // If no new service but we have one stored in memory, reuse it
+        // If we have a stored service from before, use it
+        if (!relevantService && memory.currentService) {
             relevantService = getServiceDetails(memory.currentService, businessData.services);
         }
 
-        // 7. Generate response
-        let finalResponse = "";
-
-        if (relevantService) {
-            console.log("✅ Found relevant service:", relevantService);
-
-            let response = `Regarding ${relevantService.name}: `;
-            let appended = false;
-
-            if (relevantService.price) {
-                response += `The price is ${relevantService.price}. `;
-                appended = true;
-            }
-            if (relevantService.description) {
-                response += relevantService.description;
-                appended = true;
-            }
-            if (relevantService.additionalInfo) {
-                response += ` ${relevantService.additionalInfo}`;
-                appended = true;
-            }
-
-            // If no DB details found, generate a short GPT fallback
-            if (!appended) {
-                console.log("ℹ️ No DB details found for this service, using GPT fallback for generic info.");
-                const gptFallbackPrompt = `
-                  The user is interested in ${relevantService.name}.
-                  We have no specific info in our database.
-                  Provide a short, friendly sales pitch:
-                  1. Briefly explain the service in general terms.
-                  2. Encourage them to provide their contact info.
-                `;
-                const gptFallbackResponse = await generateAIResponse(gptFallbackPrompt, businessData);
-                response += gptFallbackResponse;
-            }
-
-            finalResponse = response;
-            updateSessionMemory(businessId, message, relevantService.name);
-            storeBotResponse(businessId, finalResponse, relevantService.name);
-
-        } else {
-            // No service found, fallback to GPT
-            console.log("ℹ️ No specific service data found, using GPT fallback");
-            const gptResponse = await generateAIResponse(message, businessData, memory.messageHistory || []);
-            finalResponse = gptResponse;
-            updateSessionMemory(businessId, message, null);
-            storeBotResponse(businessId, finalResponse, null);
-        }
-
+        // Generate response for other cases
+        finalResponse = await generateAIResponse(message, businessData, memory.messageHistory || []);
+        updateSessionMemory(businessId, message, relevantService?.name);
+        storeBotResponse(businessId, finalResponse, relevantService?.name);
         return finalResponse;
 
     } catch (error) {
-        console.error("❌ Error handling chat message:", error);
-        return "⚠️ Sorry, there was an error processing your request. Please try again.";
+        console.error("❌ Error in handleChatMessage:", error);
+        return "⚠️ Sorry, there was an error processing your message. Please try again.";
     }
 };
 

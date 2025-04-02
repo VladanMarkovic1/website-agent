@@ -33,25 +33,157 @@ const CONVERSATION_STAGES = {
 
 // Enhanced response templates for different stages
 const RESPONSE_TEMPLATES = {
-    greeting: "Welcome to {businessName}! How can we help you today?",
-    prosthesis_emergency: "I understand your prosthesis is broken and needs fixing. Our dental team can help with this right away. Would you like to schedule an urgent appointment?",
-    broken_dental_work: "I understand your {device} is broken and needs attention. Our dental team can help with this right away. Would you like to schedule an urgent appointment?",
-    dental_service: "I understand you're interested in {service}. Our experienced dental team can help you with this. Would you like me to explain the process and what you can expect?",
-    filling_specific: "I understand you need help with a dental filling. Our dentists are experienced in both placing new fillings and correcting existing ones. Would you like to know more about our filling procedures?",
-    emergency: "I understand this is an urgent situation. Our dental team can help you with this right away. Would you like to schedule an emergency appointment?",
-    contact_request: {
-        standard: "To schedule your appointment, could you please provide your name, phone number, and email address?",
-        urgent: "To help you with this urgent matter, please provide your name, phone number, and email address so we can schedule your appointment right away."
+    greeting: "Hello! How can I assist you with your dental needs today?",
+    
+    services_list: "Here are the dental services we offer:\n{services_list}\n\nWhich service would you like to know more about?",
+    
+    service_info: {
+        details: "{service_details}\n\nWould you like to schedule this service?",
+        contact: "To help you schedule {service_name}, I'll need your name, phone number, and email address."
     },
-    followup: "Based on your concern, would you like me to schedule an appointment for you?"
+    
+    dental_concerns: {
+        discoloration: "I understand your concern about the discoloration on your tooth. Would you like me to help you schedule an examination?",
+        cavity: "I understand your concern about what might be a cavity. Would you like me to help you schedule an examination?",
+        general: "I understand your dental concern. Would you like me to help you schedule an examination?"
+    }
 };
 
 export const generateAIResponse = async (message, businessData, messageHistory = []) => {
     try {
-        const isFirstMessage = !messageHistory || messageHistory.length === 0;
         const messageLower = message.toLowerCase().trim();
         
-        // Only send welcome for actual greetings
+        // Define common variables at the top
+        const lastBotMessage = messageHistory.length > 0 ? 
+            messageHistory[messageHistory.length - 1].message.toLowerCase() : '';
+        
+        // Check if the last message was asking about scheduling and user confirmed
+        const wasAskingToSchedule = lastBotMessage.includes('would you like to schedule');
+        const isAffirmative = ['yes', 'yeah', 'sure', 'okay', 'ok', 'yep', 'yup'].includes(messageLower);
+
+        // If user confirmed scheduling, find which service they were asking about
+        if (wasAskingToSchedule && isAffirmative) {
+            // Find the service name from the last bot message
+            const serviceMatch = businessData.services.find(service => 
+                lastBotMessage.includes(service.name.toLowerCase())
+            );
+            
+            if (serviceMatch) {
+                return RESPONSE_TEMPLATES.service_info.contact
+                    .replace('{service_name}', serviceMatch.name);
+            }
+        }
+        
+        // Check for services inquiry
+        if (messageLower.includes('what services') || 
+            messageLower.includes('which services') || 
+            messageLower.includes('services you offer') ||
+            messageLower.includes('services do you offer') ||
+            messageLower.includes('services available') ||
+            messageLower.includes('available services') ||
+            messageLower.includes('which service you') ||
+            messageLower.includes('what service you') ||
+            messageLower.includes('service you guys') ||
+            messageLower.includes('services you guys') ||
+            (messageLower.includes('service') && messageLower.includes('offer'))) {
+            
+            const servicesList = businessData.services
+                .map(service => `• ${service.name}${service.price ? ` - ${service.price}` : ''}`)
+                .join('\n');
+
+            return RESPONSE_TEMPLATES.services_list.replace('{services_list}', servicesList);
+        }
+
+        // Check for service interest or inquiry
+        let serviceMatch = null;
+        const interestPhrases = [
+            'interested in',
+            'want to know about',
+            'tell me about',
+            'explain me more about',
+            'explain more about',
+            'can you explain',
+            'what about',
+            'how about',
+            'more about',
+            'learn about',
+            'know about'
+        ];
+
+        // First, try to find exact service match
+        for (const service of businessData.services) {
+            const serviceName = service.name.toLowerCase();
+            const cleanMessage = messageLower.replace(/[^a-z0-9\s]/g, '');
+            const cleanService = serviceName.replace(/[^a-z0-9\s]/g, '');
+            
+            // Check for direct mention
+            if (cleanMessage.includes(cleanService)) {
+                serviceMatch = service;
+                break;
+            }
+
+            // Check for interest phrases
+            for (const phrase of interestPhrases) {
+                if (messageLower.includes(phrase)) {
+                    const afterPhrase = messageLower.split(phrase)[1]?.trim();
+                    if (afterPhrase && afterPhrase.replace(/[^a-z0-9\s]/g, '').includes(cleanService)) {
+                        serviceMatch = service;
+                        break;
+                    }
+                }
+            }
+            if (serviceMatch) break;
+        }
+
+        if (serviceMatch) {
+            console.log("Found service match:", serviceMatch.name);
+            
+            // Build comprehensive service information
+            let serviceInfo = '';
+            
+            // Add description if available
+            if (serviceMatch.description) {
+                serviceInfo += serviceMatch.description + "\n\n";
+            }
+            
+            // Add price if available
+            if (serviceMatch.price) {
+                serviceInfo += `Price: ${serviceMatch.price}\n\n`;
+            }
+            
+            // Add duration if available
+            if (serviceMatch.duration) {
+                serviceInfo += `Duration: ${serviceMatch.duration}\n\n`;
+            }
+            
+            // Add benefits if available
+            if (serviceMatch.benefits && serviceMatch.benefits.length > 0) {
+                serviceInfo += "Benefits:\n";
+                serviceMatch.benefits.forEach(benefit => {
+                    serviceInfo += `• ${benefit}\n`;
+                });
+                serviceInfo += "\n";
+            }
+            
+            // Add procedure steps if available
+            if (serviceMatch.steps && serviceMatch.steps.length > 0) {
+                serviceInfo += "Procedure Steps:\n";
+                serviceMatch.steps.forEach((step, index) => {
+                    serviceInfo += `${index + 1}. ${step}\n`;
+                });
+                serviceInfo += "\n";
+            }
+
+            // If no information is available, use a generic message
+            if (!serviceInfo.trim()) {
+                serviceInfo = "This is one of our professional dental services. Please ask our staff for more details.";
+            }
+
+            return RESPONSE_TEMPLATES.service_info.details
+                .replace('{service_details}', serviceInfo.trim());
+        }
+
+        // Only show greeting for actual greetings
         const isGreeting = messageLower === 'hi' || 
                           messageLower === 'hello' || 
                           messageLower === 'hey' ||
@@ -60,142 +192,38 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                           messageLower === 'good evening';
         
         if (isGreeting) {
-            return RESPONSE_TEMPLATES.greeting.replace('{businessName}', businessData.businessName);
+            return RESPONSE_TEMPLATES.greeting;
         }
 
-        // Check for pain/hurt first as highest priority
-        if (messageLower.includes('pain') || messageLower.includes('hurt') || messageLower.includes('ache')) {
-            return RESPONSE_TEMPLATES.emergency;
-        }
+        // Check for dental concerns
+        const hasDentalConcern = 
+            messageLower.includes('tooth') || 
+            messageLower.includes('teeth') || 
+            messageLower.includes('dental') || 
+            messageLower.includes('mouth');
 
-        // Check for emergency situations
-        if (messageLower.includes('prosthesis') && (messageLower.includes('broke') || messageLower.includes('fix'))) {
-            return RESPONSE_TEMPLATES.prosthesis_emergency;
-        }
-
-        if (messageLower.includes('broken') || messageLower.includes('fix')) {
-            let device = 'dental work';
-            if (messageLower.includes('denture')) device = 'denture';
-            if (messageLower.includes('crown')) device = 'crown';
-            if (messageLower.includes('bridge')) device = 'bridge';
-            if (messageLower.includes('prosthesis')) device = 'prosthesis';
-            if (messageLower.includes('teeth') || messageLower.includes('tooth')) device = 'tooth';
-            return RESPONSE_TEMPLATES.broken_dental_work.replace('{device}', device);
-        }
-
-        // Check for affirmative response
-        const isAffirmative = ['yes', 'yeah', 'sure', 'okay', 'ok', 'yep', 'yup'].includes(messageLower);
-        
-        // Get last bot message to check context
-        const lastBotMessage = messageHistory.length > 0 ? 
-            messageHistory[messageHistory.length - 1].message.toLowerCase() : '';
-        
-        const wasAskingToSchedule = lastBotMessage.includes('schedule') || 
-                                  lastBotMessage.includes('appointment');
-
-        // If user said yes to scheduling, immediately ask for contact
-        if (isAffirmative && wasAskingToSchedule) {
-            // Use urgent template if the last message was about emergency/urgent care
-            if (lastBotMessage.includes('urgent') || lastBotMessage.includes('emergency')) {
-                return RESPONSE_TEMPLATES.contact_request.urgent;
+        if (hasDentalConcern) {
+            // Check for specific concerns
+            if (messageLower.includes('brown') || 
+                messageLower.includes('black') || 
+                messageLower.includes('dark') || 
+                messageLower.includes('stain') || 
+                messageLower.includes('color')) {
+                return RESPONSE_TEMPLATES.dental_concerns.discoloration;
             }
-            return RESPONSE_TEMPLATES.contact_request.standard;
-        }
-
-        // Default OpenAI prompt for other cases
-        const prompt = `
-            You are a dental office assistant for ${businessData.businessName}. 
             
-            PERSONALITY:
-            - Professional but warm and friendly
-            - Knowledgeable about dental procedures
-            - Helpful without being pushy
-            
-            CRITICAL RULES:
-            1. NEVER start responses with "Regarding [Service]:"
-            2. ALWAYS acknowledge the specific problem first
-            3. Keep responses focused and relevant
-            4. Don't ask for contact information unless user shows clear interest
-            5. Maximum 2-3 sentences per response
-            6. Focus on helping with the specific issue mentioned
-            7. Don't try to categorize the problem into a service
-            8. For tooth pain or discomfort, treat as urgent
-            
-            Current conversation:
-            ${messageHistory.map(m => `${m.isUser ? 'User' : 'Assistant'}: ${m.message}`).join('\n')}
-            
-            User's latest message: "${message}"
-            
-            Respond naturally and professionally, focusing specifically on the user's concern.
-        `;
-
-        // Format conversation history to proper structure
-        const formattedHistory = messageHistory.map(msg => ({
-            role: msg.isUser ? 'user' : 'assistant',
-            content: msg.message
-        }));
-
-        // Prepare context
-        const contextToInclude = `
-CONTEXT:
-Emergency Situation: ${messageLower.includes('emergency')}
-Is Affirmative Response: ${isAffirmative}
-Was Asking to Schedule: ${wasAskingToSchedule}
-
-CRITICAL RULES:
-1. NEVER give medical or health advice
-2. NEVER suggest remedies or treatments
-3. Keep responses under 2 sentences
-4. When asking for contact info, ALWAYS specify need for name, phone, and email
-5. NEVER ask for preferred time or date
-6. Stay focused on getting contact details for scheduling
-
-RESPONSE STYLE:
-- Maximum 2 sentences
-- Direct and focused
-- No medical advice
-- Always ask for name, phone, and email together
-- ${messageLower.includes('emergency') ? 'Immediate scheduling focus' : 'Simple and brief'}`;
-
-        const response = await openai.chat.completions.create({
-            model: "gpt-4",
-            messages: [
-                { 
-                    role: "system", 
-                    content: "You are a dental receptionist who ONLY collects name, phone, and email for scheduling. NEVER ask for preferred time or date."
-                },
-                ...formattedHistory,
-                { 
-                    role: "user", 
-                    content: contextToInclude + "\n\nCurrent message: " + message
-                }
-            ],
-            temperature: 0.7,
-            max_tokens: 100
-        });
-
-        let aiResponse = response.choices[0]?.message?.content.trim();
-
-        if (aiResponse) {
-            aiResponse = aiResponse.replace(/[*#_`]/g, '');
-            
-            // For emergencies without scheduling context
-            if (messageLower.includes('emergency') && !wasAskingToSchedule && !aiResponse.toLowerCase().includes("schedule") && !aiResponse.toLowerCase().includes("appointment")) {
-                aiResponse = "I understand this is urgent. Would you like to schedule an emergency appointment?";
+            if (messageLower.includes('cavity') || 
+                messageLower.includes('hole') || 
+                messageLower.includes('decay')) {
+                return RESPONSE_TEMPLATES.dental_concerns.cavity;
             }
 
-            // If response includes asking for contact but doesn't specify all required fields
-            if ((aiResponse.toLowerCase().includes("contact") || 
-                 aiResponse.toLowerCase().includes("provide") || 
-                 aiResponse.toLowerCase().includes("details")) && 
-                (!aiResponse.toLowerCase().includes("name") || 
-                 !aiResponse.toLowerCase().includes("phone") || 
-                 !aiResponse.toLowerCase().includes("email"))) {
-                aiResponse = RESPONSE_TEMPLATES.contact_request.standard;
-            }
+            return RESPONSE_TEMPLATES.dental_concerns.general;
         }
 
-        return aiResponse || "How can I assist you today?";
+        // For any other messages
+        return "How can I assist you with your dental needs today?";
+
     } catch (error) {
         console.error("❌ Error generating AI response:", error);
         return "How can I assist you today?";
