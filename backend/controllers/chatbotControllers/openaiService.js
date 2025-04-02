@@ -127,7 +127,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 type: 'CONTACT_INFO',
                 contactInfo,
                 serviceInterest: service,
-                response: `Thank you ${contactInfo.name} for showing interests in ${service}, we believe we will help you, we will contact you on ${contactInfo.phone} as soon as possible, if you experience big pain call us immediately on ${businessData.phone}`
+                response: `✅ Thank you ${contactInfo.name} for showing interests in ${service}, we believe we will help you, we will contact you on ${contactInfo.phone} as soon as possible, if you experience big pain call us immediately on ${businessData.phone}`
             };
         }
 
