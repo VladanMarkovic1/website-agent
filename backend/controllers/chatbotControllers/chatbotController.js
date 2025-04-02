@@ -45,7 +45,13 @@ export const getBusinessDataForChatbot = async (businessId) => {
 
         console.log(`✅ Chatbot Data Fetched: Services: ${services.length}, FAQs: ${faqs.length}`);
 
-        return { businessName, services, faqs, contactDetails };
+        return { 
+            businessName, 
+            services, 
+            faqs, 
+            contactDetails,
+            phone: contactDetails.phone || contactDetails.emergencyPhone || business?.phone || "our office"
+        };
     } catch (error) {
         console.error("❌ Error fetching chatbot data:", error);
         return null;
@@ -77,25 +83,37 @@ export const handleChatMessage = async (message, businessId) => {
         
         // 4. Handle contact information and save lead if present
         if (aiResponse.type === 'CONTACT_INFO') {
-            const leadResponse = await saveLead(
+            const context = {
+                initialMessage: message,
+                messageHistory: memory.messageHistory,
+                reason: aiResponse.specificTreatment ? 
+                    `Interest in: ${aiResponse.serviceInterest} (specifically ${aiResponse.specificTreatment})` :
+                    `Interest in: ${aiResponse.serviceInterest}`
+            };
+
+            // Save the lead but don't use its response
+            await saveLead(
                 businessId,
                 aiResponse.contactInfo,
                 aiResponse.serviceInterest,
-                {
-                    initialMessage: message,
-                    messageHistory: memory.messageHistory
-                }
+                context
             );
             
-            // Update memory with the detected service
-            updateSessionMemory(businessId, message, aiResponse.serviceInterest);
-            storeBotResponse(businessId, leadResponse, aiResponse.serviceInterest);
+            // Update memory with the detected service and specific treatment
+            updateSessionMemory(businessId, message, aiResponse.serviceInterest, aiResponse.specificTreatment);
+            storeBotResponse(businessId, aiResponse.response, aiResponse.serviceInterest);
             
-            return leadResponse;
+            // Return our custom response from openaiService
+            return aiResponse.response;
         }
         
         // 5. Update memory and store response for other types
-        updateSessionMemory(businessId, message, aiResponse.detectedService);
+        updateSessionMemory(
+            businessId, 
+            message, 
+            aiResponse.detectedService, 
+            aiResponse.specificTreatment
+        );
         storeBotResponse(businessId, aiResponse.response, aiResponse.detectedService);
         
         // 6. Return the response

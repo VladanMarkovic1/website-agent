@@ -40,6 +40,30 @@ const RESPONSE_TEMPLATES = {
     },
     services_list: "Here are the dental services we offer:\n{services_list}\n\nWhich service would you like to know more about?",
     
+    treatments: {
+        "veneers": {
+            description: "Dental veneers are thin, custom-made shells of tooth-colored porcelain that cover the front surface of your teeth. They're an excellent solution for teeth that are stained, chipped, or have gaps. The procedure is minimally invasive and can dramatically improve your smile's appearance."
+        },
+        "whitening": {
+            description: "Professional teeth whitening is a safe and effective way to remove stains and brighten your smile. We use advanced whitening techniques that can make your teeth several shades lighter in just one session."
+        },
+        "bonding": {
+            description: "Dental bonding is a procedure where we apply a tooth-colored resin material to repair chipped, cracked, or discolored teeth. It's a cost-effective and quick solution for minor cosmetic dental issues."
+        },
+        "invisalign": {
+            description: "Invisalign uses a series of clear, removable aligners to gradually straighten your teeth. Unlike traditional braces, they're virtually invisible and can be removed for eating and cleaning."
+        },
+        "crown": {
+            description: "A dental crown is a cap that covers a damaged tooth to restore its shape, size, strength, and appearance. Crowns can protect weak teeth, restore broken teeth, or cover severely discolored teeth."
+        },
+        "implant": {
+            description: "Dental implants are titanium posts surgically placed into your jawbone to replace missing teeth roots. They provide a strong foundation for permanent or removable replacement teeth that match your natural teeth."
+        },
+        "cleaning": {
+            description: "Professional dental cleaning removes plaque and tartar buildup that regular brushing can't reach. This preventive care is essential for maintaining healthy teeth and gums and preventing dental problems."
+        }
+    },
+    
     service_info: {
         "Cosmetic Dentistry": {
             description: "Yes! We offer a comprehensive range of cosmetic dentistry services including professional teeth whitening, porcelain veneers, dental bonding, smile makeovers, and Invisalign clear aligners.\n\n" +
@@ -63,54 +87,27 @@ const handleServiceInquiry = async (message, context) => {
     const normalizedMessage = message.toLowerCase();
     const services = context.services || [];
     
-    // Find matching service from database
-    const matchingService = services.find(service => {
-        const serviceName = service.name.toLowerCase();
-        // Check for exact service name
-        if (normalizedMessage.includes(serviceName)) {
-            return true;
-        }
-        
-        // Check for common variations
-        if (serviceName === 'cosmetic dentistry' && 
-            (normalizedMessage.includes('cosmetic') || 
-             normalizedMessage.includes('consmetic') || 
-             normalizedMessage.includes('aesthetic'))) {
-            return true;
-        }
-        
-        // Check for specific treatments that are part of services
-        if (serviceName === 'cosmetic dentistry' && 
-            (normalizedMessage.includes('veneer') || 
-             normalizedMessage.includes('whitening') || 
-             normalizedMessage.includes('bonding') || 
-             normalizedMessage.includes('invisalign'))) {
-            return true;
-        }
-        
-        return false;
-    });
+    // Check if any service from DB is mentioned in the message
+    const matchingService = services.find(service => 
+        normalizedMessage.includes(service.name.toLowerCase())
+    );
 
     if (matchingService) {
-        const response = `${matchingService.description}\n\nWould you like to schedule an appointment for ${matchingService.name}? To help you better, please provide your:\n• Name\n• Phone number\n• Email`;
-        
         return {
-            response,
+            response: `${matchingService.description}\n\nI can help you schedule a time to come in. Just share your name, phone number, and email, and our team will get back to you to find a time that works best for you.`,
             detectedService: matchingService.name,
             shouldAskContact: true
         };
     }
 
-    // Only if no specific service was found, check for general service inquiry
+    // If no service found, politely ask for contact
     if (normalizedMessage.includes('service') || 
         normalizedMessage.includes('provide') || 
         normalizedMessage.includes('offer')) {
-        
-        const serviceList = services.map(s => `• ${s.name}`).join('\n');
         return {
-            response: `We offer the following dental services:\n\n${serviceList}\n\nWhich service would you like to know more about?`,
+            response: "I'd love to help you find exactly what you need. Share your contact info with me, and our dental team will reach out to discuss how we can best help you.",
             detectedService: null,
-            shouldAskContact: false
+            shouldAskContact: true
         };
     }
 
@@ -119,25 +116,34 @@ const handleServiceInquiry = async (message, context) => {
 
 export const generateAIResponse = async (message, businessData, messageHistory = []) => {
     try {
+        const normalizedMessage = message.toLowerCase();
+        
         // Check for contact information first
         const contactInfo = extractContactInfo(message);
         if (contactInfo && contactInfo.name && contactInfo.phone && contactInfo.email) {
-            // Get the last detected service from message history
-            const lastServiceMessage = messageHistory
-                .reverse()
-                .find(msg => msg.detectedService);
-            
-            const serviceInterest = lastServiceMessage?.detectedService || 'General Inquiry';
+            const service = messageHistory.find(msg => msg.type === 'SERVICE_INQUIRY')?.detectedService || 'our dental services';
             
             return {
                 type: 'CONTACT_INFO',
                 contactInfo,
-                serviceInterest,
-                response: `Thank you ${contactInfo.name}! I've received your contact information. Our team will reach out to you shortly at ${contactInfo.email} or ${contactInfo.phone} to schedule your appointment.`
+                serviceInterest: service,
+                response: `Thank you ${contactInfo.name} for showing interests in ${service}, we believe we will help you, we will contact you on ${contactInfo.phone} as soon as possible, if you experience big pain call us immediately on ${businessData.phone}`
             };
         }
 
-        // If no contact info, proceed with service inquiries
+        // Check for emergency keywords first
+        if (normalizedMessage.includes('pain') || 
+            normalizedMessage.includes('hurt') || 
+            normalizedMessage.includes('emergency') ||
+            normalizedMessage.includes('bleeding') ||
+            normalizedMessage.includes('swollen')) {
+            return {
+                type: 'EMERGENCY',
+                response: "I'm sorry to hear you're in pain. Let me help get you taken care of right away. Could you share your name, phone number, and email so our dental team can contact you immediately?"
+            };
+        }
+
+        // Check for service inquiries
         const serviceInquiryResponse = await handleServiceInquiry(message, businessData);
         if (serviceInquiryResponse) {
             return {
@@ -147,79 +153,17 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             };
         }
 
-        const messageLower = message.toLowerCase().trim();
-        
-        // Define common variables at the top
-        const lastBotMessage = messageHistory.length > 0 ? 
-            messageHistory[messageHistory.length - 1].message.toLowerCase() : '';
-        
-        // Check if the last message was asking about scheduling and user confirmed
-        const wasAskingToSchedule = lastBotMessage.includes('would you like to schedule');
-        const isAffirmative = ['yes', 'yeah', 'sure', 'okay', 'ok', 'yep', 'yup'].includes(messageLower);
-
-        // If user confirmed scheduling, ask for contact info
-        if (wasAskingToSchedule && isAffirmative) {
-            return {
-                type: 'ASKING_CONTACT',
-                response: "Great! To help you schedule an appointment, please provide your:\n• Name\n• Phone number\n• Email"
-            };
-        }
-
-        // Only show greeting for actual greetings
-        const isGreeting = messageLower === 'hi' || 
-                          messageLower === 'hello' || 
-                          messageLower === 'hey' ||
-                          messageLower === 'good morning' ||
-                          messageLower === 'good afternoon' ||
-                          messageLower === 'good evening';
-        
-        if (isGreeting) {
-            return {
-                type: 'GREETING',
-                response: RESPONSE_TEMPLATES.greeting.initial
-            };
-        }
-
-        // Check for dental concerns
-        const hasDentalConcern = 
-            messageLower.includes('tooth') || 
-            messageLower.includes('teeth') || 
-            messageLower.includes('dental') || 
-            messageLower.includes('mouth');
-
-        if (hasDentalConcern) {
-            let concernType = 'general';
-            // Check for specific concerns
-            if (messageLower.includes('brown') || 
-                messageLower.includes('black') || 
-                messageLower.includes('dark') || 
-                messageLower.includes('stain') || 
-                messageLower.includes('color')) {
-                concernType = 'discoloration';
-            } else if (messageLower.includes('cavity') || 
-                messageLower.includes('hole') || 
-                messageLower.includes('decay')) {
-                concernType = 'cavity';
-            }
-
-            return {
-                type: 'DENTAL_CONCERN',
-                concernType,
-                response: RESPONSE_TEMPLATES.dental_concerns[concernType]
-            };
-        }
-
-        // For any other messages, ask how we can help
+        // Default response for any other message
         return {
             type: 'DEFAULT',
-            response: RESPONSE_TEMPLATES.greeting.followUp
+            response: "I understand you need help with that. If you could share your name, phone number, and email, I'll have our dental team reach out to assist you personally."
         };
 
     } catch (error) {
         console.error("❌ Error generating AI response:", error);
         return {
             type: 'ERROR',
-            response: "I apologize, but I'm having trouble understanding. Could you please rephrase your question about our dental services?"
+            response: "I want to make sure you get the help you need. Could you share your contact details so our team can reach out to you directly?"
         };
     }
 };
