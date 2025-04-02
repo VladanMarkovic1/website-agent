@@ -31,11 +31,6 @@ const leadSchema = new mongoose.Schema({
         enum: ['new', 'attempted-contact', 'contacted', 'scheduled', 'completed', 'no-response'],
         default: 'new'
     },
-    priority: {
-        type: String,
-        enum: ['high', 'normal', 'low'],
-        default: 'normal'
-    },
     bestTimeToCall: {
         type: String,
         enum: ['now', 'next-business-day', 'morning', 'afternoon', 'evening'],
@@ -123,7 +118,7 @@ const leadSchema = new mongoose.Schema({
 
 // Index for efficient queries
 leadSchema.index({ businessId: 1, createdAt: -1 });
-leadSchema.index({ status: 1, priority: 1, lastContactedAt: 1 });
+leadSchema.index({ status: 1, lastContactedAt: 1 });
 leadSchema.index({ phone: 1, businessId: 1 }, { unique: true });
 leadSchema.index({ 'emailCommunication.nextScheduledEmail': 1 });
 leadSchema.index({ 'emailCommunication.lastEmailSent': 1 });

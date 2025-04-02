@@ -56,13 +56,6 @@ const extractContactInfo = (message) => {
     return { name, phone, email };
 };
 
-// Helper function to determine lead priority based on time of day
-const determinePriority = () => {
-    const currentHour = new Date().getHours();
-    const isPriorityHours = currentHour >= 9 && currentHour < 17; // 9 AM to 5 PM
-    return isPriorityHours ? "high" : "normal";
-};
-
 // Helper functions
 const extractUserConcern = (messageHistory) => {
     if (!messageHistory || messageHistory.length === 0) return null;
@@ -150,8 +143,7 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
             status: 'new',
             lastContact: new Date(),
             contactCount: 1,
-            context: formattedContext,
-            priority: determinePriority()
+            context: formattedContext
         });
 
         console.log("Creating new lead with data:", {
