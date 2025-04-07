@@ -9,7 +9,7 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/widget.js'),
+      entry: resolve(__dirname, 'src/widget.jsx'),
       name: 'DentalChatbot',
       fileName: 'dental-chatbot',
       formats: ['umd'],

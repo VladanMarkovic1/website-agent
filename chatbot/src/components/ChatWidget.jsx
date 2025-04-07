@@ -19,10 +19,10 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
     const loadHistory = async () => {
       setIsLoading(true);
       try {
-        const history = await fetchChatHistory(businessId);
-        setMessages(history);
+        // Initialize with empty history since backend manages it via session
+        setMessages([]);
       } catch (error) {
-        console.error('Failed to load chat history:', error);
+        console.error('Failed to initialize chat:', error);
       }
       setIsLoading(false);
     };
@@ -37,7 +37,12 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
     if (!socket) return;
 
     socket.on('message', (message) => {
-      setMessages((prevMessages) => [...prevMessages, message]);
+      setMessages((prevMessages) => [...prevMessages, {
+        type: 'assistant',
+        content: message.response,
+        timestamp: new Date().toISOString(),
+        messageType: message.type
+      }]);
     });
 
     return () => {
@@ -56,7 +61,12 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
     };
 
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    socket.emit('message', { businessId, content: text });
+    
+    // Send message with session ID (handled by socket initialization)
+    socket.emit('message', { 
+      businessId,
+      message: text
+    });
   };
 
   // Position styles

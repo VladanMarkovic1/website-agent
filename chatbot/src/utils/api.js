@@ -1,10 +1,12 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000'; // Your backend server URL
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'; // Your backend server URL
+const BUSINESS_ID = import.meta.env.VITE_BUSINESS_ID;
 
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -40,6 +42,28 @@ export const saveMessage = async (businessId, message) => {
     return response;
   } catch (error) {
     console.error('Failed to save message:', error);
+    throw error;
+  }
+};
+
+export const sendChatMessage = async (messageText) => {
+  try {
+    const response = await api.post(`/chatbot/message?businessId=${BUSINESS_ID}`, {
+      message: messageText
+    });
+    return response;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
+export const triggerScraping = async () => {
+  try {
+    const response = await api.get(`/scraper/${BUSINESS_ID}`);
+    return response;
+  } catch (error) {
+    console.error('Scraping Error:', error);
     throw error;
   }
 };
