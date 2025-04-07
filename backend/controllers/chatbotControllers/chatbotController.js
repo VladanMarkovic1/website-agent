@@ -86,17 +86,17 @@ const processChatMessage = async (message, sessionId, businessId) => {
     if (aiResponse.type === 'CONTACT_INFO') {
         const { contactInfo, serviceInterest } = aiResponse;
         
-        // Save lead
+        // Save lead with correct parameter order
         try {
-            await saveLead({
+            await saveLead(
                 businessId,
-                name: contactInfo.name,
-                phone: contactInfo.phone,
-                email: contactInfo.email,
-                service: serviceInterest,
-                source: 'chatbot',
-                status: 'new'
-            });
+                contactInfo,
+                serviceInterest,
+                {
+                    initialMessage: message,
+                    reason: `Chat inquiry about ${serviceInterest || 'dental services'}`
+                }
+            );
         } catch (error) {
             console.error("Error saving lead:", error);
         }

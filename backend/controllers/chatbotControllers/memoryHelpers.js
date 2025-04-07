@@ -34,10 +34,40 @@ export function detectQuestionType(message) {
  * @returns {Object|null} Extracted contact info or null
  */
 export function extractContactInfo(message) {
+    // Handle space-separated format (name phone email)
+    const parts = message.split(/[\s,]+/).map(part => part.trim()).filter(Boolean);
+    if (parts.length >= 3) {
+        // Find email in parts
+        const emailIndex = parts.findIndex(part => 
+            /^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$/i.test(part)
+        );
+        
+        if (emailIndex !== -1) {
+            // Find phone number (sequence of digits)
+            const phoneIndex = parts.findIndex(part => 
+                /^\d[\d-]{7,}$/.test(part.replace(/\s+/g, ''))
+            );
+            
+            if (phoneIndex !== -1) {
+                // Assume name is everything before phone and email
+                const nameEndIndex = Math.min(phoneIndex, emailIndex);
+                const name = parts.slice(0, nameEndIndex).join(' ');
+                
+                if (name) {
+                    return {
+                        name,
+                        phone: parts[phoneIndex].replace(/\s+/g, ''),
+                        email: parts[emailIndex]
+                    };
+                }
+            }
+        }
+    }
+
     // Handle comma-separated format (name, phone, email)
-    const parts = message.split(',').map(part => part.trim());
-    if (parts.length === 3) {
-        const [name, phone, email] = parts;
+    const commaParts = message.split(',').map(part => part.trim());
+    if (commaParts.length === 3) {
+        const [name, phone, email] = commaParts;
         // Validate each part
         if (
             name && // Name exists
@@ -66,13 +96,14 @@ export function extractContactInfo(message) {
     // Handle natural format
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i;
     const phoneRegex = /(\d[\d\s-]{7,})/;
-    const nameRegex = /([A-Z][a-z]+)/;
+    const nameRegex = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/;
 
     const email = message.match(emailRegex)?.[1];
     const phone = message.match(phoneRegex)?.[1]?.replace(/\s+/g, '');
-    const name = message.match(nameRegex)?.[1];
+    let name = message.match(nameRegex)?.[1];
 
-    if (email || phone || name) {
+    // If we found at least two pieces of information
+    if ((email && phone) || (email && name) || (phone && name)) {
         return {
             email: email || null,
             phone: phone || null,
