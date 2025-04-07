@@ -5,28 +5,40 @@ import { initializeSocket } from '../utils/socket';
 import { fetchChatHistory } from '../utils/api';
 
 const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primaryColor }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true); // Start with chat open
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasGreeted, setHasGreeted] = useState(false);
 
   // Initialize socket connection
   useEffect(() => {
     const newSocket = initializeSocket(businessId);
     setSocket(newSocket);
 
-    // Load chat history
-    const loadHistory = async () => {
+    // Load chat history and send initial greeting
+    const initialize = async () => {
       setIsLoading(true);
       try {
-        // Initialize with empty history since backend manages it via session
         setMessages([]);
+        
+        // Wait for socket connection before sending greeting
+        newSocket.on('connect', () => {
+          if (!hasGreeted) {
+            // Send an empty message to trigger the greeting
+            newSocket.emit('message', { 
+              businessId,
+              message: 'hello'
+            });
+            setHasGreeted(true);
+          }
+        });
       } catch (error) {
         console.error('Failed to initialize chat:', error);
       }
       setIsLoading(false);
     };
-    loadHistory();
+    initialize();
 
     // Cleanup socket on unmount
     return () => newSocket.close();
@@ -77,6 +89,23 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
     'top-left': { top: '20px', left: '20px' },
   };
 
+  // Auto-hide chat after 5 minutes of inactivity
+  useEffect(() => {
+    let inactivityTimer;
+    
+    if (isOpen) {
+      inactivityTimer = setTimeout(() => {
+        setIsOpen(false);
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+
+    return () => {
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+    };
+  }, [isOpen, messages]); // Reset timer when new messages arrive
+
   return (
     <div
       className="fixed z-50"
@@ -92,7 +121,17 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
         />
       ) : (
         <ChatButton
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            setIsOpen(true);
+            // Send greeting if chat was closed and reopened
+            if (!hasGreeted) {
+              socket?.emit('message', { 
+                businessId,
+                message: 'hello'
+              });
+              setHasGreeted(true);
+            }
+          }}
           text={buttonText}
           primaryColor={primaryColor}
         />
