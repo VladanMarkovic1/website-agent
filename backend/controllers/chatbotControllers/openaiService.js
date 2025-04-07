@@ -32,13 +32,13 @@ const GREETINGS = [
 
 // Enhanced response templates for different stages
 const RESPONSE_TEMPLATES = {
-    greeting: "Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
+    greeting: "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
     understanding: "I understand you need help with that. Could you tell me more about what you're looking for?",
-    contact_request: "I understand you need help with that. If you could share your name, phone number, and email, I'll have our dental team reach out to assist you personally.",
-    emergency: "I'm sorry to hear you're in pain. Let me help get you taken care of right away. Could you share your name, phone number, and email so our dental team can contact you immediately?",
-    service_inquiry: (service) => `${service.description}\n\nI can help you schedule a time to come in. Just share your name, phone number, and email, and our team will get back to you to find a time that works best for you.`,
+    contact_request: "I understand you need help with that. If you could share your name, phone number, and email, I'll have our dental team reach out to assist you personally. 😊",
+    emergency: "I'm so sorry to hear you're in pain! 😟 Let me help get you taken care of right away. Could you share your name, phone number, and email so our dental team can contact you immediately?",
+    service_inquiry: (service) => `${service.description}\n\n✨ I can help you schedule a time to come in. Just share your name, phone number, and email, and our team will get back to you to find a time that works best for you.`,
     contact_confirmation: (name, service, phone) => 
-        `✅ Thank you ${name} for showing interest in ${service}. We believe we can help you, and we will contact you on ${phone} as soon as possible.`
+        `✅ Thank you ${name} for showing interest in ${service}! We believe we can help you, and we will contact you on ${phone} as soon as possible. 😊`
 };
 
 const isGreeting = (message) => {
@@ -115,7 +115,7 @@ const generateEmergencyResponse = (messageHistory, message) => {
     if (!messageHistory.some(msg => msg.content?.toLowerCase().includes('pain'))) {
         return {
             type: 'EMERGENCY',
-            response: "I understand you're experiencing discomfort. Let me help you schedule an appointment with our dental team. Could you share your name, phone number, and email?"
+            response: "😟 I understand you're experiencing discomfort. Let me help you schedule an appointment with our dental team right away. Could you share your name, phone number, and email?"
         };
     }
 
@@ -123,20 +123,20 @@ const generateEmergencyResponse = (messageHistory, message) => {
     if (message.toLowerCase().includes('how') || message.toLowerCase().includes('what')) {
         return {
             type: 'EMERGENCY',
-            response: "Our dental team will need to examine you in person. Could you share your contact details so we can schedule an appointment for you?"
+            response: "Our dental team will need to examine you in person. Could you share your contact details so we can schedule an urgent appointment for you? 🏥"
         };
     }
 
     // If they've asked multiple times without providing contact
     return {
         type: 'EMERGENCY',
-        response: "I'd like to help you schedule an appointment with our dental team. Could you share your contact information so we can get that set up for you?"
+        response: "I'd like to help you schedule an urgent appointment with our dental team. Could you share your contact information so we can get that set up for you right away? 🙏"
     };
 };
 
 const generateServiceResponse = (service, messageHistory) => {
     if (!service) {
-        return "I can help you schedule an appointment with the right specialist. What's the best way to reach you?";
+        return "✨ I can help you schedule an appointment with the right specialist. What's the best way to reach you?";
     }
 
     // Check if we've already described this service
@@ -145,15 +145,15 @@ const generateServiceResponse = (service, messageHistory) => {
     );
 
     if (previousServiceMention) {
-        return `Great choice! I can get you scheduled for ${service.name}. What's the best phone number and email to reach you at?`;
+        return `Great choice! 🌟 I can get you scheduled for ${service.name}. What's the best phone number and email to reach you at?`;
     }
 
     // If service has a description, use it, otherwise use a generic response
     if (service.description) {
-        return `${service.description}\n\nWould you like to schedule a consultation to learn more? Just let me know your contact details, and I'll have our ${service.name} specialist reach out to you.`;
+        return `${service.description}\n\n✨ Would you like to schedule a consultation to learn more? Just let me know your contact details, and I'll have our ${service.name} specialist reach out to you.`;
     }
 
-    return `I'd be happy to have our ${service.name} specialist tell you more about this service in person. Would you like me to arrange a consultation? Just share your contact details, and I'll take care of the rest.`;
+    return `I'd be happy to have our ${service.name} specialist tell you more about this service in person. 😊 Would you like me to arrange a consultation? Just share your contact details, and I'll take care of the rest.`;
 };
 
 export const generateAIResponse = async (message, businessData, messageHistory = []) => {
@@ -177,7 +177,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         if (messageHistory.length === 0 || isGreeting(message)) {
             return {
                 type: 'GREETING',
-                response: "Hi there! I'm here to help you learn about our services or schedule an appointment. What brings you in today?"
+                response: "👋 Hi there! I'm here to help you learn about our services or schedule an appointment. What brings you in today? 😊"
             };
         }
 
