@@ -24,112 +24,139 @@ setInterval(cleanupSessions, 5 * 60 * 1000);
 
 // Process chat message and return response
 const processChatMessage = async (message, sessionId, businessId) => {
-    if (!message || !sessionId || !businessId) {
-        throw new Error("Missing required fields: message, sessionId, or businessId");
-    }
-
-    // Get or create session
-    let session = sessions.get(sessionId);
-    const isNewSession = !session;
-    
-    if (!session) {
-        session = {
-            messages: [],
-            lastActivity: Date.now(),
-            businessId,
-            contactInfo: null,
-            serviceInterest: null
-        };
-        sessions.set(sessionId, session);
-    }
-
-    // Update session activity
-    session.lastActivity = Date.now();
-
-    // Get business data
-    const [business, serviceData] = await Promise.all([
-        Business.findOne({ businessId }),
-        Service.findOne({ businessId })
-    ]);
-
-    if (!business) {
-        throw new Error("Business not found");
-    }
-
-    // Prepare business data with services
-    const businessData = {
-        ...business.toObject(),
-        services: serviceData?.services || []
-    };
-
-    // Generate AI response
-    const aiResponse = await generateAIResponse(
-        message, 
-        businessData,
-        session.messages
-    );
-
-    // Update analytics
-    if (isNewSession) {
-        try {
-            await ChatAnalytics.findOneAndUpdate(
-                { businessId, date: new Date().toISOString().split('T')[0] },
-                { $inc: { totalConversations: 1 } },
-                { upsert: true, new: true }
-            );
-        } catch (error) {
-            console.error("Error updating analytics:", error);
+    try {
+        if (!message || !sessionId || !businessId) {
+            throw new Error("Missing required fields: message, sessionId, or businessId");
         }
-    }
 
-    // Handle contact information
-    if (aiResponse.type === 'CONTACT_INFO') {
-        const { contactInfo, serviceInterest } = aiResponse;
+        // Get or create session
+        let session = sessions.get(sessionId);
+        const isNewSession = !session;
         
-        // Save lead with correct parameter order
-        try {
-            await saveLead(
+        if (!session) {
+            session = {
+                messages: [],
+                lastActivity: Date.now(),
                 businessId,
-                contactInfo,
-                serviceInterest,
-                {
-                    initialMessage: message,
-                    reason: `Chat inquiry about ${serviceInterest || 'dental services'}`
-                }
-            );
-        } catch (error) {
-            console.error("Error saving lead:", error);
+                contactInfo: null,
+                serviceInterest: null
+            };
+            sessions.set(sessionId, session);
         }
 
-        session.contactInfo = contactInfo;
-        session.serviceInterest = serviceInterest;
+        // Update session activity
+        session.lastActivity = Date.now();
+
+        try {
+            // Get business data
+            const [business, serviceData] = await Promise.all([
+                Business.findOne({ businessId }),
+                Service.findOne({ businessId })
+            ]);
+
+            if (!business) {
+                throw new Error("Business not found");
+            }
+
+            // Prepare business data with services
+            const businessData = {
+                ...business.toObject(),
+                services: serviceData?.services || []
+            };
+
+            // Generate AI response
+            const aiResponse = await generateAIResponse(
+                message, 
+                businessData,
+                session.messages,
+                isNewSession
+            );
+
+            // Handle contact information and save lead
+            if (aiResponse.type === 'CONTACT_INFO') {
+                const { contactInfo, serviceContext } = aiResponse;
+                
+                try {
+                    // Save the lead
+                    await saveLead(
+                        businessId,
+                        contactInfo,
+                        serviceContext || 'General Inquiry',
+                        {
+                            initialMessage: message,
+                            reason: serviceContext 
+                                ? `Chat inquiry about ${serviceContext}` 
+                                : 'General chat inquiry'
+                        }
+                    );
+
+                    console.log(`✅ Lead saved successfully for ${contactInfo.name}`);
+                    
+                    // Update session with contact info
+                    session.contactInfo = contactInfo;
+                    session.serviceInterest = serviceContext;
+                } catch (error) {
+                    console.error("Error saving lead:", error);
+                }
+            }
+
+            // Update analytics for new sessions
+            if (isNewSession) {
+                try {
+                    await ChatAnalytics.findOneAndUpdate(
+                        { businessId, date: new Date().toISOString().split('T')[0] },
+                        { $inc: { totalConversations: 1 } },
+                        { upsert: true, new: true }
+                    );
+                } catch (error) {
+                    console.error("Error updating analytics:", error);
+                }
+            }
+
+            // Update message history
+            session.messages.push({
+                role: 'user',
+                content: message,
+                timestamp: Date.now(),
+                type: aiResponse.type,
+                serviceContext: aiResponse.serviceContext
+            });
+
+            session.messages.push({
+                role: 'assistant',
+                content: aiResponse.response,
+                timestamp: Date.now(),
+                type: aiResponse.type,
+                serviceContext: aiResponse.serviceContext
+            });
+
+            // Keep only last 10 messages
+            if (session.messages.length > 10) {
+                session.messages = session.messages.slice(-10);
+            }
+
+            return {
+                response: aiResponse.response,
+                type: aiResponse.type,
+                sessionId
+            };
+
+        } catch (error) {
+            console.error("Error processing message:", error);
+            return {
+                response: "I apologize, but I'm having trouble accessing our service information right now. Would you like to share your name, phone number, and email so our team can reach out to you directly?",
+                type: "ERROR",
+                sessionId
+            };
+        }
+    } catch (error) {
+        console.error("Critical error in message processing:", error);
+        return {
+            response: "I apologize, but I'm experiencing some technical difficulties. Please try again in a moment.",
+            type: "ERROR",
+            sessionId: sessionId || 'error'
+        };
     }
-
-    // Update message history
-    session.messages.push({
-        role: 'user',
-        content: message,
-        timestamp: Date.now(),
-        type: aiResponse.type
-    });
-
-    session.messages.push({
-        role: 'assistant',
-        content: aiResponse.response,
-        timestamp: Date.now(),
-        type: aiResponse.type
-    });
-
-    // Keep only last 10 messages
-    if (session.messages.length > 10) {
-        session.messages = session.messages.slice(-10);
-    }
-
-    return {
-        response: aiResponse.response,
-        type: aiResponse.type,
-        sessionId
-    };
 };
 
 // HTTP endpoint handler

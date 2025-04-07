@@ -161,13 +161,16 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
             name,
             phone,
             email,
-            service: serviceInterest || 'Emergency Dental Care',
+            service: serviceInterest || null,
             reason: formattedContext.reason,
             source: 'chatbot',
             status: 'new',
             lastContact: new Date(),
             contactCount: 1,
-            context: formattedContext
+            context: {
+                ...formattedContext,
+                exactService: serviceInterest
+            }
         });
 
         console.log("Creating new lead with data:", {

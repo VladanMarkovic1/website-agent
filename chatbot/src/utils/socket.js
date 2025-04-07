@@ -30,7 +30,7 @@ export const initializeSocket = (businessId) => {
 
   // Connection event handlers
   socket.on('connect', () => {
-    console.log('Connected to chat server');
+    console.log('Connected to chat server with businessId:', businessId);
   });
 
   socket.on('connect_error', (error) => {
@@ -48,6 +48,11 @@ export const initializeSocket = (businessId) => {
   // Error handling
   socket.on('error', (error) => {
     console.error('Socket error:', error);
+  });
+
+  // Add message event handler for debugging
+  socket.on('message', (response) => {
+    console.log('Received response:', response);
   });
 
   return socket;
