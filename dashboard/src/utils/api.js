@@ -1,13 +1,19 @@
 import axios from 'axios';
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL,
+  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
   timeout: 15000, // 15 second timeout
 });
+
+// Sleep function for retry delay
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Request interceptor
 api.interceptors.request.use(
@@ -16,6 +22,8 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Add retry count to config
+    config.retryCount = config.retryCount || 0;
     // Log the request for debugging
     console.log('🚀 API Request:', {
       url: config.url,
@@ -47,8 +55,29 @@ api.interceptors.response.use(
     });
     return response;
   },
-  (error) => {
-    // Check if network is available
+  async (error) => {
+    const config = error.config;
+
+    // Check if we should retry the request
+    if (config.retryCount < MAX_RETRIES) {
+      config.retryCount += 1;
+
+      // If it's a network error or blocked by security software
+      if (!error.response || error.message?.includes('Network Error') || 
+          error.message?.includes('ERR_BLOCKED') || 
+          (error.response?.status === 0)) {
+        
+        console.log(`🔄 Retry attempt ${config.retryCount} of ${MAX_RETRIES}...`);
+        
+        // Wait before retrying
+        await sleep(RETRY_DELAY * config.retryCount);
+        
+        // Try the request again
+        return api(config);
+      }
+    }
+
+    // If we're offline
     if (!isOnline()) {
       console.error('❌ Network error: Device is offline');
       return Promise.reject({
@@ -75,6 +104,7 @@ api.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
+        return Promise.reject(error);
       }
       
       return Promise.reject(error);
@@ -82,14 +112,16 @@ api.interceptors.response.use(
       // The request was made but no response was received
       console.error('❌ Request error:', error.request);
       
-      // Check if CORS or security software might be blocking the request
+      // After all retries failed
       if (error.message?.includes('Network Error') || error.message?.includes('ERR_BLOCKED')) {
-        console.error('🛡️ Possible security software or firewall blocking detected');
         return Promise.reject({
           response: {
             status: 0,
             data: { 
-              error: 'Connection blocked. Your security software (like Kaspersky) might be blocking this request. Consider adding this site to your trusted sites or temporarily disabling the web protection.'
+              error: 'Connection blocked. Your security software (like Kaspersky) might be blocking this request. Please try:\n' +
+                    '1. Adding this site to your trusted sites\n' +
+                    '2. Temporarily disabling web protection\n' +
+                    '3. Checking your firewall settings'
             }
           }
         });
@@ -100,7 +132,7 @@ api.interceptors.response.use(
         return Promise.reject({
           response: {
             status: 408,
-            data: { error: 'Request timed out. Please try again or check your connection.' }
+            data: { error: 'Request timed out. Please try again.' }
           }
         });
       }
@@ -108,7 +140,7 @@ api.interceptors.response.use(
       return Promise.reject({
         response: {
           status: 0,
-          data: { error: 'Unable to reach the server. Please check your connection or try again later.' }
+          data: { error: 'Unable to reach the server. Please try again later.' }
         }
       });
     } else {
