@@ -1,6 +1,7 @@
 import Lead from "../../models/Lead.js";
 import Business from "../../models/Business.js";
 import { sendInstantConfirmation } from "../emailControllers/emailService.js";
+import { trackChatEvent } from "../analyticsControllers/analyticsService.js";
 
 /**
  * Function to capture and store leads in MongoDB.
@@ -300,6 +301,8 @@ export const updateLeadStatusHandler = async (req, res) => {
             return res.status(404).json({ error: "Lead not found." });
         }
 
+        const oldStatus = lead.status;
+        
         // Update status and add to call history
         lead.status = status;
         lead.lastContactedAt = new Date();
@@ -307,6 +310,12 @@ export const updateLeadStatusHandler = async (req, res) => {
             status,
             notes: `Status updated to ${status}`,
             timestamp: new Date()
+        });
+
+        // Track the status change in analytics
+        await trackChatEvent(lead.businessId, 'LEAD_STATUS_UPDATE', {
+            oldStatus: oldStatus,
+            newStatus: status
         });
 
         await lead.save();

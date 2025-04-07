@@ -7,6 +7,7 @@ import {
   HiOutlineOfficeBuilding,
   HiOutlineMenuAlt2,
   HiOutlineX,
+  HiOutlineChartBar,
 } from 'react-icons/hi';
 
 const BusinessOwnerPage = () => {
@@ -27,6 +28,7 @@ const BusinessOwnerPage = () => {
 
   const navigation = [
     { name: 'Leads', href: '/dashboard/leads', icon: HiOutlineClipboardList },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: HiOutlineChartBar },
     { name: 'Services', href: '/dashboard/services', icon: HiOutlineOfficeBuilding },
     { name: 'Settings', href: '/dashboard/settings', icon: HiOutlineCog },
   ];

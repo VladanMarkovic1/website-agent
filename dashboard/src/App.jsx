@@ -8,6 +8,7 @@ import Services from './components/services/Services';
 import Settings from './components/settings/Settings';
 import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/auth/ProtectedRoutes';
+import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
           <Route path="leads" element={<Leads />} />
           <Route path="services" element={<Services />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="analytics" element={<AnalyticsDashboard />} />
         </Route>
 
         {/* Protected Admin Route */}
