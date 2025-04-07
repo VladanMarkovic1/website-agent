@@ -22,7 +22,7 @@ api.interceptors.response.use(
 // Fetch chat history for a business
 export const fetchChatHistory = async (businessId) => {
   try {
-    const response = await api.get(`/api/chat/history/${businessId}`);
+    const response = await api.get(`/chatbot/history/${businessId}`);
     return response;
   } catch (error) {
     console.error('Failed to fetch chat history:', error);
@@ -33,7 +33,7 @@ export const fetchChatHistory = async (businessId) => {
 // Save chat message
 export const saveMessage = async (businessId, message) => {
   try {
-    const response = await api.post(`/api/chat/message`, {
+    const response = await api.post(`/chatbot/message`, {
       businessId,
       ...message,
     });
