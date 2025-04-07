@@ -32,8 +32,9 @@ function ChatWindow({ onClose }) {
     try {
       const response = await sendMessage(messageText)
       const botMessage = {
-        text: response.data,  // The response is directly the message string
+        text: response.data.response,  // Updated to use the new response structure
         type: 'bot',
+        messageType: response.data.type, // Store the message type from backend
         timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, botMessage])
@@ -42,6 +43,7 @@ function ChatWindow({ onClose }) {
       const errorMessage = {
         text: 'Sorry, I encountered an error. Please try again.',
         type: 'bot',
+        messageType: 'ERROR',
         timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMessage])
