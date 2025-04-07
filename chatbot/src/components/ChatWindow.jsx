@@ -4,8 +4,19 @@ import ReactMarkdown from 'react-markdown';
 
 const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5' }) => {
   const [input, setInput] = useState('');
+  const [headerTitle, setHeaderTitle] = useState('Chat with AI Assistant');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Update header title based on service mentions in messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.type === 'assistant' && lastMessage.serviceContext) {
+        setHeaderTitle(`💬 ${lastMessage.serviceContext}`);
+      }
+    }
+  }, [messages]);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -36,10 +47,10 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         className="flex items-center justify-between p-3 rounded-t-lg text-white"
         style={{ backgroundColor: primaryColor }}
       >
-        <h2 className="text-base font-semibold">Chat with AI Assistant</h2>
+        <h2 className="text-base font-semibold truncate">{headerTitle}</h2>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-white/20 rounded-full transition-colors"
+          className="p-1 hover:bg-white/20 rounded-full transition-colors ml-2"
           aria-label="Close chat"
         >
           <FaTimes />
