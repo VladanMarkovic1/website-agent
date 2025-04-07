@@ -30,13 +30,13 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   };
 
   return (
-    <div className="flex flex-col w-96 h-[600px] bg-white rounded-lg shadow-xl">
+    <div className="flex flex-col w-80 h-[500px] bg-white rounded-lg shadow-xl">
       {/* Header */}
       <div 
-        className="flex items-center justify-between p-4 rounded-t-lg text-white"
+        className="flex items-center justify-between p-3 rounded-t-lg text-white"
         style={{ backgroundColor: primaryColor }}
       >
-        <h2 className="text-lg font-semibold">Chat with AI Assistant</h2>
+        <h2 className="text-base font-semibold">Chat with AI Assistant</h2>
         <button
           onClick={onClose}
           className="p-1 hover:bg-white/20 rounded-full transition-colors"
@@ -47,14 +47,14 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.map((message, index) => (
           <div
             key={index}
             className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] p-3 rounded-lg ${
+              className={`max-w-[85%] p-2.5 rounded-lg text-sm ${
                 message.type === 'user'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-800'
