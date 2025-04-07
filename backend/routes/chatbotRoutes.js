@@ -6,10 +6,8 @@ const router = express.Router();
 // ✅ Endpoint for chatbot responses
 router.post("/message", async (req, res) => {
     try {
-        const { message } = req.body;
-        const businessId = req.query.businessId || "default";
-        const response = await handleChatMessage(message, businessId);
-        res.json(response);
+        // Pass the entire req and res objects to the controller
+        await handleChatMessage(req, res);
     } catch (error) {
         console.error("Route Error:", error);
         res.status(500).json({ error: "Internal server error" });

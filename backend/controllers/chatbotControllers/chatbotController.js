@@ -1,127 +1,145 @@
 import Business from "../../models/Business.js";
 import Service from "../../models/Service.js";
-import ExtraInfo from "../../models/ExtraInfo.js";
-import Contact from "../../models/Contact.js";
 import { saveLead } from "../leadControllers/leadController.js";
 import dotenv from "dotenv";
-
-// Memory-related functions
-import { 
-    getSessionMemory, 
-    updateSessionMemory, 
-    cleanupSession, 
-    storeBotResponse 
-} from "./memoryService.js";
-
-// Helpers for contact info
-import { extractContactInfo } from "./memoryHelpers.js";
-
-// Service detection
-import { detectService, getServiceDetails } from "./serviceDetector.js";
-
-// AI response
 import { generateAIResponse } from "./openaiService.js";
+import ChatAnalytics from "../../models/ChatAnalytics.js";
 
-dotenv.config();
+// In-memory session storage
+const sessions = new Map();
 
-/**
- * Fetch services, FAQs, and contact details for the chatbot
- */
-export const getBusinessDataForChatbot = async (businessId) => {
-    try {
-        console.log(`🤖 Fetching chatbot data for business: ${businessId}`);
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
-        const business = await Business.findOne({ businessId }).lean();
-        const businessName = business?.businessName || "our clinic";
-
-        const serviceData = await Service.findOne({ businessId }).lean();
-        const services = serviceData?.services || [];
-
-        const extraInfoData = await ExtraInfo.findOne({ businessId }).lean();
-        const faqs = extraInfoData?.faqs || [];
-
-        const contactData = await Contact.findOne({ businessId }).lean();
-        const contactDetails = contactData || {};
-
-        console.log(`✅ Chatbot Data Fetched: Services: ${services.length}, FAQs: ${faqs.length}`);
-
-        return { 
-            businessName, 
-            services, 
-            faqs, 
-            contactDetails,
-            phone: contactDetails.phone || contactDetails.emergencyPhone || business?.phone || "our office"
-        };
-    } catch (error) {
-        console.error("❌ Error fetching chatbot data:", error);
-        return null;
+const cleanupSessions = () => {
+    const now = Date.now();
+    for (const [sessionId, session] of sessions.entries()) {
+        if (now - session.lastActivity > SESSION_TIMEOUT) {
+            sessions.delete(sessionId);
+        }
     }
 };
 
-/**
- * Handle incoming chatbot messages
- */
-export const handleChatMessage = async (message, businessId) => {
+// Run cleanup every 5 minutes
+setInterval(cleanupSessions, 5 * 60 * 1000);
+
+export const handleChatMessage = async (req, res) => {
     try {
-        console.log(`💬 Processing chat message: "${message}" for business ${businessId}`);
+        const { message, sessionId, businessId } = req.body;
 
-        if (!businessId) {
-            return "⚠️ Error: Business ID is missing.";
+        if (!message || !sessionId || !businessId) {
+            return res.status(400).json({ 
+                error: "Missing required fields: message, sessionId, or businessId" 
+            });
         }
 
-        // 1. Fetch business data first
-        const businessData = await getBusinessDataForChatbot(businessId);
-        if (!businessData) {
-            return "I apologize, but I'm having trouble connecting to our system. Please try again in a moment.";
-        }
-
-        // 2. Retrieve session memory for this business/user
-        const memory = getSessionMemory(businessId);
+        // Get or create session
+        let session = sessions.get(sessionId);
+        const isNewSession = !session;
         
-        // 3. Generate AI response first - this will handle service inquiries and other patterns
-        const aiResponse = await generateAIResponse(message, businessData, memory.messageHistory || []);
-        
-        // 4. Handle contact information and save lead if present
-        if (aiResponse.type === 'CONTACT_INFO') {
-            const context = {
-                initialMessage: message,
-                messageHistory: memory.messageHistory,
-                reason: aiResponse.specificTreatment ? 
-                    `Interest in: ${aiResponse.serviceInterest} (specifically ${aiResponse.specificTreatment})` :
-                    `Interest in: ${aiResponse.serviceInterest}`
-            };
-
-            // Save the lead but don't use its response
-            await saveLead(
+        if (!session) {
+            session = {
+                messages: [],
+                lastActivity: Date.now(),
                 businessId,
-                aiResponse.contactInfo,
-                aiResponse.serviceInterest,
-                context
-            );
-            
-            // Update memory with the detected service and specific treatment
-            updateSessionMemory(businessId, message, aiResponse.serviceInterest, aiResponse.specificTreatment);
-            storeBotResponse(businessId, aiResponse.response, aiResponse.serviceInterest);
-            
-            // Return our custom response from openaiService
-            return aiResponse.response;
+                contactInfo: null,
+                serviceInterest: null
+            };
+            sessions.set(sessionId, session);
         }
-        
-        // 5. Update memory and store response for other types
-        updateSessionMemory(
-            businessId, 
+
+        // Update session activity
+        session.lastActivity = Date.now();
+
+        // Get business data
+        const [business, serviceData] = await Promise.all([
+            Business.findOne({ businessId }),
+            Service.findOne({ businessId })
+        ]);
+
+        if (!business) {
+            return res.status(404).json({ error: "Business not found" });
+        }
+
+        // Prepare business data with services
+        const businessData = {
+            ...business.toObject(),
+            services: serviceData?.services || []
+        };
+
+        // Generate AI response
+        const aiResponse = await generateAIResponse(
             message, 
-            aiResponse.detectedService, 
-            aiResponse.specificTreatment
+            businessData,
+            session.messages
         );
-        storeBotResponse(businessId, aiResponse.response, aiResponse.detectedService);
-        
-        // 6. Return the response
-        return aiResponse.response;
+
+        // Update analytics
+        if (isNewSession) {
+            try {
+                await ChatAnalytics.findOneAndUpdate(
+                    { businessId, date: new Date().toISOString().split('T')[0] },
+                    { $inc: { totalConversations: 1 } },
+                    { upsert: true, new: true }
+                );
+            } catch (error) {
+                console.error("Error updating analytics:", error);
+            }
+        }
+
+        // Handle contact information
+        if (aiResponse.type === 'CONTACT_INFO') {
+            const { contactInfo, serviceInterest } = aiResponse;
+            
+            // Save lead
+            try {
+                await saveLead({
+                    businessId,
+                    name: contactInfo.name,
+                    phone: contactInfo.phone,
+                    email: contactInfo.email,
+                    service: serviceInterest,
+                    source: 'chatbot',
+                    status: 'new'
+                });
+            } catch (error) {
+                console.error("Error saving lead:", error);
+            }
+
+            session.contactInfo = contactInfo;
+            session.serviceInterest = serviceInterest;
+        }
+
+        // Update message history
+        session.messages.push({
+            role: 'user',
+            content: message,
+            timestamp: Date.now(),
+            type: aiResponse.type
+        });
+
+        session.messages.push({
+            role: 'assistant',
+            content: aiResponse.response,
+            timestamp: Date.now(),
+            type: aiResponse.type
+        });
+
+        // Keep only last 10 messages
+        if (session.messages.length > 10) {
+            session.messages = session.messages.slice(-10);
+        }
+
+        res.json({
+            response: aiResponse.response,
+            type: aiResponse.type,
+            sessionId
+        });
 
     } catch (error) {
-        console.error("❌ Error in handleChatMessage:", error);
-        return "I apologize, but I'm having trouble processing your message. Please try again.";
+        console.error("Error handling chat message:", error);
+        res.status(500).json({ 
+            error: "An error occurred while processing your message" 
+        });
     }
 };
 

@@ -24,63 +24,26 @@ const CHATBOT_PERSONALITY = {
     ]
 };
 
-// Conversation stage tracking
-const CONVERSATION_STAGES = {
-    GREETING: 'greeting',
-    UNDERSTANDING_NEEDS: 'understanding_needs',
-    PROVIDING_INFO: 'providing_info',
-    CONTACT_COLLECTION: 'contact_collection'
-};
+// Common greetings and their variations
+const GREETINGS = [
+    'hi', 'hello', 'hey', 'good morning', 'good afternoon', 
+    'good evening', 'hi there', 'hello there', 'greetings'
+];
 
 // Enhanced response templates for different stages
 const RESPONSE_TEMPLATES = {
-    greeting: {
-        initial: "Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs.",
-        followUp: "Is there a specific dental service you'd like to know more about?"
-    },
-    services_list: "Here are the dental services we offer:\n{services_list}\n\nWhich service would you like to know more about?",
-    
-    treatments: {
-        "veneers": {
-            description: "Dental veneers are thin, custom-made shells of tooth-colored porcelain that cover the front surface of your teeth. They're an excellent solution for teeth that are stained, chipped, or have gaps. The procedure is minimally invasive and can dramatically improve your smile's appearance."
-        },
-        "whitening": {
-            description: "Professional teeth whitening is a safe and effective way to remove stains and brighten your smile. We use advanced whitening techniques that can make your teeth several shades lighter in just one session."
-        },
-        "bonding": {
-            description: "Dental bonding is a procedure where we apply a tooth-colored resin material to repair chipped, cracked, or discolored teeth. It's a cost-effective and quick solution for minor cosmetic dental issues."
-        },
-        "invisalign": {
-            description: "Invisalign uses a series of clear, removable aligners to gradually straighten your teeth. Unlike traditional braces, they're virtually invisible and can be removed for eating and cleaning."
-        },
-        "crown": {
-            description: "A dental crown is a cap that covers a damaged tooth to restore its shape, size, strength, and appearance. Crowns can protect weak teeth, restore broken teeth, or cover severely discolored teeth."
-        },
-        "implant": {
-            description: "Dental implants are titanium posts surgically placed into your jawbone to replace missing teeth roots. They provide a strong foundation for permanent or removable replacement teeth that match your natural teeth."
-        },
-        "cleaning": {
-            description: "Professional dental cleaning removes plaque and tartar buildup that regular brushing can't reach. This preventive care is essential for maintaining healthy teeth and gums and preventing dental problems."
-        }
-    },
-    
-    service_info: {
-        "Cosmetic Dentistry": {
-            description: "Yes! We offer a comprehensive range of cosmetic dentistry services including professional teeth whitening, porcelain veneers, dental bonding, smile makeovers, and Invisalign clear aligners.\n\n" +
-                "I'd be happy to help you schedule a consultation with our cosmetic dentistry specialist. Could you please provide:\n" +
-                "• Your name\n" +
-                "• Phone number\n" +
-                "• Email\n\n" +
-                "This will help us contact you and discuss your specific cosmetic dentistry needs.",
-            followUp: "Which cosmetic dental service interests you the most?"
-        }
-    },
-    
-    dental_concerns: {
-        discoloration: "I understand your concern about the discoloration on your tooth. To schedule an examination, please provide your:\n• Name\n• Phone number\n• Email",
-        cavity: "I understand your concern about what might be a cavity. To schedule an examination, please provide your:\n• Name\n• Phone number\n• Email",
-        general: "I understand your dental concern. To schedule an examination, please provide your:\n• Name\n• Phone number\n• Email"
-    }
+    greeting: "Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
+    understanding: "I understand you need help with that. Could you tell me more about what you're looking for?",
+    contact_request: "I understand you need help with that. If you could share your name, phone number, and email, I'll have our dental team reach out to assist you personally.",
+    emergency: "I'm sorry to hear you're in pain. Let me help get you taken care of right away. Could you share your name, phone number, and email so our dental team can contact you immediately?",
+    service_inquiry: (service) => `${service.description}\n\nI can help you schedule a time to come in. Just share your name, phone number, and email, and our team will get back to you to find a time that works best for you.`,
+    contact_confirmation: (name, service, phone) => 
+        `✅ Thank you ${name} for showing interest in ${service}. We believe we can help you, and we will contact you on ${phone} as soon as possible.`
+};
+
+const isGreeting = (message) => {
+    const normalizedMsg = message.toLowerCase().trim();
+    return GREETINGS.some(greeting => normalizedMsg.includes(greeting)) && message.length < 20;
 };
 
 const handleServiceInquiry = async (message, context) => {
@@ -92,26 +55,105 @@ const handleServiceInquiry = async (message, context) => {
         normalizedMessage.includes(service.name.toLowerCase())
     );
 
+    // If asking about a specific service
     if (matchingService) {
+        const response = matchingService.description 
+            ? `${matchingService.description} I'd love to tell you more about this in person - would you like to schedule a consultation? Just share your name and contact details, and I'll make sure you're booked with the right specialist.`
+            : `We do offer ${matchingService.name}. I'd be happy to have one of our specialists discuss this with you in detail. If you'd like to learn more, I can schedule a consultation - just share your name, phone number, and email.`;
+
         return {
-            response: `${matchingService.description}\n\nI can help you schedule a time to come in. Just share your name, phone number, and email, and our team will get back to you to find a time that works best for you.`,
+            matchingService,
+            response,
             detectedService: matchingService.name,
             shouldAskContact: true
         };
     }
 
-    // If no service found, politely ask for contact
+    // If asking about services in general
     if (normalizedMessage.includes('service') || 
         normalizedMessage.includes('provide') || 
-        normalizedMessage.includes('offer')) {
+        normalizedMessage.includes('offer') ||
+        normalizedMessage.includes('what') ||
+        normalizedMessage.includes('which')) {
+        
+        // Group services by category if available
+        const servicesByCategory = services.reduce((acc, service) => {
+            const category = service.category || 'General Services';
+            if (!acc[category]) acc[category] = [];
+            acc[category].push(service.name);
+            return acc;
+        }, {});
+
+        let servicesList = '';
+        if (Object.keys(servicesByCategory).length > 1) {
+            // If we have categories, list services by category
+            servicesList = Object.entries(servicesByCategory)
+                .map(([category, services]) => 
+                    `${category}:\n${services.map(s => `• ${s}`).join('\n')}`
+                )
+                .join('\n\n');
+        } else {
+            // Simple list if no categories
+            servicesList = services.map(s => `• ${s.name}`).join('\n');
+        }
+
+        const response = `We offer a comprehensive range of dental services including:\n\n${servicesList}\n\nIs there a particular service you'd like to know more about? I'd be happy to explain any of these in detail or help you schedule an appointment.`;
+
         return {
-            response: "I'd love to help you find exactly what you need. Share your contact info with me, and our dental team will reach out to discuss how we can best help you.",
+            matchingService: null,
+            response,
             detectedService: null,
-            shouldAskContact: true
+            shouldAskContact: false
         };
     }
 
     return null;
+};
+
+const generateEmergencyResponse = (messageHistory, message) => {
+    // If this is the first mention of pain
+    if (!messageHistory.some(msg => msg.content?.toLowerCase().includes('pain'))) {
+        return {
+            type: 'EMERGENCY',
+            response: "I understand you're experiencing discomfort. Let me help you schedule an appointment with our dental team. Could you share your name, phone number, and email?"
+        };
+    }
+
+    // If they're asking about treatment without providing contact
+    if (message.toLowerCase().includes('how') || message.toLowerCase().includes('what')) {
+        return {
+            type: 'EMERGENCY',
+            response: "Our dental team will need to examine you in person. Could you share your contact details so we can schedule an appointment for you?"
+        };
+    }
+
+    // If they've asked multiple times without providing contact
+    return {
+        type: 'EMERGENCY',
+        response: "I'd like to help you schedule an appointment with our dental team. Could you share your contact information so we can get that set up for you?"
+    };
+};
+
+const generateServiceResponse = (service, messageHistory) => {
+    if (!service) {
+        return "I can help you schedule an appointment with the right specialist. What's the best way to reach you?";
+    }
+
+    // Check if we've already described this service
+    const previousServiceMention = messageHistory.find(msg => 
+        msg.type === 'SERVICE_INQUIRY' && msg.detectedService === service.name
+    );
+
+    if (previousServiceMention) {
+        return `Great choice! I can get you scheduled for ${service.name}. What's the best phone number and email to reach you at?`;
+    }
+
+    // If service has a description, use it, otherwise use a generic response
+    if (service.description) {
+        return `${service.description}\n\nWould you like to schedule a consultation to learn more? Just let me know your contact details, and I'll have our ${service.name} specialist reach out to you.`;
+    }
+
+    return `I'd be happy to have our ${service.name} specialist tell you more about this service in person. Would you like me to arrange a consultation? Just share your contact details, and I'll take care of the rest.`;
 };
 
 export const generateAIResponse = async (message, businessData, messageHistory = []) => {
@@ -127,20 +169,25 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 type: 'CONTACT_INFO',
                 contactInfo,
                 serviceInterest: service,
-                response: `✅ Thank you ${contactInfo.name} for showing interests in ${service}, we believe we will help you, we will contact you on ${contactInfo.phone} as soon as possible, if you experience big pain call us immediately on ${businessData.phone}`
+                response: `Perfect, thank you ${contactInfo.name}! I'll have our team reach out to you at ${contactInfo.phone} to schedule your appointment${service !== 'our dental services' ? ` for ${service}` : ''}. They'll be able to answer any additional questions you might have.`
             };
         }
 
-        // Check for emergency keywords first
+        // Handle initial greeting
+        if (messageHistory.length === 0 || isGreeting(message)) {
+            return {
+                type: 'GREETING',
+                response: "Hi there! I'm here to help you learn about our services or schedule an appointment. What brings you in today?"
+            };
+        }
+
+        // Check for emergency keywords
         if (normalizedMessage.includes('pain') || 
             normalizedMessage.includes('hurt') || 
             normalizedMessage.includes('emergency') ||
             normalizedMessage.includes('bleeding') ||
             normalizedMessage.includes('swollen')) {
-            return {
-                type: 'EMERGENCY',
-                response: "I'm sorry to hear you're in pain. Let me help get you taken care of right away. Could you share your name, phone number, and email so our dental team can contact you immediately?"
-            };
+            return generateEmergencyResponse(messageHistory, message);
         }
 
         // Check for service inquiries
@@ -153,17 +200,31 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             };
         }
 
+        // If the message is short and doesn't provide much context
+        if (message.length < 30 && messageHistory.length < 2) {
+            return {
+                type: 'UNDERSTANDING',
+                response: "I'd be happy to help. Could you tell me more about what you're interested in? That way, I can provide the most relevant information or connect you with the right specialist."
+            };
+        }
+
         // Default response for any other message
+        const hasAskedForContact = messageHistory.some(msg => 
+            msg.role === 'assistant' && msg.content.toLowerCase().includes('contact')
+        );
+
         return {
             type: 'DEFAULT',
-            response: "I understand you need help with that. If you could share your name, phone number, and email, I'll have our dental team reach out to assist you personally."
+            response: hasAskedForContact
+                ? "I'd love to help you with that. To get you scheduled with the right specialist, could you share your contact information?"
+                : "I can definitely help you with that. Would you like to schedule a consultation? Just share your name, phone number, and email, and I'll take care of the rest."
         };
 
     } catch (error) {
         console.error("❌ Error generating AI response:", error);
         return {
             type: 'ERROR',
-            response: "I want to make sure you get the help you need. Could you share your contact details so our team can reach out to you directly?"
+            response: "I want to make sure I understand exactly what you're looking for. Could you rephrase that for me?"
         };
     }
 };
