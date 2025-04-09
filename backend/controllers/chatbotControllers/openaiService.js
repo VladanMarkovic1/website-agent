@@ -30,12 +30,22 @@ const GREETINGS = [
     'good evening', 'hi there', 'hello there', 'greetings'
 ];
 
+// Dental problem indicators
+const DENTAL_PROBLEMS = {
+    pain: ['pain', 'hurt', 'ache', 'hurts', 'hurting', 'aching', 'painful'],
+    sensitivity: ['sensitive', 'sensitivity', 'cold', 'hot', 'sweet'],
+    damage: ['broken', 'chipped', 'cracked', 'loose', 'missing'],
+    emergency: ['bleeding', 'swollen', 'swelling', 'infection', 'abscess'],
+    general: ['cavity', 'decay', 'filling', 'tooth', 'teeth', 'gum', 'jaw']
+};
+
 // Common response templates
 const RESPONSE_TEMPLATES = {
     greeting: "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
     understanding: "I understand you need help with that. Could you tell me more about what you're looking for?",
     contact_request: "I understand you need help with that. Please share your name, phone number, and email so our dental team can assist you personally. 😊",
     emergency: "I'm so sorry to hear you're in pain! 😟 Let me help get you taken care of right away. Please share your name, phone number, and email so our dental team can contact you immediately.",
+    dental_problem: (problem) => `I understand you're experiencing issues with ${problem}. Our dental team will need to examine this. Could you share your name, phone number, and email so we can schedule you for an examination?`,
     service_inquiry: (service) => `${service.description}\n\nPlease share your name, phone number, and email, and our team will get back to you to find a time that works best for you.`,
     contact_confirmation: (name, service, phone) => 
         `✅ Thank you ${name} for showing interest in ${service}! We believe we can help you, and we will contact you on ${phone} as soon as possible. 😊`
@@ -44,6 +54,23 @@ const RESPONSE_TEMPLATES = {
 const isGreeting = (message) => {
     const normalizedMsg = message.toLowerCase().trim();
     return GREETINGS.some(greeting => normalizedMsg.includes(greeting)) && message.length < 20;
+};
+
+const isDentalProblem = (message) => {
+    const normalizedMsg = message.toLowerCase().trim();
+    
+    // Check each category of dental problems
+    for (const [category, keywords] of Object.entries(DENTAL_PROBLEMS)) {
+        if (keywords.some(keyword => normalizedMsg.includes(keyword))) {
+            return {
+                isIssue: true,
+                category,
+                severity: category === 'emergency' ? 'high' : 'normal'
+            };
+        }
+    }
+    
+    return { isIssue: false };
 };
 
 const handleServiceInquiry = async (message, context) => {
@@ -207,118 +234,59 @@ const generateServiceResponse = (service, messageHistory) => {
 export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false) => {
     try {
         const normalizedMessage = message.toLowerCase();
-        
-        // If it's a new session and the message is "hello", send the greeting
-        if (isNewSession && normalizedMessage === "hello") {
-            return {
-                type: 'GREETING',
-                response: "👋 Hi there! I'm here to help you learn about our services or schedule an appointment. What brings you in today? 😊"
-            };
-        }
-
-        // Check for service inquiries first
-        if (normalizedMessage.includes('service') || 
-            normalizedMessage.includes('provide') || 
-            normalizedMessage.includes('offer') ||
-            normalizedMessage.match(/\b(what|which)\b/)) {
-            
-            const services = businessData.services || [];
-            console.log("Processing service inquiry with services:", services.map(s => s.name));
-            
-            if (!services || services.length === 0) {
-                return {
-                    type: 'SERVICE_INQUIRY',
-                    response: "I apologize, but I don't have access to the services list at the moment. Please contact our office directly for information about our services."
-                };
-            }
-
-            // Create a formatted list of services
-            const servicesList = services.map(s => `• ${s.name}`).join('\n');
-            
-            return {
-                type: 'SERVICE_INQUIRY',
-                response: `Here are all the dental services we offer:\n\n${servicesList}\n\nTo discuss which service would be best for your specific needs, I'd be happy to connect you with our dental team. Please share your name, phone number, and email. 😊`
-            };
-        }
 
         // Check for contact information first
         const contactInfo = extractContactInfo(message);
         if (contactInfo && contactInfo.name && contactInfo.phone && contactInfo.email) {
-            // Get the exact service from the conversation context
-            const lastServiceInquiry = messageHistory.find(msg => msg.type === 'SERVICE_INQUIRY');
-            const currentServiceInquiry = await handleServiceInquiry(message, businessData);
-            
-            // Use the exact service name from the most recent context
-            const serviceContext = currentServiceInquiry?.detectedService || 
-                                 lastServiceInquiry?.detectedService || 
-                                 messageHistory.find(msg => msg.serviceContext)?.serviceContext;
-            
-            // Don't default to any generic service if none is found
             return {
                 type: 'CONTACT_INFO',
+                response: RESPONSE_TEMPLATES.contact_confirmation(
+                    contactInfo.name,
+                    contactInfo.service || 'our dental services',
+                    contactInfo.phone
+                ),
                 contactInfo,
-                serviceContext: serviceContext, // This will be undefined if no service was discussed
-                response: `Perfect, thank you ${contactInfo.name}! I'll have our team reach out to you at ${contactInfo.phone}${serviceContext ? ` to schedule your appointment for ${serviceContext}` : ''}. They'll be able to answer any additional questions you might have. If you experience big pain or discomfort please call us immediately on ${businessData.contactDetails?.phone || businessData.phone}. 😊`
+                serviceContext: contactInfo.service
+            };
+        }
+
+        // Check for dental problems
+        const dentalProblem = isDentalProblem(message);
+        if (dentalProblem.isIssue) {
+            return {
+                type: 'DENTAL_PROBLEM',
+                response: dentalProblem.severity === 'high' 
+                    ? RESPONSE_TEMPLATES.emergency
+                    : RESPONSE_TEMPLATES.dental_problem(dentalProblem.category),
+                problemCategory: dentalProblem.category,
+                severity: dentalProblem.severity
             };
         }
 
         // Handle initial greeting
-        if (messageHistory.length === 0 || isGreeting(message)) {
+        if (isNewSession || isGreeting(message)) {
             return {
                 type: 'GREETING',
-                response: "👋 Hi there! I'm here to help you learn about our services or schedule an appointment. What brings you in today? 😊"
+                response: RESPONSE_TEMPLATES.greeting
             };
         }
 
-        // Check for service inquiries first before emergency
-        const serviceInquiryResponse = await handleServiceInquiry(message, businessData);
-        if (serviceInquiryResponse) {
-            const serviceName = serviceInquiryResponse.detectedService;
-            return {
-                type: 'SERVICE_INQUIRY',
-                detectedService: serviceName,
-                serviceContext: serviceName,
-                response: serviceInquiryResponse.response
-            };
+        // Check for service inquiries
+        const serviceInquiry = await handleServiceInquiry(message, businessData);
+        if (serviceInquiry) {
+            return serviceInquiry;
         }
 
-        // Check for emergency keywords
-        if (normalizedMessage.includes('pain') || 
-            normalizedMessage.includes('hurt') || 
-            normalizedMessage.includes('emergency') ||
-            normalizedMessage.includes('bleeding') ||
-            normalizedMessage.includes('swollen')) {
-            return {
-                ...generateEmergencyResponse(messageHistory, message),
-                serviceContext: 'Emergency Care'
-            };
-        }
-
-        // If the message is short and doesn't provide much context
-        if (message.length < 30 && messageHistory.length < 2) {
-            return {
-                type: 'UNDERSTANDING',
-                response: "I'd be happy to help. Could you tell me more about what you're interested in? That way, I can provide the most relevant information or connect you with the right specialist."
-            };
-        }
-
-        // Default response for any other message
-        const hasAskedForContact = messageHistory.some(msg => 
-            msg.role === 'assistant' && msg.content.toLowerCase().includes('contact')
-        );
-
+        // Default response asking for more information
         return {
-            type: 'DEFAULT',
-            response: hasAskedForContact
-                ? "I'd love to help you with that. To get you scheduled with the right specialist, please share your name, phone number, and email."
-                : "I can definitely help you with that. Would you like to schedule a consultation? Please share your name, phone number, and email, and I'll take care of the rest."
+            type: 'GENERAL_INQUIRY',
+            response: RESPONSE_TEMPLATES.understanding
         };
-
     } catch (error) {
-        console.error("❌ Error generating AI response:", error);
+        console.error("Error generating AI response:", error);
         return {
             type: 'ERROR',
-            response: "I want to make sure I understand exactly what you're looking for. Could you rephrase that for me?"
+            response: "I apologize, but I'm having trouble understanding. Could you please rephrase that?"
         };
     }
 };

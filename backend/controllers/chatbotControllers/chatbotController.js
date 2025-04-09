@@ -41,7 +41,8 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 businessId,
                 contactInfo: null,
                 serviceInterest: null,
-                isFirstMessage: true // Add flag for first message
+                isFirstMessage: true,
+                problemDescription: null  // Track the user's dental problem
             };
             sessions.set(sessionId, session);
         }
@@ -84,21 +85,31 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 isNewSession
             );
 
+            // Store problem description if it's a dental issue and not already stored
+            const dentalKeywords = ['pain', 'hurt', 'ache', 'sensitive', 'broken', 'chipped', 
+                                  'bleeding', 'swollen', 'cavity', 'tooth', 'teeth', 'gum'];
+            if (!session.problemDescription && 
+                !aiResponse.type.includes('CONTACT_INFO') && 
+                !aiResponse.type.includes('GREETING') &&
+                dentalKeywords.some(keyword => message.toLowerCase().includes(keyword))) {
+                session.problemDescription = message;
+            }
+
             // Handle contact information and save lead
             if (aiResponse.type === 'CONTACT_INFO') {
                 const { contactInfo, serviceContext } = aiResponse;
                 
                 try {
-                    // Save the lead
+                    // Save the lead with the problem description
                     await saveLead(
                         businessId,
                         contactInfo,
                         serviceContext || 'General Inquiry',
                         {
-                            initialMessage: message,
+                            initialMessage: session.problemDescription || message,
                             reason: serviceContext 
                                 ? `Chat inquiry about ${serviceContext}` 
-                                : 'General chat inquiry'
+                                : `Patient's Concern: ${session.problemDescription || 'No specific concern mentioned'}\nService: General Inquiry`
                         }
                     );
 
