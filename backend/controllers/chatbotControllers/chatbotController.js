@@ -4,6 +4,7 @@ import { saveLead } from "../leadControllers/leadController.js";
 import dotenv from "dotenv";
 import { generateAIResponse } from "./openaiService.js";
 import ChatAnalytics from "../../models/ChatAnalytics.js";
+import { trackChatEvent } from "../analyticsControllers/analyticsService.js";
 
 // In-memory session storage
 const sessions = new Map();
@@ -39,9 +40,20 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 lastActivity: Date.now(),
                 businessId,
                 contactInfo: null,
-                serviceInterest: null
+                serviceInterest: null,
+                isFirstMessage: true // Add flag for first message
             };
             sessions.set(sessionId, session);
+        }
+
+        // Track new conversation only on first actual message
+        if (session.isFirstMessage) {
+            try {
+                await trackChatEvent(businessId, 'NEW_CONVERSATION');
+                session.isFirstMessage = false; // Mark that first message has been sent
+            } catch (error) {
+                console.error("Error tracking new conversation:", error);
+            }
         }
 
         // Update session activity
@@ -92,6 +104,9 @@ const processChatMessage = async (message, sessionId, businessId) => {
 
                     console.log(`✅ Lead saved successfully for ${contactInfo.name}`);
                     
+                    // Track new lead with service context
+                    await trackChatEvent(businessId, 'NEW_LEAD', { service: serviceContext });
+                    
                     // Update session with contact info
                     session.contactInfo = contactInfo;
                     session.serviceInterest = serviceContext;
@@ -100,17 +115,11 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 }
             }
 
-            // Update analytics for new sessions
-            if (isNewSession) {
-                try {
-                    await ChatAnalytics.findOneAndUpdate(
-                        { businessId, date: new Date().toISOString().split('T')[0] },
-                        { $inc: { totalConversations: 1 } },
-                        { upsert: true, new: true }
-                    );
-                } catch (error) {
-                    console.error("Error updating analytics:", error);
-                }
+            // Track hourly activity
+            try {
+                await trackChatEvent(businessId, 'HOURLY_ACTIVITY');
+            } catch (error) {
+                console.error("Error tracking hourly activity:", error);
             }
 
             // Update message history
@@ -133,6 +142,15 @@ const processChatMessage = async (message, sessionId, businessId) => {
             // Keep only last 10 messages
             if (session.messages.length > 10) {
                 session.messages = session.messages.slice(-10);
+            }
+
+            // Track conversation completion if it's a goodbye message
+            if (aiResponse.type === 'GOODBYE' && session.contactInfo) {
+                try {
+                    await trackChatEvent(businessId, 'CONVERSATION_COMPLETED');
+                } catch (error) {
+                    console.error("Error tracking conversation completion:", error);
+                }
             }
 
             return {

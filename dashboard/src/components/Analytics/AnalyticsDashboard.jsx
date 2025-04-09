@@ -25,7 +25,7 @@ const AnalyticsDashboard = () => {
                 const today = new Date();
                 const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
                 
-                const [todayData, analyticsData] = await Promise.all([
+                const [todayResponse, analyticsResponse] = await Promise.all([
                     getTodaysAnalytics(businessId),
                     getAnalyticsData(
                         businessId, 
@@ -34,17 +34,25 @@ const AnalyticsDashboard = () => {
                     )
                 ]);
 
-                setTodaysSummary(todayData);
-                setAnalytics(analyticsData);
+                if (!todayResponse.success || !analyticsResponse.success) {
+                    throw new Error(todayResponse.error || analyticsResponse.error || 'Failed to load analytics');
+                }
+
+                setTodaysSummary(todayResponse.data);
+                setAnalytics(analyticsResponse.data);
             } catch (error) {
                 console.error('Error fetching analytics:', error);
-                setError(error.response?.data?.error || 'Failed to load analytics data');
+                setError(error.response?.data?.error || error.message || 'Failed to load analytics data');
             } finally {
                 setLoading(false);
             }
         };
 
         fetchData();
+
+        const pollInterval = setInterval(fetchData, 30000);
+
+        return () => clearInterval(pollInterval);
     }, [businessId]);
 
     if (!businessId) {
@@ -75,73 +83,39 @@ const AnalyticsDashboard = () => {
 
             {!loading && !error && todaysSummary && (
                 <div className="space-y-6">
-                    {/* Today's Summary */}
+                    {/* Main Metrics */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-white rounded-lg shadow p-4">
-                            <h3 className="text-lg font-semibold text-gray-700">Today's Leads</h3>
-                            <p className="text-3xl font-bold text-blue-600">{todaysSummary.today?.totalLeads || 0}</p>
+                            <h3 className="text-lg font-semibold text-gray-700">All Captured Leads</h3>
+                            <p className="text-3xl font-bold text-blue-600">{todaysSummary.allTime?.totalLeads || 0}</p>
                         </div>
                         <div className="bg-white rounded-lg shadow p-4">
                             <h3 className="text-lg font-semibold text-gray-700">Total Chats</h3>
-                            <p className="text-3xl font-bold text-green-600">{todaysSummary.today?.totalConversations || 0}</p>
+                            <p className="text-3xl font-bold text-green-600">{todaysSummary.allTime?.totalConversations || 0}</p>
                         </div>
                         <div className="bg-white rounded-lg shadow p-4">
                             <h3 className="text-lg font-semibold text-gray-700">Conversion Rate</h3>
                             <p className="text-3xl font-bold text-purple-600">
-                                {todaysSummary.today?.conversionRate ? todaysSummary.today.conversionRate.toFixed(1) : '0'}%
+                                {todaysSummary.allTime?.conversionRate ? todaysSummary.allTime.conversionRate.toFixed(1) : '0'}%
                             </p>
                         </div>
                     </div>
 
-                    {/* Lead Status */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Today's Lead Status */}
-                        <div className="bg-white rounded-lg shadow p-4">
-                            <h3 className="text-lg font-semibold text-gray-700 mb-4">Today's Lead Status</h3>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="text-center">
-                                    <p className="text-xl font-bold text-blue-600">
-                                        {todaysSummary.today?.leadStatus?.new || 0}
-                                    </p>
-                                    <p className="text-gray-600">New</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-xl font-bold text-yellow-600">
-                                        {todaysSummary.today?.leadStatus?.contacted || 0}
-                                    </p>
-                                    <p className="text-gray-600">Contacted</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-xl font-bold text-green-600">
-                                        {todaysSummary.today?.leadStatus?.converted || 0}
-                                    </p>
-                                    <p className="text-gray-600">Converted</p>
-                                </div>
+                    {/* Today's Stats */}
+                    <div className="bg-white rounded-lg shadow p-4">
+                        <h3 className="text-lg font-semibold text-gray-700 mb-4">Today's Stats</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="text-center">
+                                <p className="text-xl font-bold text-blue-600">
+                                    {todaysSummary.today?.totalLeads || 0}
+                                </p>
+                                <p className="text-gray-600">Today's Captured Leads</p>
                             </div>
-                        </div>
-
-                        {/* All-time Lead Status */}
-                        <div className="bg-white rounded-lg shadow p-4">
-                            <h3 className="text-lg font-semibold text-gray-700 mb-4">All-time Lead Status</h3>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="text-center">
-                                    <p className="text-xl font-bold text-blue-600">
-                                        {todaysSummary.allTime?.leadStatus?.new || 0}
-                                    </p>
-                                    <p className="text-gray-600">New</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-xl font-bold text-yellow-600">
-                                        {todaysSummary.allTime?.leadStatus?.contacted || 0}
-                                    </p>
-                                    <p className="text-gray-600">Contacted</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-xl font-bold text-green-600">
-                                        {todaysSummary.allTime?.leadStatus?.converted || 0}
-                                    </p>
-                                    <p className="text-gray-600">Converted</p>
-                                </div>
+                            <div className="text-center">
+                                <p className="text-xl font-bold text-green-600">
+                                    {todaysSummary.today?.totalConversations || 0}
+                                </p>
+                                <p className="text-gray-600">Today's Chats</p>
                             </div>
                         </div>
                     </div>

@@ -59,13 +59,13 @@ export const trackChatEvent = async (businessId, eventType, data = {}) => {
                 analytics.leadStatus.new += 1;
                 allTime.leadStatus.new += 1;
                 
-                // Calculate conversion rates
-                analytics.conversionRate = analytics.totalConversations > 0 
-                    ? (analytics.totalLeads / analytics.totalConversations) * 100
-                    : 0;
-                allTime.conversionRate = allTime.totalConversations > 0 
+                // Calculate conversion rates using all-time numbers for both
+                const allTimeRate = allTime.totalConversations > 0 
                     ? (allTime.totalLeads / allTime.totalConversations) * 100
                     : 0;
+                
+                analytics.conversionRate = allTimeRate;
+                allTime.conversionRate = allTimeRate;
                 
                 // Track service interest
                 if (data.service) {
@@ -196,12 +196,38 @@ export const getTodaysSummary = async (businessId) => {
             conversionRate: 0
         };
 
+        // Ensure we have valid data objects
+        const todayData = todayAnalytics || { ...defaultAnalytics, date: today };
+        const allTimeData = allTimeAnalytics || { ...defaultAnalytics, date: null };
+
+        // Calculate all-time conversion rate
+        const allTimeConversionRate = allTimeData.totalConversations > 0 
+            ? (allTimeData.totalLeads / allTimeData.totalConversations) * 100
+            : 0;
+
+        // Format response to match frontend expectations
         return {
-            today: todayAnalytics || { ...defaultAnalytics, date: today },
-            allTime: allTimeAnalytics || { ...defaultAnalytics, date: null }
+            success: true,
+            data: {
+                today: {
+                    totalLeads: todayData.totalLeads,
+                    leadsByService: todayData.leadsByService,
+                    leadStatus: todayData.leadStatus,
+                    totalConversations: todayData.totalConversations,
+                    completedConversations: todayData.completedConversations,
+                    hourlyActivity: todayData.hourlyActivity,
+                    conversionRate: todayData.conversionRate,
+                    date: today
+                },
+                allTime: {
+                    totalLeads: allTimeData.totalLeads,
+                    totalConversations: allTimeData.totalConversations,
+                    conversionRate: allTimeConversionRate
+                }
+            }
         };
     } catch (error) {
-        console.error('Error fetching today\'s summary:', error);
+        console.error('Error fetching today\'s analytics:', error);
         throw error;
     }
 }; 
