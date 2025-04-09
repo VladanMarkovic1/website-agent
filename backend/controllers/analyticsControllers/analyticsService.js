@@ -8,129 +8,109 @@ export const trackChatEvent = async (businessId, eventType, data = {}) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Get both today's and all-time analytics
-        const [todayAnalytics, allTimeAnalytics] = await Promise.all([
-            ChatAnalytics.findOne({ businessId, date: today }),
-            ChatAnalytics.findOne({ businessId, date: null }) // null date represents all-time stats
-        ]);
-
-        // Initialize today's analytics if not exists
-        const analytics = todayAnalytics || new ChatAnalytics({
-            businessId,
-            date: today,
-            totalLeads: 0,
-            leadsByService: {},
-            leadStatus: { new: 0, contacted: 0, converted: 0 },
-            totalConversations: 0,
-            completedConversations: 0,
-            hourlyActivity: {},
-            conversionRate: 0
-        });
-
-        // Initialize all-time analytics if not exists
-        const allTime = allTimeAnalytics || new ChatAnalytics({
-            businessId,
-            date: null,
-            totalLeads: 0,
-            leadsByService: {},
-            leadStatus: { new: 0, contacted: 0, converted: 0 },
-            totalConversations: 0,
-            completedConversations: 0,
-            hourlyActivity: {},
-            conversionRate: 0
-        });
+        let updateTodayOps = {};
+        let updateAllTimeOps = {};
 
         switch (eventType) {
             case 'NEW_CONVERSATION':
-                analytics.totalConversations += 1;
-                allTime.totalConversations += 1;
+                updateTodayOps = { $inc: { totalConversations: 1 } };
+                updateAllTimeOps = { $inc: { totalConversations: 1 } };
                 break;
 
             case 'CONVERSATION_COMPLETED':
-                analytics.completedConversations += 1;
-                allTime.completedConversations += 1;
+                updateTodayOps = { $inc: { completedConversations: 1 } };
+                updateAllTimeOps = { $inc: { completedConversations: 1 } };
                 break;
 
             case 'NEW_LEAD':
-                analytics.totalLeads += 1;
-                allTime.totalLeads += 1;
+                updateTodayOps = {
+                    $inc: {
+                        totalLeads: 1,
+                        'leadStatus.new': 1
+                    }
+                };
+                updateAllTimeOps = {
+                    $inc: {
+                        totalLeads: 1,
+                        'leadStatus.new': 1
+                    }
+                };
                 
-                // New leads always start as 'new'
-                analytics.leadStatus.new += 1;
-                allTime.leadStatus.new += 1;
-                
-                // Calculate conversion rates using all-time numbers for both
-                const allTimeRate = allTime.totalConversations > 0 
-                    ? (allTime.totalLeads / allTime.totalConversations) * 100
-                    : 0;
-                
-                analytics.conversionRate = allTimeRate;
-                allTime.conversionRate = allTimeRate;
-                
-                // Track service interest
                 if (data.service) {
-                    analytics.leadsByService[data.service] = (analytics.leadsByService[data.service] || 0) + 1;
-                    allTime.leadsByService[data.service] = (allTime.leadsByService[data.service] || 0) + 1;
+                    updateTodayOps.$inc[`leadsByService.${data.service}`] = 1;
+                    updateAllTimeOps.$inc[`leadsByService.${data.service}`] = 1;
                 }
                 break;
 
             case 'LEAD_STATUS_UPDATE':
                 if (data.oldStatus && data.newStatus && data.oldStatus !== data.newStatus) {
-                    // Update today's status
-                    if (analytics.leadStatus[data.oldStatus] > 0) {
-                        analytics.leadStatus[data.oldStatus] -= 1;
-                        analytics.leadStatus[data.newStatus] = (analytics.leadStatus[data.newStatus] || 0) + 1;
-                    }
-                    
-                    // Update all-time status
-                    if (allTime.leadStatus[data.oldStatus] > 0) {
-                        allTime.leadStatus[data.oldStatus] -= 1;
-                        allTime.leadStatus[data.newStatus] = (allTime.leadStatus[data.newStatus] || 0) + 1;
-                    }
-                    
-                    console.log('Updated lead status:', {
-                        oldStatus: data.oldStatus,
-                        newStatus: data.newStatus,
-                        todayStatus: analytics.leadStatus,
-                        allTimeStatus: allTime.leadStatus
-                    });
+                    updateTodayOps = {
+                        $inc: {
+                            [`leadStatus.${data.oldStatus}`]: -1,
+                            [`leadStatus.${data.newStatus}`]: 1
+                        }
+                    };
+                    updateAllTimeOps = {
+                        $inc: {
+                            [`leadStatus.${data.oldStatus}`]: -1,
+                            [`leadStatus.${data.newStatus}`]: 1
+                        }
+                    };
                 }
                 break;
 
             case 'HOURLY_ACTIVITY':
                 const hour = new Date().getHours().toString();
-                analytics.hourlyActivity[hour] = (analytics.hourlyActivity[hour] || 0) + 1;
-                allTime.hourlyActivity[hour] = (allTime.hourlyActivity[hour] || 0) + 1;
+                updateTodayOps = { $inc: { [`hourlyActivity.${hour}`]: 1 } };
+                updateAllTimeOps = { $inc: { [`hourlyActivity.${hour}`]: 1 } };
                 break;
         }
 
-        // Ensure rates are realistic
-        analytics.conversionRate = Math.min(analytics.conversionRate, 100);
-        allTime.conversionRate = Math.min(allTime.conversionRate, 100);
-
-        // Log the final state before saving
-        console.log('Final analytics state:', {
-            today: {
-                totalLeads: analytics.totalLeads,
-                leadStatus: analytics.leadStatus,
-                totalConversations: analytics.totalConversations,
-                conversionRate: analytics.conversionRate
-            },
-            allTime: {
-                totalLeads: allTime.totalLeads,
-                leadStatus: allTime.leadStatus,
-                totalConversations: allTime.totalConversations,
-                conversionRate: allTime.conversionRate
-            }
-        });
-
-        // Save both analytics
-        await Promise.all([
-            analytics.save(),
-            allTime.save()
+        // Execute updates atomically
+        const [todayAnalytics, allTimeAnalytics] = await Promise.all([
+            ChatAnalytics.findOneAndUpdate(
+                { businessId, date: today },
+                updateTodayOps,
+                { 
+                    new: true, 
+                    upsert: true,
+                    setDefaultsOnInsert: true 
+                }
+            ),
+            ChatAnalytics.findOneAndUpdate(
+                { businessId, date: null },
+                updateAllTimeOps,
+                { 
+                    new: true, 
+                    upsert: true,
+                    setDefaultsOnInsert: true 
+                }
+            )
         ]);
 
-        return { today: analytics, allTime };
+        // Calculate and update conversion rate
+        if (allTimeAnalytics.totalConversations > 0) {
+            const conversionRate = Math.min(
+                (allTimeAnalytics.totalLeads / allTimeAnalytics.totalConversations) * 100,
+                100
+            );
+
+            await Promise.all([
+                ChatAnalytics.findOneAndUpdate(
+                    { businessId, date: today },
+                    { $set: { conversionRate } }
+                ),
+                ChatAnalytics.findOneAndUpdate(
+                    { businessId, date: null },
+                    { $set: { conversionRate } }
+                )
+            ]);
+
+            todayAnalytics.conversionRate = conversionRate;
+            allTimeAnalytics.conversionRate = conversionRate;
+        }
+
+        return { today: todayAnalytics, allTime: allTimeAnalytics };
     } catch (error) {
         console.error('Error tracking chat event:', error);
         throw error;
