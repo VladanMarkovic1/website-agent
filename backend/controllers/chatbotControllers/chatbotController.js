@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { generateAIResponse } from "./openaiService.js";
 import ChatAnalytics from "../../models/ChatAnalytics.js";
 import { trackChatEvent } from "../analyticsControllers/analyticsService.js";
+import Contact from "../../models/Contact.js";
 
 // In-memory session storage
 const sessions = new Map();
@@ -62,19 +63,23 @@ const processChatMessage = async (message, sessionId, businessId) => {
 
         try {
             // Get business data
-            const [business, serviceData] = await Promise.all([
+            const [business, serviceData, contactData] = await Promise.all([
                 Business.findOne({ businessId }),
-                Service.findOne({ businessId })
+                Service.findOne({ businessId }),
+                Contact.findOne({ businessId })
             ]);
 
             if (!business) {
                 throw new Error("Business not found");
             }
 
-            // Prepare business data with services
+            // Prepare business data with services and contact info
             const businessData = {
                 ...business.toObject(),
-                services: serviceData?.services || []
+                services: serviceData?.services || [],
+                phone: contactData?.phone || null,
+                email: contactData?.email || null,
+                address: contactData?.address || null
             };
 
             // Generate AI response
@@ -101,7 +106,11 @@ const processChatMessage = async (message, sessionId, businessId) => {
             const cancelKeywords = ['cancel', 'cancelation', 'cancellation', 'delete appointment',
                                   'remove appointment', 'drop appointment'];
             
-            // Check if message is about booking/scheduling/canceling
+            const urgentKeywords = ['urgent', 'emergency', 'severe', 'extreme', 'asap',
+                                  'right away', 'immediate', 'today', 'as soon as possible',
+                                  'terrible pain', 'severe pain', 'unbearable', 'emergency slot'];
+            
+            // Check if message is about booking/scheduling/canceling/urgent
             const isBookingRequest = bookingKeywords.some(keyword => 
                 message.toLowerCase().includes(keyword)
             );
@@ -111,6 +120,12 @@ const processChatMessage = async (message, sessionId, businessId) => {
             const isCancelRequest = cancelKeywords.some(keyword => 
                 message.toLowerCase().includes(keyword)
             );
+            const isUrgentRequest = urgentKeywords.some(keyword => 
+                message.toLowerCase().includes(keyword)
+            ) || (message.toLowerCase().includes('pain') && 
+                  (message.toLowerCase().includes('bad') || 
+                   message.toLowerCase().includes('severe') || 
+                   message.toLowerCase().includes('lot of')));
 
             // Enhanced problem tracking
             if (!session.problemDescription && 
@@ -124,8 +139,18 @@ const processChatMessage = async (message, sessionId, businessId) => {
             }
 
             // Override AI response for appointment-related requests if contact info not yet provided
-            if ((isBookingRequest || isRescheduleRequest || isCancelRequest) && !session.contactInfo) {
-                if (isRescheduleRequest) {
+            if ((isBookingRequest || isRescheduleRequest || isCancelRequest || isUrgentRequest) && !session.contactInfo) {
+                if (isUrgentRequest) {
+                    // Get emergency contact from contact data
+                    const businessPhone = contactData?.phone;
+                    
+                    const emergencyMessage = businessPhone
+                        ? `\n\nIf you're experiencing severe pain, you can also reach our emergency line directly at ${businessPhone}.`
+                        : `\n\nIf you're experiencing severe pain, please call our office immediately.`;
+
+                    aiResponse.response = `I understand you're experiencing urgent dental needs. Our team prioritizes emergency cases and will contact you as soon as possible. To help you immediately, please provide your name, phone number, and email address. Once you share these details, our emergency team will reach out to you right away to provide immediate assistance.${emergencyMessage}`;
+                    aiResponse.type = 'URGENT_REQUEST';
+                } else if (isRescheduleRequest) {
                     aiResponse.response = "I understand you'd like to reschedule your appointment. To help you with this, I'll need your name, phone number, and email address. This way, our scheduling team can locate your existing appointment and help find a new time that works better for you. Could you please provide these details?";
                     aiResponse.type = 'RESCHEDULE_REQUEST';
                 } else if (isCancelRequest) {
@@ -149,34 +174,38 @@ const processChatMessage = async (message, sessionId, businessId) => {
                     // Prepare a detailed context for the lead
                     const detailedContext = {
                         initialMessage: session.problemDescription || message,
-                        reason: isRescheduleRequest
-                            ? `Reschedule Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                            : isCancelRequest
-                            ? `Cancellation Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                            : isBookingRequest 
-                                ? `New Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                                : serviceContext 
-                                    ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
-                                    : `Patient's Concern: ${session.problemDescription || message}`,
+                        reason: isUrgentRequest
+                            ? `⚠️ URGENT CARE NEEDED ⚠️\nEmergency Request: ${session.problemDescription || message}`
+                            : isRescheduleRequest
+                                ? `Reschedule Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                                : isCancelRequest
+                                    ? `Cancellation Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                                    : isBookingRequest 
+                                        ? `New Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                                        : serviceContext 
+                                            ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
+                                            : `Patient's Concern: ${session.problemDescription || message}`,
                         conversationHistory: session.messages
                             .slice(-4)
                             .map(msg => `${msg.role}: ${msg.content}`)
                             .join('\n'),
-                        requestType: isRescheduleRequest ? 'RESCHEDULE' : isCancelRequest ? 'CANCEL' : isBookingRequest ? 'NEW_BOOKING' : 'GENERAL'
+                        requestType: isUrgentRequest ? 'URGENT' : isRescheduleRequest ? 'RESCHEDULE' : isCancelRequest ? 'CANCEL' : isBookingRequest ? 'NEW_BOOKING' : 'GENERAL',
+                        priority: isUrgentRequest ? 'HIGH' : 'NORMAL'
                     };
 
                     // Save the lead with enhanced context
                     await saveLead(
                         businessId,
                         contactInfo,
-                        serviceContext || 'Dental Consultation',  // Changed from 'General Inquiry' to be more specific
+                        isUrgentRequest ? 'Emergency Dental Care' : (serviceContext || 'Dental Consultation'),
                         detailedContext
                     );
 
-                    console.log(`✅ Lead saved successfully for ${contactInfo.name} with detailed context`);
-                    
-                    // Track new lead with service context
-                    await trackChatEvent(businessId, 'NEW_LEAD', { service: serviceContext });
+                    // Track new lead with additional context for urgent cases
+                    await trackChatEvent(businessId, 'NEW_LEAD', { 
+                        service: isUrgentRequest ? 'Emergency Dental Care' : serviceContext,
+                        priority: isUrgentRequest ? 'HIGH' : 'NORMAL'
+                    });
                     
                     // Update session with contact info
                     session.contactInfo = contactInfo;
