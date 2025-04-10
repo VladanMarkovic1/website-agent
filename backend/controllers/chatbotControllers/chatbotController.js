@@ -167,7 +167,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
             if ((isBookingRequest || isRescheduleRequest || isCancelRequest || isUrgentRequest || isAdviceRequest || matchedQuestion) && !session.contactInfo) {
                 if (matchedQuestion || isAdviceRequest) {
                     const topic = matchedQuestion ? matchedQuestion.topic : 'dental health';
-                    aiResponse.response = `I understand you're asking about ${topic}. As a virtual assistant, I want to ensure you receive accurate, personalized advice that takes into account your specific dental history and needs.\n\nTo help you get the most appropriate recommendations, I'd like to connect you with our dental specialist. Could you please share your name, phone number, and email address? Our team will reach out to schedule a consultation where they can provide detailed guidance about ${topic} tailored to your situation.`;
+                    aiResponse.response = `As a dental receptionist, I cannot provide specific advice about ${topic}, as this requires a professional evaluation from our dental team.\n\nHowever, I'd be happy to connect you with our specialist who can provide personalized recommendations. Could you please share your name, phone number, and email address? Once you do, I'll make sure our dental team reaches out to schedule a consultation where they can address all your questions about ${topic}.`;
                     aiResponse.type = 'SPECIFIC_ADVICE_REQUEST';
                     session.problemDescription = message; // Store the specific question
                 } else if (isUrgentRequest) {
