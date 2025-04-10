@@ -87,12 +87,37 @@ const processChatMessage = async (message, sessionId, businessId) => {
 
             // Store problem description if it's a dental issue and not already stored
             const dentalKeywords = ['pain', 'hurt', 'ache', 'sensitive', 'broken', 'chipped', 
-                                  'bleeding', 'swollen', 'cavity', 'tooth', 'teeth', 'gum'];
+                                  'bleeding', 'swollen', 'cavity', 'tooth', 'teeth', 'gum',
+                                  'wisdom', 'crown', 'filling', 'root canal', 'cleaning',
+                                  'implant', 'denture', 'bridge', 'extraction'];
+
+            const bookingKeywords = ['schedule', 'appointment', 'book', 'booking', 'reserve',
+                                   'slot', 'time', 'available', 'availability', 'when can'];
+            
+            // Check if message is about booking/scheduling
+            const isBookingRequest = bookingKeywords.some(keyword => 
+                message.toLowerCase().includes(keyword)
+            );
+
+            // Enhanced problem tracking
             if (!session.problemDescription && 
                 !aiResponse.type.includes('CONTACT_INFO') && 
-                !aiResponse.type.includes('GREETING') &&
-                dentalKeywords.some(keyword => message.toLowerCase().includes(keyword))) {
-                session.problemDescription = message;
+                !aiResponse.type.includes('GREETING')) {
+                // Store as problem description if it contains dental keywords or is a substantial message
+                if (dentalKeywords.some(keyword => message.toLowerCase().includes(keyword)) ||
+                    message.split(' ').length > 5) {
+                    session.problemDescription = message;
+                }
+            }
+
+            // Override AI response for booking requests if contact info not yet provided
+            if (isBookingRequest && !session.contactInfo) {
+                aiResponse.response = "I'll be happy to help you schedule an appointment! To connect you with our scheduling specialist, I just need your name, phone number, and email address. Once you provide these details, they will reach out to find the perfect time slot for you. Could you please share those details with me?";
+                aiResponse.type = 'BOOKING_REQUEST';
+                // Store the original service context if it exists
+                if (aiResponse.serviceContext) {
+                    session.serviceInterest = aiResponse.serviceContext;
+                }
             }
 
             // Handle contact information and save lead
@@ -100,20 +125,29 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 const { contactInfo, serviceContext } = aiResponse;
                 
                 try {
-                    // Save the lead with the problem description
+                    // Prepare a detailed context for the lead
+                    const detailedContext = {
+                        initialMessage: session.problemDescription || message,
+                        reason: isBookingRequest 
+                            ? `Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                            : serviceContext 
+                                ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
+                                : `Patient's Concern: ${session.problemDescription || message}`,
+                        conversationHistory: session.messages
+                            .slice(-4)
+                            .map(msg => `${msg.role}: ${msg.content}`)
+                            .join('\n')
+                    };
+
+                    // Save the lead with enhanced context
                     await saveLead(
                         businessId,
                         contactInfo,
-                        serviceContext || 'General Inquiry',
-                        {
-                            initialMessage: session.problemDescription || message,
-                            reason: serviceContext 
-                                ? `Chat inquiry about ${serviceContext}` 
-                                : `Patient's Concern: ${session.problemDescription || 'No specific concern mentioned'}\nService: General Inquiry`
-                        }
+                        serviceContext || 'Dental Consultation',  // Changed from 'General Inquiry' to be more specific
+                        detailedContext
                     );
 
-                    console.log(`✅ Lead saved successfully for ${contactInfo.name}`);
+                    console.log(`✅ Lead saved successfully for ${contactInfo.name} with detailed context`);
                     
                     // Track new lead with service context
                     await trackChatEvent(businessId, 'NEW_LEAD', { service: serviceContext });
