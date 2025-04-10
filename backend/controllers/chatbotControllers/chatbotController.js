@@ -94,8 +94,21 @@ const processChatMessage = async (message, sessionId, businessId) => {
             const bookingKeywords = ['schedule', 'appointment', 'book', 'booking', 'reserve',
                                    'slot', 'time', 'available', 'availability', 'when can'];
             
-            // Check if message is about booking/scheduling
+            const rescheduleKeywords = ['reschedule', 'change appointment', 'move appointment',
+                                      'different time', 'another time', 'change my appointment',
+                                      'switch appointment', 'postpone'];
+
+            const cancelKeywords = ['cancel', 'cancelation', 'cancellation', 'delete appointment',
+                                  'remove appointment', 'drop appointment'];
+            
+            // Check if message is about booking/scheduling/canceling
             const isBookingRequest = bookingKeywords.some(keyword => 
+                message.toLowerCase().includes(keyword)
+            );
+            const isRescheduleRequest = rescheduleKeywords.some(keyword => 
+                message.toLowerCase().includes(keyword)
+            );
+            const isCancelRequest = cancelKeywords.some(keyword => 
                 message.toLowerCase().includes(keyword)
             );
 
@@ -110,10 +123,18 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 }
             }
 
-            // Override AI response for booking requests if contact info not yet provided
-            if (isBookingRequest && !session.contactInfo) {
-                aiResponse.response = "I'll be happy to help you schedule an appointment! To connect you with our scheduling specialist, I just need your name, phone number, and email address. Once you provide these details, they will reach out to find the perfect time slot for you. Could you please share those details with me?";
-                aiResponse.type = 'BOOKING_REQUEST';
+            // Override AI response for appointment-related requests if contact info not yet provided
+            if ((isBookingRequest || isRescheduleRequest || isCancelRequest) && !session.contactInfo) {
+                if (isRescheduleRequest) {
+                    aiResponse.response = "I understand you'd like to reschedule your appointment. To help you with this, I'll need your name, phone number, and email address. This way, our scheduling team can locate your existing appointment and help find a new time that works better for you. Could you please provide these details?";
+                    aiResponse.type = 'RESCHEDULE_REQUEST';
+                } else if (isCancelRequest) {
+                    aiResponse.response = "I understand you'd like to cancel your appointment. To help you with this, I'll need your name, phone number, and email address so our team can locate your appointment in the system. Could you please share these details with me?";
+                    aiResponse.type = 'CANCEL_REQUEST';
+                } else {
+                    aiResponse.response = "I'll be happy to help you schedule an appointment! To connect you with our scheduling specialist, I just need your name, phone number, and email address. Once you provide these details, they will reach out to find the perfect time slot for you. Could you please share those details with me?";
+                    aiResponse.type = 'BOOKING_REQUEST';
+                }
                 // Store the original service context if it exists
                 if (aiResponse.serviceContext) {
                     session.serviceInterest = aiResponse.serviceContext;
@@ -128,15 +149,20 @@ const processChatMessage = async (message, sessionId, businessId) => {
                     // Prepare a detailed context for the lead
                     const detailedContext = {
                         initialMessage: session.problemDescription || message,
-                        reason: isBookingRequest 
-                            ? `Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                            : serviceContext 
-                                ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
-                                : `Patient's Concern: ${session.problemDescription || message}`,
+                        reason: isRescheduleRequest
+                            ? `Reschedule Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                            : isCancelRequest
+                            ? `Cancellation Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                            : isBookingRequest 
+                                ? `New Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                                : serviceContext 
+                                    ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
+                                    : `Patient's Concern: ${session.problemDescription || message}`,
                         conversationHistory: session.messages
                             .slice(-4)
                             .map(msg => `${msg.role}: ${msg.content}`)
-                            .join('\n')
+                            .join('\n'),
+                        requestType: isRescheduleRequest ? 'RESCHEDULE' : isCancelRequest ? 'CANCEL' : isBookingRequest ? 'NEW_BOOKING' : 'GENERAL'
                     };
 
                     // Save the lead with enhanced context
