@@ -113,6 +113,19 @@ const processChatMessage = async (message, sessionId, businessId) => {
             const adviceKeywords = ['tips', 'advice', 'recommend', 'suggestion', 'guide',
                                   'how to', 'what should', 'best way', 'help with',
                                   'tell me about', 'information about', 'learn about'];
+
+            const specificHealthQuestions = [
+                { keywords: ['food', 'eat', 'diet', 'drink', 'avoid', 'prevent', 'cavities'], 
+                  topic: 'dietary recommendations' },
+                { keywords: ['brush', 'brushing', 'floss', 'flossing', 'clean', 'cleaning'], 
+                  topic: 'oral hygiene practices' },
+                { keywords: ['whitening', 'white', 'stain', 'yellow', 'bright', 'color'], 
+                  topic: 'teeth whitening' },
+                { keywords: ['sensitive', 'sensitivity', 'cold', 'hot', 'sweet'], 
+                  topic: 'tooth sensitivity' },
+                { keywords: ['bad breath', 'breath', 'halitosis', 'smell'], 
+                  topic: 'breath freshness' }
+            ];
             
             // Check if message is about booking/scheduling/canceling/urgent/advice
             const isBookingRequest = bookingKeywords.some(keyword => 
@@ -134,6 +147,11 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 message.toLowerCase().includes(keyword)
             );
 
+            // Check for specific dental health questions
+            const matchedQuestion = specificHealthQuestions.find(q => 
+                q.keywords.some(keyword => message.toLowerCase().includes(keyword))
+            );
+
             // Enhanced problem tracking
             if (!session.problemDescription && 
                 !aiResponse.type.includes('CONTACT_INFO') && 
@@ -146,10 +164,12 @@ const processChatMessage = async (message, sessionId, businessId) => {
             }
 
             // Override AI response for appointment-related requests if contact info not yet provided
-            if ((isBookingRequest || isRescheduleRequest || isCancelRequest || isUrgentRequest || isAdviceRequest) && !session.contactInfo) {
-                if (isAdviceRequest) {
-                    aiResponse.response = "As a dental assistant, I cannot provide specific dental advice or tips, as each patient's situation is unique and requires professional evaluation.\n\nHowever, I'd be happy to connect you with our dental specialist who can provide personalized recommendations for your dental health. Could you please share your name, phone number, and email address? Once you do, our dental team will reach out to schedule a consultation where you can discuss all your dental health questions.";
-                    aiResponse.type = 'ADVICE_REQUEST';
+            if ((isBookingRequest || isRescheduleRequest || isCancelRequest || isUrgentRequest || isAdviceRequest || matchedQuestion) && !session.contactInfo) {
+                if (matchedQuestion || isAdviceRequest) {
+                    const topic = matchedQuestion ? matchedQuestion.topic : 'dental health';
+                    aiResponse.response = `I understand you're asking about ${topic}. As a virtual assistant, I want to ensure you receive accurate, personalized advice that takes into account your specific dental history and needs.\n\nTo help you get the most appropriate recommendations, I'd like to connect you with our dental specialist. Could you please share your name, phone number, and email address? Our team will reach out to schedule a consultation where they can provide detailed guidance about ${topic} tailored to your situation.`;
+                    aiResponse.type = 'SPECIFIC_ADVICE_REQUEST';
+                    session.problemDescription = message; // Store the specific question
                 } else if (isUrgentRequest) {
                     // Get emergency contact from contact data
                     const businessPhone = contactData?.phone;
@@ -192,6 +212,8 @@ const processChatMessage = async (message, sessionId, businessId) => {
                                     ? `Cancellation Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
                                     : isBookingRequest 
                                         ? `New Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                                        : matchedQuestion
+                                            ? `Dental Consultation Request: Patient has questions about ${matchedQuestion.topic}\nSpecific Question: ${session.problemDescription || message}`
                                         : isAdviceRequest
                                             ? `Dental Advice Request: Patient is seeking information about: ${session.problemDescription || message}`
                                         : serviceContext 
@@ -205,9 +227,11 @@ const processChatMessage = async (message, sessionId, businessId) => {
                                    : isRescheduleRequest ? 'RESCHEDULE' 
                                    : isCancelRequest ? 'CANCEL' 
                                    : isBookingRequest ? 'NEW_BOOKING'
+                                   : matchedQuestion ? 'SPECIFIC_DENTAL_ADVICE'
                                    : isAdviceRequest ? 'DENTAL_ADVICE'
                                    : 'GENERAL',
-                        priority: isUrgentRequest ? 'HIGH' : 'NORMAL'
+                        priority: isUrgentRequest ? 'HIGH' : 'NORMAL',
+                        topic: matchedQuestion ? matchedQuestion.topic : null
                     };
 
                     // Save the lead with enhanced context
@@ -215,6 +239,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
                         businessId,
                         contactInfo,
                         isUrgentRequest ? 'Emergency Dental Care' 
+                        : matchedQuestion ? `Dental Consultation - ${matchedQuestion.topic}`
                         : isAdviceRequest ? 'Dental Health Consultation'
                         : (serviceContext || 'Dental Consultation'),
                         detailedContext
