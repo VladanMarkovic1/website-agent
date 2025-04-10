@@ -110,7 +110,11 @@ const processChatMessage = async (message, sessionId, businessId) => {
                                   'right away', 'immediate', 'today', 'as soon as possible',
                                   'terrible pain', 'severe pain', 'unbearable', 'emergency slot'];
             
-            // Check if message is about booking/scheduling/canceling/urgent
+            const adviceKeywords = ['tips', 'advice', 'recommend', 'suggestion', 'guide',
+                                  'how to', 'what should', 'best way', 'help with',
+                                  'tell me about', 'information about', 'learn about'];
+            
+            // Check if message is about booking/scheduling/canceling/urgent/advice
             const isBookingRequest = bookingKeywords.some(keyword => 
                 message.toLowerCase().includes(keyword)
             );
@@ -126,6 +130,9 @@ const processChatMessage = async (message, sessionId, businessId) => {
                   (message.toLowerCase().includes('bad') || 
                    message.toLowerCase().includes('severe') || 
                    message.toLowerCase().includes('lot of')));
+            const isAdviceRequest = adviceKeywords.some(keyword =>
+                message.toLowerCase().includes(keyword)
+            );
 
             // Enhanced problem tracking
             if (!session.problemDescription && 
@@ -139,8 +146,11 @@ const processChatMessage = async (message, sessionId, businessId) => {
             }
 
             // Override AI response for appointment-related requests if contact info not yet provided
-            if ((isBookingRequest || isRescheduleRequest || isCancelRequest || isUrgentRequest) && !session.contactInfo) {
-                if (isUrgentRequest) {
+            if ((isBookingRequest || isRescheduleRequest || isCancelRequest || isUrgentRequest || isAdviceRequest) && !session.contactInfo) {
+                if (isAdviceRequest) {
+                    aiResponse.response = "As a dental assistant, I cannot provide specific dental advice or tips, as each patient's situation is unique and requires professional evaluation.\n\nHowever, I'd be happy to connect you with our dental specialist who can provide personalized recommendations for your dental health. Could you please share your name, phone number, and email address? Once you do, our dental team will reach out to schedule a consultation where you can discuss all your dental health questions.";
+                    aiResponse.type = 'ADVICE_REQUEST';
+                } else if (isUrgentRequest) {
                     // Get emergency contact from contact data
                     const businessPhone = contactData?.phone;
                     
@@ -182,6 +192,8 @@ const processChatMessage = async (message, sessionId, businessId) => {
                                     ? `Cancellation Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
                                     : isBookingRequest 
                                         ? `New Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                                        : isAdviceRequest
+                                            ? `Dental Advice Request: Patient is seeking information about: ${session.problemDescription || message}`
                                         : serviceContext 
                                             ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
                                             : `Patient's Concern: ${session.problemDescription || message}`,
@@ -189,7 +201,12 @@ const processChatMessage = async (message, sessionId, businessId) => {
                             .slice(-4)
                             .map(msg => `${msg.role}: ${msg.content}`)
                             .join('\n'),
-                        requestType: isUrgentRequest ? 'URGENT' : isRescheduleRequest ? 'RESCHEDULE' : isCancelRequest ? 'CANCEL' : isBookingRequest ? 'NEW_BOOKING' : 'GENERAL',
+                        requestType: isUrgentRequest ? 'URGENT' 
+                                   : isRescheduleRequest ? 'RESCHEDULE' 
+                                   : isCancelRequest ? 'CANCEL' 
+                                   : isBookingRequest ? 'NEW_BOOKING'
+                                   : isAdviceRequest ? 'DENTAL_ADVICE'
+                                   : 'GENERAL',
                         priority: isUrgentRequest ? 'HIGH' : 'NORMAL'
                     };
 
@@ -197,7 +214,9 @@ const processChatMessage = async (message, sessionId, businessId) => {
                     await saveLead(
                         businessId,
                         contactInfo,
-                        isUrgentRequest ? 'Emergency Dental Care' : (serviceContext || 'Dental Consultation'),
+                        isUrgentRequest ? 'Emergency Dental Care' 
+                        : isAdviceRequest ? 'Dental Health Consultation'
+                        : (serviceContext || 'Dental Consultation'),
                         detailedContext
                     );
 
