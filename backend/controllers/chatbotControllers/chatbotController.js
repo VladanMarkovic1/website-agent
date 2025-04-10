@@ -124,9 +124,39 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 { keywords: ['sensitive', 'sensitivity', 'cold', 'hot', 'sweet'], 
                   topic: 'tooth sensitivity' },
                 { keywords: ['bad breath', 'breath', 'halitosis', 'smell'], 
-                  topic: 'breath freshness' }
+                  topic: 'breath freshness' },
+                { keywords: ['child', 'children', 'kid', 'kids', 'baby', 'toddler', 'pediatric', 'grow'],
+                  topic: 'pediatric dental care' },
+                { keywords: ['crown', 'crowns', 'cap', 'caps', 'broken tooth', 'damaged tooth'],
+                  topic: 'dental crowns' },
+                { keywords: ['implant', 'implants', 'artificial tooth', 'replacement tooth'],
+                  topic: 'dental implants' },
+                { keywords: ['veneer', 'veneers', 'cosmetic', 'smile makeover'],
+                  topic: 'cosmetic dentistry' },
+                { keywords: ['root canal', 'root treatment', 'infected tooth'],
+                  topic: 'root canal treatment' }
             ];
             
+            // Special handling for pediatric questions
+            const isPediatricQuestion = message.toLowerCase().includes('child') || 
+                                      message.toLowerCase().includes('kid') || 
+                                      message.toLowerCase().includes('baby') ||
+                                      message.toLowerCase().includes('pediatric') ||
+                                      message.toLowerCase().includes('children') ||
+                                      message.toLowerCase().includes('grow');
+
+            // Check if message contains specific treatment or service names
+            const isSpecificServiceQuestion = message.toLowerCase().includes('options') || 
+                                            message.toLowerCase().includes('what') || 
+                                            message.toLowerCase().includes('how') || 
+                                            message.toLowerCase().includes('need') ||
+                                            message.toLowerCase().includes('should');
+
+            // Check for specific dental health questions
+            const matchedQuestion = specificHealthQuestions.find(q => 
+                q.keywords.some(keyword => message.toLowerCase().includes(keyword))
+            );
+
             // Check if message is about booking/scheduling/canceling/urgent/advice
             const isBookingRequest = bookingKeywords.some(keyword => 
                 message.toLowerCase().includes(keyword)
@@ -147,11 +177,6 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 message.toLowerCase().includes(keyword)
             );
 
-            // Check for specific dental health questions
-            const matchedQuestion = specificHealthQuestions.find(q => 
-                q.keywords.some(keyword => message.toLowerCase().includes(keyword))
-            );
-
             // Enhanced problem tracking
             if (!session.problemDescription && 
                 !aiResponse.type.includes('CONTACT_INFO') && 
@@ -164,8 +189,18 @@ const processChatMessage = async (message, sessionId, businessId) => {
             }
 
             // Override AI response for appointment-related requests if contact info not yet provided
-            if ((isBookingRequest || isRescheduleRequest || isCancelRequest || isUrgentRequest || isAdviceRequest || matchedQuestion) && !session.contactInfo) {
-                if (matchedQuestion || isAdviceRequest) {
+            if ((isBookingRequest || isRescheduleRequest || isCancelRequest || isUrgentRequest || isAdviceRequest || (matchedQuestion && isSpecificServiceQuestion)) && !session.contactInfo) {
+                if (isPediatricQuestion) {
+                    aiResponse.response = `As a dental receptionist, I understand you're asking about children's dental care. This is a crucial topic that our pediatric dental specialists would be happy to discuss in detail with you. They can provide personalized guidance based on your child's age and specific needs.\n\nCould you please share your name, phone number, and email address? Once you do, I'll have our pediatric dental team reach out to schedule a consultation where they can provide comprehensive information about your child's dental care journey and answer all your questions.`;
+                    aiResponse.type = 'PEDIATRIC_ADVICE_REQUEST';
+                    session.serviceInterest = 'Pediatric Dentistry';
+                    session.problemDescription = message;
+                } else if (matchedQuestion && isSpecificServiceQuestion) {
+                    aiResponse.response = `As a dental receptionist, I'd be happy to connect you with our specialist who can explain all the options available for ${matchedQuestion.topic} and help determine the best treatment plan for your specific needs.\n\nCould you please share your name, phone number, and email address? Once you do, I'll have our dental team reach out to schedule a consultation where they can provide detailed information about ${matchedQuestion.topic} and answer all your questions.`;
+                    aiResponse.type = 'SPECIFIC_SERVICE_REQUEST';
+                    session.serviceInterest = matchedQuestion.topic;
+                    session.problemDescription = message;
+                } else if (matchedQuestion || isAdviceRequest) {
                     const topic = matchedQuestion ? matchedQuestion.topic : 'dental health';
                     aiResponse.response = `As a dental receptionist, I cannot provide specific advice about ${topic}, as this requires a professional evaluation from our dental team.\n\nHowever, I'd be happy to connect you with our specialist who can provide personalized recommendations. Could you please share your name, phone number, and email address? Once you do, I'll make sure our dental team reaches out to schedule a consultation where they can address all your questions about ${topic}.`;
                     aiResponse.type = 'SPECIFIC_ADVICE_REQUEST';
@@ -208,17 +243,17 @@ const processChatMessage = async (message, sessionId, businessId) => {
                             ? `⚠️ URGENT CARE NEEDED ⚠️\nEmergency Request: ${session.problemDescription || message}`
                             : isRescheduleRequest
                                 ? `Reschedule Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                                : isCancelRequest
-                                    ? `Cancellation Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                                    : isBookingRequest 
-                                        ? `New Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                                        : matchedQuestion
-                                            ? `Dental Consultation Request: Patient has questions about ${matchedQuestion.topic}\nSpecific Question: ${session.problemDescription || message}`
-                                        : isAdviceRequest
-                                            ? `Dental Advice Request: Patient is seeking information about: ${session.problemDescription || message}`
-                                        : serviceContext 
-                                            ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
-                                            : `Patient's Concern: ${session.problemDescription || message}`,
+                            : isCancelRequest
+                                ? `Cancellation Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                            : isBookingRequest 
+                                ? `New Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
+                            : isPediatricQuestion
+                                ? `Pediatric Dental Consultation Needed\nParent's Question: "${message}"\nService: Pediatric Dentistry\nRequires: Age-specific dental care guidance`
+                            : matchedQuestion || isAdviceRequest
+                                ? `Dental Question - Consultation Needed\nTopic: ${matchedQuestion ? matchedQuestion.topic : 'General Dental Advice'}\nPatient's Question: "${message}"\nConsultation Required: Yes`
+                            : serviceContext 
+                                ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
+                                : `Patient's Concern: ${session.problemDescription || message}`,
                         conversationHistory: session.messages
                             .slice(-4)
                             .map(msg => `${msg.role}: ${msg.content}`)
@@ -227,11 +262,16 @@ const processChatMessage = async (message, sessionId, businessId) => {
                                    : isRescheduleRequest ? 'RESCHEDULE' 
                                    : isCancelRequest ? 'CANCEL' 
                                    : isBookingRequest ? 'NEW_BOOKING'
-                                   : matchedQuestion ? 'SPECIFIC_DENTAL_ADVICE'
+                                   : isPediatricQuestion ? 'PEDIATRIC_CONSULTATION'
+                                   : matchedQuestion ? 'DENTAL_QUESTION'
                                    : isAdviceRequest ? 'DENTAL_ADVICE'
                                    : 'GENERAL',
                         priority: isUrgentRequest ? 'HIGH' : 'NORMAL',
-                        topic: matchedQuestion ? matchedQuestion.topic : null
+                        topic: isPediatricQuestion ? 'Pediatric Dental Care' 
+                               : (matchedQuestion ? matchedQuestion.topic 
+                               : (isAdviceRequest ? 'General Dental Advice' : null)),
+                        originalQuestion: message,  // Store the exact question asked
+                        isChildRelated: isPediatricQuestion  // Flag for pediatric questions
                     };
 
                     // Save the lead with enhanced context
@@ -239,8 +279,9 @@ const processChatMessage = async (message, sessionId, businessId) => {
                         businessId,
                         contactInfo,
                         isUrgentRequest ? 'Emergency Dental Care' 
-                        : matchedQuestion ? `Dental Consultation - ${matchedQuestion.topic}`
-                        : isAdviceRequest ? 'Dental Health Consultation'
+                        : isPediatricQuestion ? 'Pediatric Dental Consultation'
+                        : matchedQuestion ? `Dental Question - ${matchedQuestion.topic}`
+                        : isAdviceRequest ? 'Dental Question - General Advice'
                         : (serviceContext || 'Dental Consultation'),
                         detailedContext
                     );
