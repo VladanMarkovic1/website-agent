@@ -82,6 +82,20 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 address: contactData?.address || null
             };
 
+            // Check if user mentioned a service directly - only exact matches
+            const messageLower = message.toLowerCase();
+            const mentionedService = businessData.services.find(service => {
+                // Handle both string and object service formats
+                const serviceName = typeof service === 'string' ? service : service.name;
+                // Only set service if user explicitly mentions it as a word
+                const serviceWords = serviceName.toLowerCase().split(' ');
+                return serviceWords.every(word => messageLower.includes(word));
+            });
+            if (mentionedService) {
+                // Handle both string and object service formats
+                session.serviceInterest = typeof mentionedService === 'string' ? mentionedService : mentionedService.name;
+            }
+
             // Generate AI response
             const aiResponse = await generateAIResponse(
                 message, 
@@ -278,23 +292,29 @@ const processChatMessage = async (message, sessionId, businessId) => {
                     await saveLead(
                         businessId,
                         contactInfo,
-                        isUrgentRequest ? 'Emergency Dental Care' 
-                        : isPediatricQuestion ? 'Pediatric Dental Consultation'
-                        : matchedQuestion ? `Dental Question - ${matchedQuestion.topic}`
-                        : isAdviceRequest ? 'Dental Question - General Advice'
-                        : (serviceContext || 'Dental Consultation'),
+                        // Use the detected service if available, otherwise fall back to other conditions
+                        session.serviceInterest || (
+                            isUrgentRequest ? 'Emergency Dental Care' 
+                            : isPediatricQuestion ? 'Pediatric Dental Consultation'
+                            : matchedQuestion ? `Dental Question - ${matchedQuestion.topic}`
+                            : isAdviceRequest ? 'Dental Question - General Advice'
+                            : (serviceContext || 'Dental Consultation')
+                        ),
                         detailedContext
                     );
 
                     // Track new lead with additional context for urgent cases
                     await trackChatEvent(businessId, 'NEW_LEAD', { 
-                        service: isUrgentRequest ? 'Emergency Dental Care' : serviceContext,
+                        service: session.serviceInterest || (isUrgentRequest ? 'Emergency Dental Care' : serviceContext),
                         priority: isUrgentRequest ? 'HIGH' : 'NORMAL'
                     });
                     
                     // Update session with contact info
                     session.contactInfo = contactInfo;
-                    session.serviceInterest = serviceContext;
+                    // Don't overwrite the service interest if it was already detected
+                    if (!session.serviceInterest) {
+                        session.serviceInterest = serviceContext;
+                    }
                 } catch (error) {
                     console.error("Error saving lead:", error);
                 }
