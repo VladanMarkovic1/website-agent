@@ -7,22 +7,33 @@ export default defineConfig({
   server: {
     port: 5175,
   },
+  define: {
+    'process.env': {}
+  },
   build: {
     lib: {
       entry: resolve(__dirname, 'src/widget.jsx'),
       name: 'DentalChatbot',
-      fileName: 'dental-chatbot',
-      formats: ['umd'],
+      fileName: () => 'dental-chatbot.js',
+      formats: ['iife'],
     },
     rollupOptions: {
-      external: ['react', 'react-dom'],
       output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
+        extend: true,
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === 'style.css') {
+            return 'dental-chatbot.css';
+          }
+          return assetInfo.name;
         },
-      },
+        globals: {
+          'react': 'React',
+          'react-dom': 'ReactDOM'
+        }
+      }
     },
     cssCodeSplit: false,
+    minify: 'terser',
+    sourcemap: true
   },
 }); 

@@ -1,17 +1,10 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = 'http://localhost:5000'; // Your backend server URL
-
-// Generate a random session ID
-const generateSessionId = () => {
-  return 'session_' + Math.random().toString(36).substr(2, 9);
-};
-
 // Get or create session ID
 const getSessionId = () => {
   let sessionId = localStorage.getItem('chatSessionId');
   if (!sessionId) {
-    sessionId = generateSessionId();
+    sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('chatSessionId', sessionId);
   }
   return sessionId;
@@ -20,12 +13,13 @@ const getSessionId = () => {
 export const initializeSocket = (businessId) => {
   const sessionId = getSessionId();
   
-  const socket = io(SOCKET_URL, {
+  const socket = io(window.DENTAL_CHATBOT_CONFIG.backendUrl || 'http://localhost:5000', {
     query: { businessId, sessionId },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
+    timeout: 10000
   });
 
   // Connection event handlers
@@ -35,12 +29,16 @@ export const initializeSocket = (businessId) => {
 
   socket.on('connect_error', (error) => {
     console.error('Connection error:', error);
+    // Try to reconnect with polling if websocket fails
+    if (socket.io.opts.transports[0] === 'websocket') {
+      socket.io.opts.transports = ['polling', 'websocket'];
+    }
   });
 
   socket.on('disconnect', (reason) => {
     console.log('Disconnected:', reason);
-    if (reason === 'io server disconnect') {
-      // Server initiated disconnect, try to reconnect
+    if (reason === 'io server disconnect' || reason === 'transport close') {
+      // Try to reconnect
       socket.connect();
     }
   });

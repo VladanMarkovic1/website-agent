@@ -1,70 +1,87 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ChatWindow from './ChatWindow';
 import ChatButton from './ChatButton';
 import { initializeSocket } from '../utils/socket';
-import { fetchChatHistory } from '../utils/api';
 
 const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primaryColor }) => {
-  const [isOpen, setIsOpen] = useState(true); // Start with chat open
+  const [isOpen, setIsOpen] = useState(true);
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasGreeted, setHasGreeted] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const hasGreetedRef = useRef(false);
+  const messageQueueRef = useRef([]);
 
   // Initialize socket connection
   useEffect(() => {
     const newSocket = initializeSocket(businessId);
     setSocket(newSocket);
 
-    // Load chat history and send initial greeting
-    const initialize = async () => {
-      setIsLoading(true);
-      try {
-        setMessages([]);
-        
-        // Wait for socket connection before sending greeting
-        newSocket.on('connect', () => {
-          if (!hasGreeted) {
-            // Send an empty message to trigger the greeting
-            newSocket.emit('message', { 
-              businessId,
-              message: 'hello'
-            });
-            setHasGreeted(true);
-          }
+    newSocket.on('connect', () => {
+      console.log('Socket connected');
+      setIsConnected(true);
+      
+      // Send greeting if not sent yet
+      if (!hasGreetedRef.current) {
+        newSocket.emit('message', { 
+          businessId,
+          message: 'hello'
         });
-      } catch (error) {
-        console.error('Failed to initialize chat:', error);
+        hasGreetedRef.current = true;
       }
-      setIsLoading(false);
-    };
-    initialize();
 
-    // Cleanup socket on unmount
-    return () => newSocket.close();
+      // Process any queued messages
+      while (messageQueueRef.current.length > 0) {
+        const queuedMessage = messageQueueRef.current.shift();
+        newSocket.emit('message', queuedMessage);
+      }
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Socket disconnected');
+      setIsConnected(false);
+    });
+
+    return () => {
+      newSocket.close();
+      setIsConnected(false);
+    };
   }, [businessId]);
 
   // Handle incoming messages
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('message', (message) => {
-      setMessages((prevMessages) => [...prevMessages, {
-        type: 'assistant',
-        content: message.response,
-        timestamp: new Date().toISOString(),
-        messageType: message.type
-      }]);
-    });
+    const messageHandler = (message) => {
+      if (message && message.response) {
+        setMessages((prevMessages) => {
+          // Prevent duplicate messages
+          const isDuplicate = prevMessages.some(
+            (msg) => msg.content === message.response && 
+                    msg.timestamp === message.timestamp
+          );
+          if (isDuplicate) return prevMessages;
+
+          return [...prevMessages, {
+            type: 'assistant',
+            content: message.response,
+            timestamp: new Date().toISOString(),
+            messageType: message.type
+          }];
+        });
+      }
+    };
+
+    socket.on('message', messageHandler);
 
     return () => {
-      socket.off('message');
+      socket.off('message', messageHandler);
     };
   }, [socket]);
 
   // Handle sending messages
   const sendMessage = async (text) => {
-    if (!socket || !text.trim()) return;
+    if (!text.trim()) return;
 
     const userMessage = {
       type: 'user',
@@ -74,11 +91,18 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
 
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     
-    // Send message with session ID (handled by socket initialization)
-    socket.emit('message', { 
+    const messageData = { 
       businessId,
       message: text
-    });
+    };
+
+    if (socket && isConnected) {
+      socket.emit('message', messageData);
+    } else {
+      // Queue message to be sent when connection is restored
+      messageQueueRef.current.push(messageData);
+      console.log('Message queued for later sending:', messageData);
+    }
   };
 
   // Position styles
@@ -88,23 +112,6 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
     'top-right': { top: '20px', right: '20px' },
     'top-left': { top: '20px', left: '20px' },
   };
-
-  // Auto-hide chat after 5 minutes of inactivity
-  useEffect(() => {
-    let inactivityTimer;
-    
-    if (isOpen) {
-      inactivityTimer = setTimeout(() => {
-        setIsOpen(false);
-      }, 5 * 60 * 1000); // 5 minutes
-    }
-
-    return () => {
-      if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-      }
-    };
-  }, [isOpen, messages]); // Reset timer when new messages arrive
 
   return (
     <div
@@ -117,19 +124,19 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
           onSendMessage={sendMessage}
           onClose={() => setIsOpen(false)}
           isLoading={isLoading}
+          isConnected={isConnected}
           primaryColor={primaryColor}
         />
       ) : (
         <ChatButton
           onClick={() => {
             setIsOpen(true);
-            // Send greeting if chat was closed and reopened
-            if (!hasGreeted) {
-              socket?.emit('message', { 
+            if (!hasGreetedRef.current && socket && isConnected) {
+              socket.emit('message', { 
                 businessId,
                 message: 'hello'
               });
-              setHasGreeted(true);
+              hasGreetedRef.current = true;
             }
           }}
           text={buttonText}
