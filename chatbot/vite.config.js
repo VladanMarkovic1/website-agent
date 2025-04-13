@@ -14,12 +14,11 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/widget.jsx'),
       name: 'DentalChatbot',
-      fileName: () => 'dental-chatbot.js',
       formats: ['iife'],
+      fileName: () => 'dental-chatbot.js'
     },
     rollupOptions: {
       output: {
-        extend: true,
         assetFileNames: (assetInfo) => {
           if (assetInfo.name === 'style.css') {
             return 'dental-chatbot.css';
@@ -27,13 +26,13 @@ export default defineConfig({
           return assetInfo.name;
         },
         globals: {
-          'react': 'React',
+          react: 'React',
           'react-dom': 'ReactDOM'
         }
       }
     },
-    cssCodeSplit: false,
     minify: 'terser',
-    sourcemap: true
+    sourcemap: false,
+    cssCodeSplit: false
   },
 }); 

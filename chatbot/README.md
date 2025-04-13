@@ -1,65 +1,72 @@
-# Dental Chatbot Widget
+# Dental Practice Chatbot
 
-A customizable chatbot widget for dental websites that provides real-time chat functionality with AI assistance.
+An AI-powered chatbot specifically designed for dental practices to handle patient inquiries, appointment scheduling, and provide dental care information.
 
-## Development
+## Installation
 
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Start development server:
-```bash
-npm run dev
-```
-
-3. Build for production:
-```bash
-npm run build:widget
-```
-
-## Integration
-
-Add the following code to your website:
+To add the chatbot to your dental practice website, add the following code just before the closing `</body>` tag of your website:
 
 ```html
-<!-- Chatbot Configuration -->
+<!-- Dental Chatbot Configuration -->
 <script>
-    window.DENTAL_CHATBOT_CONFIG = {
-        businessId: 'YOUR_BUSINESS_ID',
-        position: 'bottom-right', // or 'bottom-left', 'top-right', 'top-left'
-        buttonText: 'Chat with us',
-        primaryColor: '#4F46E5'
-    };
+  window.DENTAL_CHATBOT_CONFIG = {
+    businessId: 'YOUR_BUSINESS_ID', // Replace with your business ID
+    position: 'bottom-right',       // Options: 'bottom-right', 'bottom-left', 'top-right', 'top-left'
+    buttonText: 'Chat with us',     // Customize the chat button text
+    primaryColor: '#4F46E5',        // Customize the primary color (hex code)
+    backendUrl: 'YOUR_BACKEND_URL'  // Replace with your backend URL
+  };
 </script>
 
-<!-- Chatbot Loader Script -->
-<script src="YOUR_CHATBOT_URL/loader.min.js"></script>
+<!-- Load chatbot styles -->
+<link rel="stylesheet" href="YOUR_CHATBOT_HOST/dental-chatbot.css">
+
+<!-- Load chatbot script -->
+<script src="YOUR_CHATBOT_HOST/dental-chatbot.js"></script>
 ```
 
-## Configuration Options
+Replace the following placeholders:
+- `YOUR_BUSINESS_ID`: Your unique business identifier provided during registration
+- `YOUR_BACKEND_URL`: The URL where your chatbot backend is hosted
+- `YOUR_CHATBOT_HOST`: The URL where your chatbot assets are hosted
 
-- `businessId` (required): Your unique business identifier
-- `position`: Widget position (default: 'bottom-right')
-- `buttonText`: Custom button text (default: 'Chat with us')
-- `primaryColor`: Custom theme color (default: '#4F46E5')
+## Customization Options
+
+### Position
+Control where the chat widget appears on your website:
+- `bottom-right` (default)
+- `bottom-left`
+- `top-right`
+- `top-left`
+
+### Button Text
+Customize the text that appears on the chat button before it's opened.
+
+### Primary Color
+Set your brand color using a hex code (e.g., '#4F46E5' for indigo).
 
 ## Features
 
-- Real-time chat functionality
-- AI-powered responses
-- Customizable appearance
-- Responsive design
-- Message history
-- Markdown support
-- Loading indicators
-- Error handling
+- 24/7 automated patient support
+- Appointment scheduling assistance
+- Dental care information and FAQ handling
+- Emergency case prioritization
+- Multi-language support
+- Secure patient data handling
+- Custom branding options
+- Analytics and insights
 
-## Development Notes
+## Security & Privacy
 
-- Built with React and Vite
-- Uses Socket.io for real-time communication
-- Styled with Tailwind CSS
-- Supports markdown rendering
-- Includes build process for distribution 
+- All communications are encrypted
+- Compliant with healthcare data protection regulations
+- No sensitive patient information is stored in chat logs
+- Regular security audits and updates
+
+## Support
+
+For support or questions, please contact our team at [your-support-email].
+
+## License
+
+© 2024 Your Company Name. All rights reserved. 

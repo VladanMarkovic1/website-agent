@@ -73,27 +73,45 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 throw new Error("Business not found");
             }
 
+            console.log('Raw service data:', serviceData); // Debug log
+
+            // Ensure services are properly structured
+            const services = serviceData?.services?.map(service => {
+                console.log('Processing service:', service); // Debug log
+                return {
+                    name: service.name,
+                    description: service.description || null,
+                    price: service.price || null
+                };
+            }) || [];
+
+            console.log('Processed services:', services); // Debug log
+
             // Prepare business data with services and contact info
             const businessData = {
                 ...business.toObject(),
-                services: serviceData?.services || [],
+                services: services,
                 phone: contactData?.phone || null,
                 email: contactData?.email || null,
                 address: contactData?.address || null
             };
 
-            // Check if user mentioned a service directly - only exact matches
+            console.log('Final business data:', businessData); // Debug log
+
+            // Check if user mentioned a service directly - SIMPLIFIED MATCHING
             const messageLower = message.toLowerCase();
             const mentionedService = businessData.services.find(service => {
-                // Handle both string and object service formats
-                const serviceName = typeof service === 'string' ? service : service.name;
-                // Only set service if user explicitly mentions it as a word
-                const serviceWords = serviceName.toLowerCase().split(' ');
-                return serviceWords.every(word => messageLower.includes(word));
+                if (!service || !service.name) return false;
+                const serviceName = service.name.toLowerCase();
+                return messageLower.includes(serviceName) || 
+                       serviceName.split(' ').every(word => 
+                           messageLower.includes(word.toLowerCase())
+                       );
             });
+
             if (mentionedService) {
-                // Handle both string and object service formats
-                session.serviceInterest = typeof mentionedService === 'string' ? mentionedService : mentionedService.name;
+                session.serviceInterest = mentionedService.name;
+                console.log('Detected service interest:', session.serviceInterest, 'with description:', mentionedService.description);
             }
 
             // Generate AI response

@@ -42,13 +42,16 @@ const DENTAL_PROBLEMS = {
 // Common response templates
 const RESPONSE_TEMPLATES = {
     greeting: "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
-    understanding: "I understand you need help with that. Could you tell me more about what you're looking for?",
-    contact_request: "I understand you need help with that. Please share your name, phone number, and email so our dental team can assist you personally. 😊",
-    emergency: "I'm so sorry to hear you're in pain! 😟 Let me help get you taken care of right away. Please share your name, phone number, and email so our dental team can contact you immediately.",
-    dental_problem: (problem) => `I understand you're experiencing issues with ${problem}. Our dental team will need to examine this. Could you share your name, phone number, and email so we can schedule you for an examination?`,
-    service_inquiry: (service) => `${service.description}\n\nPlease share your name, phone number, and email, and our team will get back to you to find a time that works best for you.`,
+    understanding: "I understand you're interested in learning more about this. As a dental assistant, I want to ensure you get the most accurate information. Would you like me to connect you with our specialist who can provide detailed information about this procedure?",
+    contact_request: "Perfect! To connect you with our specialist, I'll need your name, phone number, and email address. 😊",
+    emergency: "I understand you're in severe pain - this is an emergency that needs immediate attention! 🚨 Let me help you get an urgent appointment RIGHT NOW. Please quickly share your name, phone number, and email, and our emergency dental team will contact you immediately. We prioritize emergency cases and will get you seen as soon as possible! 🏥",
+    dental_problem: (problem) => `I understand your concern about ${problem}. This should be evaluated by our dental team. Let me help you schedule a consultation - what's your name, phone number, and email?`,
+    service_inquiry: (service) => `As a dental assistant, I want to ensure you get the most accurate information about ${service}. Our specialist would be happy to explain everything in detail. What's your name, phone number, and email so I can arrange this?`,
     contact_confirmation: (name, service, phone) => 
-        `✅ Thank you ${name} for showing interest in ${service}! We believe we can help you, and we will contact you on ${phone} as soon as possible. 😊`
+        `✅ Thank you ${name}! I've noted your interest in ${service}. Our specialist will contact you at ${phone} to provide detailed information and answer all your questions. 😊`,
+    procedure_inquiry: "As a dental assistant, I cannot provide specific details about dental procedures. However, I can connect you with our specialist who can explain everything thoroughly. Would you like that?",
+    contact_after_yes: "Great! I'll just need your name, phone number, and email to set this up. 😊",
+    waiting_for_contact: "I'm ready to connect you with our specialist. Just share your name, phone number, and email, and I'll take care of the rest."
 };
 
 const isGreeting = (message) => {
@@ -77,108 +80,56 @@ const handleServiceInquiry = async (message, context) => {
     const normalizedMessage = message.toLowerCase();
     const services = context.services || [];
     
-    // Check if we have any services first
-    if (!services || services.length === 0) {
-        return {
-            type: 'SERVICE_INQUIRY',
-            response: "I apologize, but I don't have access to the services list at the moment. Please contact our office directly for information about our services."
-        };
-    }
+    console.log('Handling service inquiry for message:', normalizedMessage);
+    console.log('Available services:', JSON.stringify(services, null, 2));
 
-    // Extract potential service name from the message using various patterns
-    let detectedService = null;
-    
-    // Common patterns for service mentions
-    const patterns = [
-        /(?:about|explain|interested in|looking for|need|want)\s+([^?.!,]+)/i,
-        /(?:tell me more about|information about|details about|learn about)\s+([^?.!,]+)/i,
-        /(?:^|\s)([^?.!,]+?)(?:\s+treatment|\s+procedure|\s+service)/i
-    ];
+    // Try to find a matching service from the database
+    let matchingService = null;
 
-    // Try each pattern
-    for (const pattern of patterns) {
-        const match = message.match(pattern);
-        if (match) {
-            detectedService = match[1].trim();
+    // First check for direct mentions (e.g., "interested in teeth whitening")
+    for (const service of services) {
+        if (!service || !service.name) continue;
+        
+        const serviceName = service.name.toLowerCase().replace(/\s+/g, ' ').trim();
+        console.log('Checking service:', serviceName);
+
+        // Direct match for "interested in X" format
+        if (normalizedMessage.includes(`interested in ${serviceName}`)) {
+            console.log('Found exact match for interested in:', service.name);
+            matchingService = service;
+            break;
+        }
+
+        // Match all words in the service name
+        const serviceWords = serviceName.split(' ');
+        const allWordsMatch = serviceWords.every(word => 
+            normalizedMessage.includes(word.toLowerCase())
+        );
+
+        if (allWordsMatch) {
+            console.log('Found all words match for:', service.name);
+            matchingService = service;
             break;
         }
     }
 
-    // If no pattern match, try direct service name detection
-    if (!detectedService) {
-        // Get all service names from the database
-        const serviceNames = services.map(s => s.name.toLowerCase());
-        
-        // Find the longest matching service name in the message
-        let longestMatch = '';
-        for (const serviceName of serviceNames) {
-            if (normalizedMessage.includes(serviceName) && serviceName.length > longestMatch.length) {
-                longestMatch = serviceName;
-            }
-        }
-        
-        if (longestMatch) {
-            // Find the original cased version
-            detectedService = services.find(s => s.name.toLowerCase() === longestMatch)?.name;
-        }
-    }
-
-    // Find matching service from database
-    const matchingService = detectedService ? 
-        services.find(service => 
-            service.name.toLowerCase() === detectedService.toLowerCase() ||
-            service.name.toLowerCase().includes(detectedService.toLowerCase()) ||
-            detectedService.toLowerCase().includes(service.name.toLowerCase())
-        ) : null;
-
-    // If asking about a specific service
+    // If a specific service is found in the database
     if (matchingService) {
-        try {
-            // Use the service description from the database
-            const serviceDescription = matchingService.description || 
-                `I'd be happy to tell you more about ${matchingService.name}. To ensure you get the most accurate and detailed information, I'd like to connect you with our specialist.`;
-            
-            return {
-                type: 'SERVICE_INQUIRY',
-                detectedService: matchingService.name,
-                serviceContext: matchingService.name,
-                response: `${serviceDescription}\n\nWould you like to schedule a consultation with our ${matchingService.name} specialist? Please share your name, phone number, and email, and I'll help get that set up for you. 😊`
-            };
-        } catch (error) {
-            console.error("Error handling service inquiry:", error);
-            return {
-                type: 'SERVICE_INQUIRY',
-                response: "I apologize for the technical difficulty. I'd be happy to have our specialist provide you with detailed information about this service. Please share your name, phone number, and email so they can reach out to you. 😊"
-            };
-        }
-    }
-
-    // If asking about what service they need or what can help them
-    if (normalizedMessage.includes('what can help') || 
-        normalizedMessage.includes('which service is for me') ||
-        normalizedMessage.includes('what service do i need') ||
-        normalizedMessage.includes('what do i need') ||
-        normalizedMessage.includes('can help me') ||
-        normalizedMessage.includes('best for me')) {
+        console.log('Generating response for service:', matchingService.name);
+        console.log('Service details:', JSON.stringify(matchingService, null, 2));
         
+        // Get service description or use default
+        const serviceDescription = matchingService.description || 
+            `${matchingService.name} is one of our specialized dental services`;
+
+        console.log('Using description:', serviceDescription);
+
+        // Return service-specific response
         return {
             type: 'SERVICE_INQUIRY',
-            response: "As a dental assistant, I cannot make specific service recommendations as each patient's needs are unique. However, I'd be happy to connect you with our dental team who can properly evaluate your needs and recommend the best treatment options. Please share your name, phone number, and email so our team can reach out to you. 😊"
-        };
-    }
-
-    // If asking about services in general
-    if (normalizedMessage.includes('service') || 
-        normalizedMessage.includes('provide') || 
-        normalizedMessage.includes('offer') ||
-        normalizedMessage.match(/\b(what|which)\b/)) {
-        
-        // Create a formatted list of services
-        const servicesList = services.map(s => `• ${s.name}`).join('\n');
-        
-        return {
-            type: 'SERVICE_INQUIRY',
-            response: `Here are all the dental services we offer:\n\n${servicesList}\n\nTo discuss which service would be best for your specific needs, I'd be happy to connect you with our dental team. Please share your name, phone number, and email. 😊`
+            detectedService: matchingService.name,
+            serviceContext: matchingService.name,
+            response: `${serviceDescription}\n\nWould you like to schedule a consultation with our ${matchingService.name} specialist? I can help arrange that. 😊`
         };
     }
 
@@ -190,7 +141,7 @@ const generateEmergencyResponse = (messageHistory, message) => {
     if (!messageHistory.some(msg => msg.content?.toLowerCase().includes('pain'))) {
         return {
             type: 'EMERGENCY',
-            response: "😟 I understand you're experiencing discomfort. Let me help you schedule an appointment with our dental team right away. Could you share your name, phone number, and email?"
+            response: RESPONSE_TEMPLATES.emergency
         };
     }
 
@@ -198,14 +149,14 @@ const generateEmergencyResponse = (messageHistory, message) => {
     if (message.toLowerCase().includes('how') || message.toLowerCase().includes('what')) {
         return {
             type: 'EMERGENCY',
-            response: "Our dental team will need to examine you in person. Could you share your contact details so we can schedule an urgent appointment for you? 🏥"
+            response: "🚨 This requires immediate attention from our emergency dental team. Please provide your contact details right away so we can get you the urgent care you need! "
         };
     }
 
     // If they've asked multiple times without providing contact
     return {
         type: 'EMERGENCY',
-        response: "I'd like to help you schedule an urgent appointment with our dental team. Could you share your contact information so we can get that set up for you right away? 🙏"
+        response: "🚨 I want to help you get emergency dental care immediately. Please share your contact information right now, and our emergency team will call you as soon as possible! "
     };
 };
 
@@ -234,8 +185,22 @@ const generateServiceResponse = (service, messageHistory) => {
 export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false) => {
     try {
         const normalizedMessage = message.toLowerCase();
+        console.log('Generating response for message:', message);
+        console.log('Business data:', JSON.stringify(businessData, null, 2));
 
-        // Check for contact information first
+        // FIRST check for service inquiries - this takes priority
+        if (normalizedMessage.includes('interested in') || 
+            normalizedMessage.includes('about') || 
+            normalizedMessage.includes('want')) {
+            console.log('Detected service interest, checking services...');
+            const serviceInquiry = await handleServiceInquiry(message, businessData);
+            if (serviceInquiry) {
+                console.log('Service inquiry response:', serviceInquiry);
+                return serviceInquiry;
+            }
+        }
+
+        // Then check for contact information
         const contactInfo = extractContactInfo(message);
         if (contactInfo && contactInfo.name && contactInfo.phone && contactInfo.email) {
             return {
@@ -247,6 +212,16 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 ),
                 contactInfo,
                 serviceContext: contactInfo.service
+            };
+        }
+
+        // Handle "yes" responses when we're waiting for contact info
+        const lastMessage = messageHistory[messageHistory.length - 1];
+        if (lastMessage && 
+            (normalizedMessage === 'yes' || normalizedMessage === 'sure' || normalizedMessage === 'okay' || normalizedMessage === 'ok')) {
+            return {
+                type: 'CONTACT_REQUEST',
+                response: RESPONSE_TEMPLATES.contact_after_yes
             };
         }
 
@@ -271,7 +246,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             };
         }
 
-        // Check for service inquiries
+        // Check for general service inquiries
         const serviceInquiry = await handleServiceInquiry(message, businessData);
         if (serviceInquiry) {
             return serviceInquiry;
