@@ -228,7 +228,11 @@ const processChatMessage = async (message, sessionId, businessId) => {
                  
                 // --- Existing Overrides (Adjusted order/logic if needed) --- 
                 else if (isPediatricQuestion) { // Moved non-booking specifics up
-                    aiResponse.response = `As a dental receptionist, I understand you're asking about children's dental care. This is a crucial topic that our pediatric dental specialists would be happy to discuss in detail with you. They can provide personalized guidance based on your child's age and specific needs.\n\nCould you please share your full name, phone number, and email address? Once you do, I'll have our pediatric dental team reach out to schedule a consultation where they can provide comprehensive information about your child's dental care journey and answer all your questions.`;
+                    // --- Format Pediatric Response with New Lines and Emoji --- 
+                    aiResponse.response = 
+                        `👶 As a dental receptionist, I understand you're asking about children's dental care. This is a crucial topic that our pediatric dental specialists would be happy to discuss in detail with you.\n\n` +
+                        `They can provide personalized guidance based on your child's age and specific needs.\n\n` +
+                        `📞 Could you please share your full name, phone number, and email address? Once you do, I'll have our pediatric dental team reach out to schedule a consultation where they can provide comprehensive information about your child's dental care journey and answer all your questions.`;
                     aiResponse.type = 'PEDIATRIC_ADVICE_REQUEST';
                     session.serviceInterest = 'Pediatric Dentistry';
                     session.problemDescription = message;
@@ -240,7 +244,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 } else if (matchedQuestion || isAdviceRequest) {
                     // This should now only trigger if it's NOT a specific booking request handled above
                     const topic = matchedQuestion ? matchedQuestion.topic : 'dental health';
-                    aiResponse.response = `As a dental receptionist, I cannot provide specific advice about ${topic}, as this requires a professional evaluation from our dental team.\n\nHowever, I'd be happy to connect you with our specialist who can provide personalized recommendations. Could you please share your full name, phone number, and email address? Once you do, I'll make sure our dental team reaches out to schedule a consultation where they can address all your questions about ${topic}.`;
+                    aiResponse.response = ` 🦷 As a dental receptionist, I cannot provide specific advice about ${topic}, as this requires a professional evaluation from our dental team.\n\nHowever, I'd be happy to connect you with our specialist who can provide personalized recommendations. 📞 Could you please share your full name, phone number, and email address? Once you do, I'll make sure our dental team reaches out to schedule a consultation where they can address all your questions about ${topic}.`;
                     aiResponse.type = 'SPECIFIC_ADVICE_REQUEST';
                     session.problemDescription = message; // Store the specific question
                 } else if (isUrgentRequest) {
@@ -251,16 +255,16 @@ const processChatMessage = async (message, sessionId, businessId) => {
                         ? `\n\nIf you're experiencing severe pain, you can also reach our emergency line directly at ${businessPhone}.`
                         : `\n\nIf you're experiencing severe pain, please call our office immediately.`;
 
-                    aiResponse.response = `I understand you're experiencing urgent dental needs. Our team prioritizes emergency cases and will contact you as soon as possible. To help you immediately, please provide your full name, phone number, and email address. Once you share these details, our emergency team will reach out to you right away to provide immediate assistance.${emergencyMessage}`;
+                    aiResponse.response = `🦷 I understand you're experiencing urgent dental needs. Our team prioritizes emergency cases and will contact you as soon as possible.\n\n📞 To help you immediately, please provide your full name, phone number, and email address. Once you share these details, our emergency team will reach out to you right away to provide immediate assistance.${emergencyMessage}`;
                     aiResponse.type = 'URGENT_REQUEST';
                 } else if (isRescheduleRequest) {
-                    aiResponse.response = "I understand you'd like to reschedule your appointment. To help you with this, I'll need your full name, phone number, and email address. This way, our scheduling team can locate your existing appointment and help find a new time that works better for you. Could you please provide these details?";
+                    aiResponse.response = " ⏰ I understand you'd like to reschedule your appointment. To help you with this, I'll need your full name, phone number, and email address. This way, our scheduling team can locate your existing appointment and help find a new time that works better for you. Could you please provide these details?";
                     aiResponse.type = 'RESCHEDULE_REQUEST';
                 } else if (isCancelRequest) {
-                    aiResponse.response = "I understand you'd like to cancel your appointment. To help you with this, I'll need your full name, phone number, and email address so our team can locate your appointment in the system. Could you please share these details with me?";
+                    aiResponse.response = " ❌ I understand you'd like to cancel your appointment. To help you with this, I'll need your full name, phone number, and email address so our team can locate your appointment in the system. Could you please share these details with me?";
                     aiResponse.type = 'CANCEL_REQUEST';
                 } else { // Default to booking request if none of the above specifics match
-                    aiResponse.response = "I'll be happy to help you schedule an appointment! To connect you with our scheduling specialist, I just need your full name, phone number, and email address. Once you provide these details, they will reach out to find the perfect time slot for you. Could you please share those details with me?";
+                    aiResponse.response = " ⏰ I'll be happy to help you schedule an appointment! 📞 To connect you with our scheduling specialist, I just need your full name, phone number, and email address. Once you provide these details, they will reach out to find the perfect time slot for you. Could you please share those details with me?";
                     aiResponse.type = 'BOOKING_REQUEST';
                 }
                 // Store the original service context if it exists

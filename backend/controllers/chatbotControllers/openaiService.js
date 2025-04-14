@@ -47,11 +47,11 @@ const DENTAL_PROBLEMS = {
 // Common response templates
 const RESPONSE_TEMPLATES = {
     greeting: "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
-    understanding: "I understand you're interested in learning more about this. As a dental assistant, I want to ensure you get the most accurate information. Would you like me to connect you with our specialist who can provide detailed information about this procedure?",
+    understanding: "I understand you're interested in learning more about this. As a dental assistant, I want to ensure you get the most accurate information.\n\n👩‍⚕️ Would you like me to connect you with our specialist who can provide detailed information about this procedure?",
     contact_request: "Perfect! To connect you with our specialist, could you please provide your full name, phone number, and email address? 😊",
-    emergency: "I understand this is an emergency that needs immediate attention! Let me help you get an urgent appointment. Please provide your full name, phone number, and email address, and our emergency team will contact you immediately. We prioritize these cases!",
-    dental_problem: (problem) => `I understand your concern about ${problem}. This should be evaluated by our dental team. To help schedule a consultation, could you please provide your full name, phone number, and email address?`,
-    visual_concern: (concern) => `Okay, I understand you've noticed a ${concern} on your tooth. It's best to have our dental team evaluate that. To help schedule a consultation, could you please provide your full name, phone number, and email address?`,
+    emergency: "I understand this is an emergency that needs immediate attention! Let me help you get an urgent appointment.\n\n📞 Please provide your full name, phone number, and email address, and our emergency team will contact you immediately. We prioritize these cases!",
+    dental_problem: (problem) => `I understand your concern about ${problem}. This should be evaluated by our dental team.\n\n📞 To help schedule a consultation, could you please provide your full name, phone number, and email address?`,
+    visual_concern: (concern) => `Okay, I understand you've noticed a ${concern} on your tooth. It's best to have our dental team evaluate that.\n\n📞 To help schedule a consultation, could you please provide your full name, phone number, and email address?`,
     service_inquiry: (service) => `Our specialist can provide detailed information about ${service}. To arrange this, could you please provide your full name, phone number, and email address?`,
     contact_confirmation: (name, service, phone) => 
         `✅ Thank you ${name}! I've noted your interest in ${service}. Our specialist will contact you at ${phone} to provide detailed information and answer all your questions. 😊`,
