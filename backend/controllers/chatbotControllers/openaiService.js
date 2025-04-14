@@ -15,7 +15,8 @@ const CHATBOT_PERSONALITY = {
         "helpful without being pushy",
         "takes serious dental concerns seriously",
         "goal is to schedule a consultation or gather contact info",
-        "never give medical advice"
+        "never give medical advice",
+        
     ],
     rules: [
         "Never give medical advice",
@@ -47,16 +48,16 @@ const DENTAL_PROBLEMS = {
 const RESPONSE_TEMPLATES = {
     greeting: "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
     understanding: "I understand you're interested in learning more about this. As a dental assistant, I want to ensure you get the most accurate information. Would you like me to connect you with our specialist who can provide detailed information about this procedure?",
-    contact_request: "Perfect! To connect you with our specialist, I'll need your name, phone number, and email address. 😊",
-    emergency: "I understand you're in severe pain - this is an emergency that needs immediate attention!  Let me help you get an urgent appointment RIGHT NOW. Please quickly share your name, phone number, and email, and our emergency dental team will contact you immediately. We prioritize emergency cases and will get you seen as soon as possible! ",
-    dental_problem: (problem) => `I understand your concern about ${problem}. This should be evaluated by our dental team. Let me help you schedule a consultation - what's your name, phone number, and email?`,
-    visual_concern: (concern) => `Okay, I understand you've noticed a ${concern} on your tooth. It's always a good idea to have our dental team take a look at changes like that to see what's causing it. Let me help you schedule a consultation - what's your name, phone number, and email?`,
-    service_inquiry: (service) => `As a dental assistant, I want to ensure you get the most accurate information about ${service}. Our specialist would be happy to explain everything in detail. What's your name, phone number, and email so I can arrange this?`,
+    contact_request: "Perfect! To connect you with our specialist, could you please provide your full name, phone number, and email address? 😊",
+    emergency: "I understand this is an emergency that needs immediate attention! Let me help you get an urgent appointment. Please provide your full name, phone number, and email address, and our emergency team will contact you immediately. We prioritize these cases!",
+    dental_problem: (problem) => `I understand your concern about ${problem}. This should be evaluated by our dental team. To help schedule a consultation, could you please provide your full name, phone number, and email address?`,
+    visual_concern: (concern) => `Okay, I understand you've noticed a ${concern} on your tooth. It's best to have our dental team evaluate that. To help schedule a consultation, could you please provide your full name, phone number, and email address?`,
+    service_inquiry: (service) => `Our specialist can provide detailed information about ${service}. To arrange this, could you please provide your full name, phone number, and email address?`,
     contact_confirmation: (name, service, phone) => 
         `✅ Thank you ${name}! I've noted your interest in ${service}. Our specialist will contact you at ${phone} to provide detailed information and answer all your questions. 😊`,
     procedure_inquiry: "As a dental assistant, I cannot provide specific details about dental procedures. However, I can connect you with our specialist who can explain everything thoroughly. Would you like that?",
-    contact_after_yes: "Great! I'll just need your name, phone number, and email to set this up. 😊",
-    waiting_for_contact: "I'm ready to connect you with our specialist. Just share your name, phone number, and email, and I'll take care of the rest."
+    contact_after_yes: "Great! I'll just need your full name, phone number, and email address to set this up. 😊",
+    waiting_for_contact: "I'm ready to connect you with our specialist. Just share your full name, phone number, and email address, and I'll take care of the rest."
 };
 
 const isGreeting = (message) => {
@@ -338,10 +339,9 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         console.log('Falling back to OpenAI generation.');
         
         // Prepare context for OpenAI
-        const systemPrompt = `You are a dental office AI assistant. 
-Persona Traits: ${CHATBOT_PERSONALITY.traits.join(', ')}. 
-Rules: ${CHATBOT_PERSONALITY.rules.join(' ')}
-Your goal is to understand the user's query, provide helpful acknowledgement, and gently guide them towards scheduling a consultation if their query isn't easily categorized as a specific service request, greeting, contact info provision, or known dental problem. Acknowledge their statement, explain that a dentist needs to evaluate specific conditions, and offer to help schedule an appointment. Do not give medical advice. Keep responses concise and friendly.`;
+        const systemPrompt = `You are a dental office AI assistant.
+Persona Traits: ${CHATBOT_PERSONALITY.traits.join(', ')}.
+Rules: ${CHATBOT_PERSONALITY.rules.join(' ')} Your primary goal is to either answer basic service questions or collect contact information to schedule a consultation. If you need to collect contact information, you MUST explicitly ask for the user's full name, phone number, AND email address. Do not ask for generic 'contact details' or 'preferred contact'. Acknowledge the user's statement, explain that a dentist needs to evaluate specific conditions, and offer to help schedule an appointment by collecting these three pieces of information. Do not give medical advice. Keep responses concise and friendly.`;
 
         const conversationHistory = messageHistory.map(msg => ({
             role: msg.sender === 'user' ? 'user' : 'assistant',
