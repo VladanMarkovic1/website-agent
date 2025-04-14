@@ -86,8 +86,8 @@ const processChatMessage = async (message, sessionId, businessId) => {
             const businessData = {
                 ...business.toObject(),
                 services: services,
-                phone: contactData?.phone || null,
-                email: contactData?.email || null,
+                businessPhoneNumber: contactData?.phone || null,
+                businessEmail: contactData?.email || null,
                 address: contactData?.address || null
             };
 

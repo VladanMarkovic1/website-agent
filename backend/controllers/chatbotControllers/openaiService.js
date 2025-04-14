@@ -224,15 +224,24 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         // Then check for contact information
         const contactInfo = extractContactInfo(message);
         if (contactInfo && contactInfo.name && contactInfo.phone && contactInfo.email) {
+            const serviceContext = contactInfo.service || lastBotMessage?.detectedService || 'your dental needs'; // Refined fallback
+            // Ensure businessPhoneNumber is fetched correctly. If missing, provide a clear note.
+            const businessPhoneNumber = businessData?.businessPhoneNumber;
+            const callUsText = businessPhoneNumber
+                ? `please feel free to call us directly at ${businessPhoneNumber}.`
+                : `please feel free to call us directly (phone number available on our website).`; // Clearer fallback
+
+            // --- Construct the new professional response with Emojis --- 
+            const confirmationMessage = 
+                `✅ Thank you, ${contactInfo.name}! Your information has been received, and we've noted your interest in ${serviceContext}.\n\n` +
+                `🧑‍⚕️ Our team will contact you at ${contactInfo.phone} shortly during business hours to discuss your needs and schedule your consultation.\n\n` +
+                `📞 If your situation requires immediate attention or you prefer to speak with us sooner, ${callUsText}`;
+
             return {
                 type: 'CONTACT_INFO',
-                response: RESPONSE_TEMPLATES.contact_confirmation(
-                    contactInfo.name,
-                    contactInfo.service || lastBotMessage?.detectedService || 'our dental services',
-                    contactInfo.phone
-                ),
+                response: confirmationMessage, // <-- Use the newly constructed message with emojis
                 contactInfo,
-                serviceContext: contactInfo.service || lastBotMessage?.detectedService
+                serviceContext // Keep passing service context for lead saving
             };
         }
 
