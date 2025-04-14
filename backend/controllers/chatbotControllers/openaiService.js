@@ -140,9 +140,13 @@ const handleServiceInquiry = async (message, context) => {
         }
     }
 
+    // --- Add log to show final score before decision ---
+    console.log(`[Service Match] Final check: Best match "${matchingService?.name}" with score ${highestMatchScore}`);
+
     // If a sufficiently good match is found
-    if (matchingService && highestMatchScore > 0) { // Require at least a significant word match
-        console.log('[Service Match] Final matched service:', matchingService.name);
+    // --- Increase Required Score Threshold --- 
+    if (matchingService && highestMatchScore > 1) { // Require score > 1 (All Words or Exact Match)
+        console.log('[Service Match] Final matched service (Score > 1):', matchingService.name);
         console.log('[Service Match] Service details:', JSON.stringify(matchingService, null, 2));
 
         // --- Build Response --- 
@@ -341,7 +345,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         // Prepare context for OpenAI
         const systemPrompt = `You are a dental office AI assistant.
 Persona Traits: ${CHATBOT_PERSONALITY.traits.join(', ')}.
-Rules: ${CHATBOT_PERSONALITY.rules.join(' ')} Your primary goal is to either answer basic service questions or collect contact information to schedule a consultation. If you need to collect contact information, you MUST explicitly ask for the user's full name, phone number, AND email address. Do not ask for generic 'contact details' or 'preferred contact'. Acknowledge the user's statement, explain that a dentist needs to evaluate specific conditions, and offer to help schedule an appointment by collecting these three pieces of information. Do not give medical advice. Keep responses concise and friendly.`;
+Rules: ${CHATBOT_PERSONALITY.rules.join(' ')} Your primary goal is to either answer basic service questions or collect contact information to schedule a consultation. If you need to collect contact information, you MUST explicitly ask for the user's full name, phone number, AND email address. Do not ask for generic 'contact details' or 'preferred contact'. Acknowledge the user's statement, explain that a dentist needs to evaluate specific conditions, and offer to help schedule an appointment by collecting these three pieces of information. Do not give medical advice. Keep responses concise,friendly and always use emojis.`;
 
         const conversationHistory = messageHistory.map(msg => ({
             role: msg.sender === 'user' ? 'user' : 'assistant',
