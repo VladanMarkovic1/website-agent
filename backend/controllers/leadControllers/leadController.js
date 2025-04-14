@@ -213,6 +213,11 @@ export const saveLead = async (leadContext) => {
         await lead.save();
         console.log("✅ New lead saved successfully");
 
+        // --- ADD LOG BEFORE TRACKING --- 
+        console.log(`[LeadController] About to call trackChatEvent for NEW_LEAD. BusinessId: ${businessId}, Service: ${serviceInterest}`);
+        // Track the new lead event
+        await trackChatEvent(businessId, 'NEW_LEAD', { service: serviceInterest });
+
         // Return confirmation for new lead (maybe use template from openaiService?)
         // Using the contact_confirmation template structure:
         return `✅ Thank you ${name}! I've noted your interest in ${lead.service}. Our specialist will contact you at ${phone} soon.`;

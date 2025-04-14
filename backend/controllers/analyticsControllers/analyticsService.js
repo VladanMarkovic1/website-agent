@@ -5,52 +5,65 @@ import ChatAnalytics from '../../models/ChatAnalytics.js';
  */
 export const trackChatEvent = async (businessId, eventType, data = {}) => {
     try {
+        console.log(`[AnalyticsService] Tracking event: ${eventType} for business: ${businessId}, Data: ${JSON.stringify(data)}`);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        let updateTodayOps = {};
-        let updateAllTimeOps = {};
+        let todayOps = {}; 
+        let allTimeOps = {}; 
 
+        // --- Perform Lead Increment Separately --- 
+        if (eventType === 'NEW_LEAD') {
+            console.log('[AnalyticsService] Incrementing totalLeads separately...');
+            try {
+                console.log(`[AnalyticsService] Attempting today's lead increment. Filter: { businessId: ${businessId}, date: ${today} }`);
+                const todayUpdateResult = await ChatAnalytics.updateOne({ businessId, date: today }, { $inc: { totalLeads: 1 } }, { upsert: true });
+                console.log('[AnalyticsService] Today lead increment result:', JSON.stringify(todayUpdateResult));
+
+                console.log(`[AnalyticsService] Attempting all-time lead increment. Filter: { businessId: ${businessId}, date: null }`);
+                const allTimeUpdateResult = await ChatAnalytics.updateOne({ businessId, date: null }, { $inc: { totalLeads: 1 } }, { upsert: true });
+                console.log('[AnalyticsService] All-time lead increment result:', JSON.stringify(allTimeUpdateResult));
+
+                console.log('[AnalyticsService] Separate totalLeads increment successful.');
+            } catch (leadIncError) {
+                 console.error('[AnalyticsService] Error during separate totalLeads increment:', leadIncError);
+                 // Decide if we should continue or throw
+            }
+        }
+        // --- End Separate Lead Increment ---
+
+        // Now build the remaining ops for other event types or service counts
         switch (eventType) {
             case 'NEW_CONVERSATION':
-                updateTodayOps = { $inc: { totalConversations: 1 } };
-                updateAllTimeOps = { $inc: { totalConversations: 1 } };
+                todayOps = { $inc: { totalConversations: 1 } };
+                allTimeOps = { $inc: { totalConversations: 1 } };
                 break;
-
             case 'CONVERSATION_COMPLETED':
-                updateTodayOps = { $inc: { completedConversations: 1 } };
-                updateAllTimeOps = { $inc: { completedConversations: 1 } };
+                todayOps = { $inc: { completedConversations: 1 } };
+                allTimeOps = { $inc: { completedConversations: 1 } };
                 break;
-
-            case 'NEW_LEAD':
-                updateTodayOps = {
-                    $inc: {
-                        totalLeads: 1,
-                        'leadStatus.new': 1
-                    }
-                };
-                updateAllTimeOps = {
-                    $inc: {
-                        totalLeads: 1,
-                        'leadStatus.new': 1
-                    }
-                };
-                
+            case 'NEW_LEAD': // Only handle service count here now
+                console.log('[AnalyticsService] Handling NEW_LEAD service count.');
                 if (data.service) {
-                    updateTodayOps.$inc[`leadsByService.${data.service}`] = 1;
-                    updateAllTimeOps.$inc[`leadsByService.${data.service}`] = 1;
+                    const serviceKey = `leadsByService.${data.service.replace(/[.$]/g, "_")}`;
+                    console.log(`[AnalyticsService] Incrementing service key: ${serviceKey}`);
+                    // Use $set to ensure the nested object structure if needed, or just $inc
+                    todayOps = { $inc: { [serviceKey]: 1 } }; 
+                    allTimeOps = { $inc: { [serviceKey]: 1 } }; 
+                } else {
+                    console.log('[AnalyticsService] No service data provided for NEW_LEAD service count.');
                 }
+                // DO NOT break here if other logic needs to run after switch
                 break;
-
             case 'LEAD_STATUS_UPDATE':
                 if (data.oldStatus && data.newStatus && data.oldStatus !== data.newStatus) {
-                    updateTodayOps = {
+                    todayOps = {
                         $inc: {
                             [`leadStatus.${data.oldStatus}`]: -1,
                             [`leadStatus.${data.newStatus}`]: 1
                         }
                     };
-                    updateAllTimeOps = {
+                    allTimeOps = {
                         $inc: {
                             [`leadStatus.${data.oldStatus}`]: -1,
                             [`leadStatus.${data.newStatus}`]: 1
@@ -58,61 +71,62 @@ export const trackChatEvent = async (businessId, eventType, data = {}) => {
                     };
                 }
                 break;
-
             case 'HOURLY_ACTIVITY':
                 const hour = new Date().getHours().toString();
-                updateTodayOps = { $inc: { [`hourlyActivity.${hour}`]: 1 } };
-                updateAllTimeOps = { $inc: { [`hourlyActivity.${hour}`]: 1 } };
+                todayOps = { $inc: { [`hourlyActivity.${hour}`]: 1 } };
+                allTimeOps = { $inc: { [`hourlyActivity.${hour}`]: 1 } };
                 break;
-        }
+            default:
+                 console.log(`[AnalyticsService] Unknown or already handled event type: ${eventType}`);
+                 break;
+        } // End switch
 
-        // Execute updates atomically
-        const [todayAnalytics, allTimeAnalytics] = await Promise.all([
-            ChatAnalytics.findOneAndUpdate(
-                { businessId, date: today },
-                updateTodayOps,
-                { 
-                    new: true, 
-                    upsert: true,
-                    setDefaultsOnInsert: true 
-                }
-            ),
-            ChatAnalytics.findOneAndUpdate(
-                { businessId, date: null },
-                updateAllTimeOps,
-                { 
-                    new: true, 
-                    upsert: true,
-                    setDefaultsOnInsert: true 
-                }
-            )
-        ]);
+        console.log('[AnalyticsService] Ops generated by switch (Today - Others):', JSON.stringify(todayOps));
+        console.log('[AnalyticsService] Ops generated by switch (All Time - Others):', JSON.stringify(allTimeOps));
 
-        // Calculate and update conversion rate
-        if (allTimeAnalytics.totalConversations > 0) {
-            const conversionRate = Math.min(
-                (allTimeAnalytics.totalLeads / allTimeAnalytics.totalConversations) * 100,
-                100
-            );
-
+        // Execute remaining updates if any operations were defined
+        if (Object.keys(todayOps).length > 0 || Object.keys(allTimeOps).length > 0) {
+            console.log('[AnalyticsService] Executing remaining DB updates (conversations, services, etc.)...');
+            // Use Promise.allSettled if you want to ensure one update failure doesn't stop others
             await Promise.all([
-                ChatAnalytics.findOneAndUpdate(
-                    { businessId, date: today },
-                    { $set: { conversionRate } }
-                ),
-                ChatAnalytics.findOneAndUpdate(
-                    { businessId, date: null },
-                    { $set: { conversionRate } }
-                )
+                Object.keys(todayOps).length > 0 ? 
+                    ChatAnalytics.updateOne({ businessId, date: today }, todayOps, { upsert: true }) : 
+                    Promise.resolve(), // Resolve immediately if no ops
+                
+                Object.keys(allTimeOps).length > 0 ?
+                    ChatAnalytics.updateOne({ businessId, date: null }, allTimeOps, { upsert: true }) :
+                    Promise.resolve() // Resolve immediately if no ops
             ]);
-
-            todayAnalytics.conversionRate = conversionRate;
-            allTimeAnalytics.conversionRate = conversionRate;
+            console.log('[AnalyticsService] Remaining MongoDB updates promise resolved.');
+        } else {
+            console.log('[AnalyticsService] No remaining update operations defined. Skipping DB update.');
         }
 
-        return { today: todayAnalytics, allTime: allTimeAnalytics };
+        // --- Fetch final data and Calculate Conversion Rate --- 
+        // Fetch the potentially updated records *after* all updates
+        const [finalToday, finalAllTime] = await Promise.all([
+             ChatAnalytics.findOne({ businessId, date: today }),
+             ChatAnalytics.findOne({ businessId, date: null })
+        ]);
+        
+        if (finalAllTime && finalAllTime.totalConversations > 0) {
+            console.log('[AnalyticsService] Calculating and updating conversion rate...');
+            const conversionRate = Math.min((finalAllTime.totalLeads / finalAllTime.totalConversations) * 100, 100);
+            // Perform final update for conversion rate
+            await Promise.all([
+                 ChatAnalytics.updateOne({ businessId, date: today }, { $set: { conversionRate } }),
+                 ChatAnalytics.updateOne({ businessId, date: null }, { $set: { conversionRate } })
+            ]);
+             console.log('[AnalyticsService] Conversion rate update complete.');
+        } else {
+            console.log('[AnalyticsService] Skipping conversion rate update (no conversations or data).');
+        }
+        // --- End Conversion Rate --- 
+
+        return { today: finalToday, allTime: finalAllTime }; // Return the latest fetched data
+
     } catch (error) {
-        console.error('Error tracking chat event:', error);
+        console.error('[AnalyticsService] Error tracking chat event:', error);
         throw error;
     }
 };
