@@ -6,21 +6,24 @@ dotenv.config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Personality traits for consistent tone
+// Personality traits for consistent tone (needed for AI fallback)
 const CHATBOT_PERSONALITY = {
     traits: [
         "professional but warm",
         "empathetic and understanding",
-        "knowledgeable about dental procedures",
+        "knowledgeable about dental procedures (but not a dentist)",
         "helpful without being pushy",
-        "takes serious dental concerns seriously"
+        "takes serious dental concerns seriously",
+        "goal is to schedule a consultation or gather contact info",
+        "never give medical advice"
     ],
     rules: [
-        "Never dismiss serious dental concerns",
-        "Don't pretend to be a dentist but show understanding",
-        "Acknowledge the user's concerns before asking for information",
-        "For complex procedures, emphasize consultation importance",
-        "Only ask for contact after building trust"
+        "Never give medical advice",
+        "Never dismiss serious dental concerns.",
+        "Don't pretend to be a dentist; emphasize evaluation by a specialist.",
+        "Acknowledge the user's statement/concern first.",
+        "Gently guide towards scheduling a consultation.",
+        "If unsure, express the need for a dentist to evaluate."
     ]
 };
 
@@ -32,10 +35,11 @@ const GREETINGS = [
 
 // Dental problem indicators
 const DENTAL_PROBLEMS = {
-    pain: ['pain', 'hurt', 'ache', 'hurts', 'hurting', 'aching', 'painful'],
-    sensitivity: ['sensitive', 'sensitivity', 'cold', 'hot', 'sweet'],
+    pain: ['pain', 'hurt', 'ache', 'hurts', 'hurting', 'aching', 'painful',],
+    sensitivity: ['sensitive', 'sensitivity', 'cold', 'hot', 'sweet',],
     damage: ['broken', 'chipped', 'cracked', 'loose', 'missing'],
     emergency: ['bleeding', 'swollen', 'swelling', 'infection', 'abscess'],
+    appearance: ['dot', 'spot', 'stain', 'discoloration', 'black', 'white', 'yellow', 'brown', 'dark', 'white spot', 'whiteish spot', 'whiteish stain', 'whiteish discoloration', 'something '],
     general: ['cavity', 'decay', 'filling', 'tooth', 'teeth', 'gum', 'jaw']
 };
 
@@ -44,8 +48,9 @@ const RESPONSE_TEMPLATES = {
     greeting: "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
     understanding: "I understand you're interested in learning more about this. As a dental assistant, I want to ensure you get the most accurate information. Would you like me to connect you with our specialist who can provide detailed information about this procedure?",
     contact_request: "Perfect! To connect you with our specialist, I'll need your name, phone number, and email address. 😊",
-    emergency: "I understand you're in severe pain - this is an emergency that needs immediate attention! 🚨 Let me help you get an urgent appointment RIGHT NOW. Please quickly share your name, phone number, and email, and our emergency dental team will contact you immediately. We prioritize emergency cases and will get you seen as soon as possible! 🏥",
+    emergency: "I understand you're in severe pain - this is an emergency that needs immediate attention!  Let me help you get an urgent appointment RIGHT NOW. Please quickly share your name, phone number, and email, and our emergency dental team will contact you immediately. We prioritize emergency cases and will get you seen as soon as possible! ",
     dental_problem: (problem) => `I understand your concern about ${problem}. This should be evaluated by our dental team. Let me help you schedule a consultation - what's your name, phone number, and email?`,
+    visual_concern: (concern) => `Okay, I understand you've noticed a ${concern} on your tooth. It's always a good idea to have our dental team take a look at changes like that to see what's causing it. Let me help you schedule a consultation - what's your name, phone number, and email?`,
     service_inquiry: (service) => `As a dental assistant, I want to ensure you get the most accurate information about ${service}. Our specialist would be happy to explain everything in detail. What's your name, phone number, and email so I can arrange this?`,
     contact_confirmation: (name, service, phone) => 
         `✅ Thank you ${name}! I've noted your interest in ${service}. Our specialist will contact you at ${phone} to provide detailed information and answer all your questions. 😊`,
@@ -136,67 +141,61 @@ const handleServiceInquiry = async (message, context) => {
     return null;
 };
 
-const generateEmergencyResponse = (messageHistory, message) => {
-    // If this is the first mention of pain
-    if (!messageHistory.some(msg => msg.content?.toLowerCase().includes('pain'))) {
-        return {
-            type: 'EMERGENCY',
-            response: RESPONSE_TEMPLATES.emergency
-        };
-    }
-
-    // If they're asking about treatment without providing contact
-    if (message.toLowerCase().includes('how') || message.toLowerCase().includes('what')) {
-        return {
-            type: 'EMERGENCY',
-            response: "🚨 This requires immediate attention from our emergency dental team. Please provide your contact details right away so we can get you the urgent care you need! "
-        };
-    }
-
-    // If they've asked multiple times without providing contact
-    return {
-        type: 'EMERGENCY',
-        response: "🚨 I want to help you get emergency dental care immediately. Please share your contact information right now, and our emergency team will call you as soon as possible! "
-    };
-};
-
-const generateServiceResponse = (service, messageHistory) => {
-    if (!service) {
-        return "✨ I can help you schedule an appointment with the right specialist. What's the best way to reach you?";
-    }
-
-    // Check if we've already described this service
-    const previousServiceMention = messageHistory.find(msg => 
-        msg.type === 'SERVICE_INQUIRY' && msg.detectedService === service.name
-    );
-
-    if (previousServiceMention) {
-        return `Great choice! 🌟 I can get you scheduled for ${service.name}. What's the best phone number and email to reach you at?`;
-    }
-
-    // If service has a description, use it, otherwise use a generic response
-    if (service.description) {
-        return `${service.description}\n\n✨ Would you like to schedule a consultation to learn more? Just let me know your contact details, and I'll have our ${service.name} specialist reach out to you.`;
-    }
-
-    return `I'd be happy to have our ${service.name} specialist tell you more about this service in person. 😊 Would you like me to arrange a consultation? Just share your contact details, and I'll take care of the rest.`;
-};
-
 export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false) => {
     try {
         const normalizedMessage = message.toLowerCase();
         console.log('Generating response for message:', message);
         console.log('Business data:', JSON.stringify(businessData, null, 2));
+        console.log('Message history:', JSON.stringify(messageHistory, null, 2));
+
+        const lastUserMessage = messageHistory.filter(msg => msg.sender === 'user').pop();
+        const lastBotMessage = messageHistory.filter(msg => msg.sender === 'bot').pop();
 
         // FIRST check for service inquiries - this takes priority
         if (normalizedMessage.includes('interested in') || 
             normalizedMessage.includes('about') || 
             normalizedMessage.includes('want')) {
-            console.log('Detected service interest, checking services...');
+            console.log('Detected explicit service interest, checking services...');
             const serviceInquiry = await handleServiceInquiry(message, businessData);
             if (serviceInquiry) {
-                console.log('Service inquiry response:', serviceInquiry);
+                console.log('Explicit service inquiry response:', serviceInquiry);
                 return serviceInquiry;
+            }
+        }
+
+        // Handle follow-up questions after a problem was identified
+        if (lastBotMessage?.type === 'DENTAL_PROBLEM' && 
+            (normalizedMessage.includes('which service') || normalizedMessage.includes('what service') || 
+             normalizedMessage.includes('can help') || normalizedMessage.includes('what should i do'))) {
+            
+            const problemCategory = lastBotMessage.problemCategory;
+            console.log('Follow-up question detected for problem category:', problemCategory);
+
+            let suggestedServices = [];
+            if (problemCategory === 'damage') {
+                suggestedServices = ['Dental Crowns', 'Dental Bonding', 'Veneers', 'Fillings'];
+            } else if (problemCategory === 'pain') {
+                suggestedServices = ['Root Canal Treatment', 'Tooth Extraction', 'Emergency Consultation'];
+            } else if (problemCategory === 'sensitivity') {
+                suggestedServices = ['Sensitivity Treatment', 'Fillings', 'Dental Sealants'];
+            } // Add more mappings as needed
+            
+            const availableServices = businessData.services.map(s => s.name);
+            const relevantServices = suggestedServices.filter(s => 
+                availableServices.some(as => as.toLowerCase().includes(s.toLowerCase()))
+            );
+
+            if (relevantServices.length > 0) {
+                return {
+                    type: 'PROBLEM_FOLLOWUP',
+                    response: `For concerns related to ${problemCategory}, we often recommend services like:\n${relevantServices.map(s => `• ${s}`).join('\n')}\n\nWould you like to learn more about one of these, or shall I help you schedule a consultation to determine the best approach?`
+                };
+            } else {
+                // Fallback if no specific services match the suggestions
+                 return {
+                    type: 'PROBLEM_FOLLOWUP',
+                    response: `Based on your concern about ${problemCategory}, it's best to have our specialist evaluate it. Would you like to schedule a consultation? I'll need your name, phone, and email.`
+                };
             }
         }
 
@@ -207,32 +206,66 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 type: 'CONTACT_INFO',
                 response: RESPONSE_TEMPLATES.contact_confirmation(
                     contactInfo.name,
-                    contactInfo.service || 'our dental services',
+                    contactInfo.service || lastBotMessage?.detectedService || 'our dental services',
                     contactInfo.phone
                 ),
                 contactInfo,
-                serviceContext: contactInfo.service
+                serviceContext: contactInfo.service || lastBotMessage?.detectedService
             };
         }
 
         // Handle "yes" responses when we're waiting for contact info
         const lastMessage = messageHistory[messageHistory.length - 1];
-        if (lastMessage && 
+        if (lastMessage?.sender === 'bot' && 
             (normalizedMessage === 'yes' || normalizedMessage === 'sure' || normalizedMessage === 'okay' || normalizedMessage === 'ok')) {
-            return {
-                type: 'CONTACT_REQUEST',
-                response: RESPONSE_TEMPLATES.contact_after_yes
-            };
+            
+            console.log('Detected confirmation (yes/sure/ok). Last bot message:', lastMessage.response);
+            // Check if the bot asked a question that expects a confirmation to proceed with contact request
+            if (lastMessage.response.includes('Would you like') || 
+                lastMessage.response.includes('shall I help') || 
+                lastMessage.response.includes('arrange that')) {
+                
+                // Avoid asking again if the bot *just* asked for details
+                if (!lastMessage.response.includes('name, phone number, and email')) {
+                    console.log('Responding with contact request template.');
+                    return {
+                        type: 'CONTACT_REQUEST',
+                        response: RESPONSE_TEMPLATES.contact_request
+                    };
+                } else {
+                    console.log('Last bot message already requested contact info, ignoring confirmation.');
+                }
+            } else {
+                 console.log('Confirmation does not follow a relevant bot question, proceeding.');
+            }
         }
 
-        // Check for dental problems
+        // Check for dental problems (initial report)
         const dentalProblem = isDentalProblem(message);
         if (dentalProblem.isIssue) {
+            let responseTemplate;
+            let concernDetail = dentalProblem.category;
+            if (dentalProblem.severity === 'high') {
+                responseTemplate = RESPONSE_TEMPLATES.emergency;
+            } else if (dentalProblem.category === 'appearance') {
+                responseTemplate = RESPONSE_TEMPLATES.visual_concern;
+                // Try to extract the specific visual detail (e.g., "black dot")
+                const appearanceKeywords = DENTAL_PROBLEMS.appearance;
+                const mentionedKeyword = appearanceKeywords.find(k => normalizedMessage.includes(k));
+                if (mentionedKeyword) {
+                    // Try to get a slightly more specific phrase if possible
+                    const regex = new RegExp(`(\w+\s+)?${mentionedKeyword}(\s+\w+)?`, 'i');
+                    const match = normalizedMessage.match(regex);
+                    concernDetail = match ? match[0] : mentionedKeyword; 
+                } else {
+                    concernDetail = 'visual change'; // Fallback detail
+                }
+            } else {
+                responseTemplate = RESPONSE_TEMPLATES.dental_problem;
+            }
             return {
                 type: 'DENTAL_PROBLEM',
-                response: dentalProblem.severity === 'high' 
-                    ? RESPONSE_TEMPLATES.emergency
-                    : RESPONSE_TEMPLATES.dental_problem(dentalProblem.category),
+                response: typeof responseTemplate === 'function' ? responseTemplate(concernDetail) : responseTemplate,
                 problemCategory: dentalProblem.category,
                 severity: dentalProblem.severity
             };
@@ -246,17 +279,75 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             };
         }
 
-        // Check for general service inquiries
+        // Check for general service inquiries (if not caught earlier)
+        console.log('Checking general service inquiry...');
         const serviceInquiry = await handleServiceInquiry(message, businessData);
         if (serviceInquiry) {
+            console.log('General service inquiry response:', serviceInquiry);
             return serviceInquiry;
         }
 
-        // Default response asking for more information
-        return {
-            type: 'GENERAL_INQUIRY',
-            response: RESPONSE_TEMPLATES.understanding
-        };
+        // --- Check for request to list all services --- 
+        const listServiceKeywords = [
+            'list services', 'what services', 'which services', 'do you offer', 'your services',
+            'list service', 'what service', 'which service' // Add singular variations
+        ];
+        const isListServiceRequest = listServiceKeywords.some(keyword => normalizedMessage.includes(keyword));
+        
+        if (isListServiceRequest && businessData.services && businessData.services.length > 0) {
+            console.log('Request to list all services detected.');
+            const serviceNames = businessData.services.map(s => `• ${s.name}`).join('\n');
+            return {
+                type: 'SERVICE_LIST', // New type for service list response
+                response: `Here are the dental services we offer:\n\n${serviceNames}\n\nWould you like to learn more about any specific service, or can I help you schedule a consultation?`
+            };
+        }
+
+        // --- OpenAI Fallback --- 
+        console.log('Falling back to OpenAI generation.');
+        
+        // Prepare context for OpenAI
+        const systemPrompt = `You are a dental office AI assistant. 
+Persona Traits: ${CHATBOT_PERSONALITY.traits.join(', ')}. 
+Rules: ${CHATBOT_PERSONALITY.rules.join(' ')}
+Your goal is to understand the user's query, provide helpful acknowledgement, and gently guide them towards scheduling a consultation if their query isn't easily categorized as a specific service request, greeting, contact info provision, or known dental problem. Acknowledge their statement, explain that a dentist needs to evaluate specific conditions, and offer to help schedule an appointment. Do not give medical advice. Keep responses concise and friendly.`;
+
+        const conversationHistory = messageHistory.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.content
+        }));
+
+        const messages = [
+            { role: "system", content: systemPrompt },
+            ...conversationHistory.slice(-4), // Include last 4 messages for context
+            { role: "user", content: message }
+        ];
+
+        try {
+            const completion = await openai.chat.completions.create({
+                model: "gpt-3.5-turbo", // Or your preferred model
+                messages: messages,
+                temperature: 0.7, // Adjust for creativity vs consistency
+                max_tokens: 100,
+            });
+
+            const aiResponseContent = completion.choices[0]?.message?.content?.trim() || RESPONSE_TEMPLATES.understanding; // Fallback to template if generation fails
+            console.log('OpenAI generated response:', aiResponseContent);
+
+            return {
+                type: 'AI_FALLBACK', // New type for AI generated fallback
+                response: aiResponseContent
+            };
+
+        } catch (openaiError) {
+            console.error("OpenAI API call failed:", openaiError);
+            // Fallback to the simple understanding template if OpenAI fails
+            return {
+                type: 'ERROR_FALLBACK',
+                response: RESPONSE_TEMPLATES.understanding 
+            };
+        }
+
     } catch (error) {
         console.error("Error generating AI response:", error);
         return {

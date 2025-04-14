@@ -104,97 +104,127 @@ const formatLeadContext = (initialMessage, detectedService, messageHistory) => {
     };
 };
 
-export const saveLead = async (businessId, contactInfo, serviceInterest, context = {}) => {
+export const saveLead = async (leadContext) => {
     try {
-        console.log("🔍 Finding business:", { businessId });
+        // Log the entire received object immediately
+        console.log("Raw leadContext received in saveLead:", JSON.stringify(leadContext, null, 2));
+        
+        // Destructure the needed properties from the leadContext object
+        const {
+            businessId,
+            name,
+            phone,
+            email,
+            serviceInterest,
+            problemDescription,
+            messageHistory 
+        } = leadContext;
+
+        console.log("🔍 Finding business (after destructuring):", { businessId });
         const business = await Business.findOne({ businessId });
         
         if (!business) {
             console.error("❌ Business not found:", businessId);
-            return "I apologize, but I'm having trouble connecting to our system. Please call our office directly for immediate assistance.";
+            // Return an error or specific message if needed
+            throw new Error("Business not found during lead save."); 
         }
 
-        // Parse contact info
-        const { name, phone, email } = typeof contactInfo === 'string' ? 
-            extractContactInfo(contactInfo) : contactInfo;
-
-        if (!name || !phone || !email) {
-            const missingFields = [];
-            if (!name) missingFields.push("name");
-            if (!phone) missingFields.push("phone number");
-            if (!email) missingFields.push("email");
-            
-            return `I understand this is concerning, and I want to help you right away. Could you please provide your ${missingFields.join(", ")} so our dental team can contact you as soon as possible?`;
+        // Basic validation (already have some in the caller, but good practice)
+        if (!name || !phone) { // Email might be optional
+            console.error("❌ Missing required contact info in leadContext:", { name, phone });
+            throw new Error("Missing required contact information (name/phone) for lead.");
         }
 
-        // Format context properly
+        // Format context properly using destructured values
+        // (Keep your existing context formatting or simplify as needed)
+        const reasonText = problemDescription ? 
+                         `Patient's Concern: ${problemDescription}` : 
+                         `Interest in: ${serviceInterest || 'General Inquiry'}`;
+        
         const formattedContext = {
-            initialMessage: context.initialMessage || "No initial message provided",
-            reason: context.reason || `Interest in: ${serviceInterest || 'General Inquiry'}`
+            initialMessage: messageHistory ? (messageHistory.find(m => m.role === 'user')?.content || problemDescription || "N/A") : (problemDescription || "N/A"),
+            reason: reasonText,
+            conversationSummary: messageHistory ? messageHistory.map(m => `${m.role}: ${m.content}`).slice(-5).join('\n') : "N/A"
         };
+
+        console.log('Formatted Lead Context:', formattedContext);
 
         // Check for existing lead
         const existingLead = await Lead.findOne({
             businessId: business.businessId,
-            $or: [{ email }, { phone }]
+            // Use more robust check if email is optional
+            $or: [{ phone }, ...(email ? [{ email }] : [])] 
         });
 
         if (existingLead) {
             console.log("📝 Updating existing lead:", existingLead._id);
             
+            // Update fields for existing lead
             existingLead.name = name;
             existingLead.phone = phone;
-            existingLead.email = email;
+            existingLead.email = email || existingLead.email; // Keep old email if new one not provided
             existingLead.service = serviceInterest || existingLead.service;
-            existingLead.reason = formattedContext.reason;
-            existingLead.lastContact = new Date();
-            existingLead.contactCount += 1;
+            existingLead.reason = formattedContext.reason; // Update reason
+            existingLead.lastContactedAt = new Date(); // Update last contacted time
+            // Optionally update context or add interaction
+            existingLead.interactions.push({
+                type: 'chatbot',
+                status: 'Updated Contact Info',
+                message: `User provided/updated contact info. Concern: ${formattedContext.reason}`,
+                service: serviceInterest
+            });
             
             await existingLead.save();
-            
-            return `Thank you, ${name}. I've updated your information and marked this as urgent. Our dental team will contact you very soon to address your dental emergency. If you need immediate assistance, please don't hesitate to call our office directly.`;
+            console.log("✅ Existing lead updated successfully");
+            // Return confirmation for existing lead
+            return `Thank you, ${name}. I've updated your information with us.`
         }
 
-        // Create new lead with required fields
+        // Create NEW lead with required fields
+        console.log("➕ Creating new lead...");
         const lead = new Lead({
             businessId: business.businessId,
             name,
             phone,
             email,
-            service: serviceInterest || null,
-            reason: formattedContext.reason,
+            service: serviceInterest || 'Dental Consultation', // Changed fallback
+            reason: formattedContext.reason, // Use formatted reason
             source: 'chatbot',
-            status: 'new',
-            lastContact: new Date(),
-            contactCount: 1,
-            context: {
-                ...formattedContext,
-                exactService: serviceInterest
-            }
+            status: 'new', // Explicitly 'new', which is valid
+            lastContactedAt: new Date(),
+            interactions: [{
+                 type: 'chatbot',
+                 status: 'Lead Created',
+                 message: `Initial contact via chatbot. Concern: ${formattedContext.reason}`,
+                 service: serviceInterest // Keep this as the potentially more specific interest if available
+            }],
+            // Store raw message history if needed, or just the summary
+            // context: { rawHistory: messageHistory }
         });
 
         console.log("Creating new lead with data:", {
             businessId: lead.businessId,
+            name: lead.name,
+            phone: lead.phone,
             service: lead.service,
-            reason: lead.reason
+            status: lead.status
         });
 
         await lead.save();
         console.log("✅ New lead saved successfully");
 
-        // Provide a more empathetic response based on the context
-        const isEmergency = formattedContext.reason.includes('URGENT') || 
-                           formattedContext.reason.toLowerCase().includes('emergency');
-
-        if (isEmergency) {
-            return `I understand this is a stressful situation, ${name}. I've marked this as urgent, and our dental team will contact you very soon. If you're in severe pain or experiencing significant bleeding, please don't wait - call our emergency dental line immediately. We're here to help you through this.`;
-        } else {
-            return `Thank you for reaching out, ${name}. I've passed your information to our dental team, and they will contact you soon to discuss your dental care needs. We look forward to helping you achieve your best smile!`;
-        }
+        // Return confirmation for new lead (maybe use template from openaiService?)
+        // Using the contact_confirmation template structure:
+        return `✅ Thank you ${name}! I've noted your interest in ${lead.service}. Our specialist will contact you at ${phone} soon.`;
 
     } catch (error) {
-        console.error("❌ Error saving lead:", error);
-        return "I apologize, but I'm having trouble processing your request. For immediate assistance, please call our office directly. Your dental care is important to us.";
+        console.error("❌ Error in saveLead function:", error);
+        // Handle validation errors specifically
+        if (error.name === 'ValidationError') {
+            console.error("Validation Errors:", error.errors);
+            throw new Error(`Lead validation failed: ${error.message}`); // Re-throw specific error
+        }
+        throw error; // Re-throw other errors to be caught by the caller
     }
 };
 
@@ -205,7 +235,7 @@ export const saveLead = async (businessId, contactInfo, serviceInterest, context
 export const createLeadHandler = async (req, res) => {
     try {
         const { businessId, message, serviceInterest } = req.body;
-        const responseMessage = await saveLead(businessId, message, serviceInterest);
+        const responseMessage = await saveLead({ businessId, message, serviceInterest });
         if (!responseMessage) {
             return res.status(400).json({ error: "Missing required contact information or lead already exists." });
         }

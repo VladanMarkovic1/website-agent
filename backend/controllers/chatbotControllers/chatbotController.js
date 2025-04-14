@@ -73,19 +73,14 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 throw new Error("Business not found");
             }
 
-            console.log('Raw service data:', serviceData); // Debug log
-
             // Ensure services are properly structured
             const services = serviceData?.services?.map(service => {
-                console.log('Processing service:', service); // Debug log
                 return {
                     name: service.name,
                     description: service.description || null,
                     price: service.price || null
                 };
             }) || [];
-
-            console.log('Processed services:', services); // Debug log
 
             // Prepare business data with services and contact info
             const businessData = {
@@ -95,8 +90,6 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 email: contactData?.email || null,
                 address: contactData?.address || null
             };
-
-            console.log('Final business data:', businessData); // Debug log
 
             // Check if user mentioned a service directly - SIMPLIFIED MATCHING
             const messageLower = message.toLowerCase();
@@ -263,80 +256,37 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 }
             }
 
-            // Handle contact information and save lead
-            if (aiResponse.type === 'CONTACT_INFO') {
-                const { contactInfo, serviceContext } = aiResponse;
-                
+            // --- REPLACING COMPLEX LEAD SAVING WITH SIMPLIFIED VERSION --- 
+            if (aiResponse.type === 'CONTACT_INFO' && aiResponse.contactInfo) {
+                console.log('[Controller] CONTACT_INFO type detected. Attempting to save lead...'); 
                 try {
-                    // Prepare a detailed context for the lead
-                    const detailedContext = {
-                        initialMessage: session.problemDescription || message,
-                        reason: isUrgentRequest
-                            ? `⚠️ URGENT CARE NEEDED ⚠️\nEmergency Request: ${session.problemDescription || message}`
-                            : isRescheduleRequest
-                                ? `Reschedule Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                            : isCancelRequest
-                                ? `Cancellation Request: ${session.serviceInterest || 'Existing Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                            : isBookingRequest 
-                                ? `New Appointment Request: ${session.serviceInterest || 'General Appointment'}\nPatient's Message: ${session.problemDescription || message}`
-                            : isPediatricQuestion
-                                ? `Pediatric Dental Consultation Needed\nParent's Question: "${message}"\nService: Pediatric Dentistry\nRequires: Age-specific dental care guidance`
-                            : matchedQuestion || isAdviceRequest
-                                ? `Dental Question - Consultation Needed\nTopic: ${matchedQuestion ? matchedQuestion.topic : 'General Dental Advice'}\nPatient's Question: "${message}"\nConsultation Required: Yes`
-                            : serviceContext 
-                                ? `Service Requested: ${serviceContext}\nPatient's Description: ${session.problemDescription || message}`
-                                : `Patient's Concern: ${session.problemDescription || message}`,
-                        conversationHistory: session.messages
-                            .slice(-4)
-                            .map(msg => `${msg.role}: ${msg.content}`)
-                            .join('\n'),
-                        requestType: isUrgentRequest ? 'URGENT' 
-                                   : isRescheduleRequest ? 'RESCHEDULE' 
-                                   : isCancelRequest ? 'CANCEL' 
-                                   : isBookingRequest ? 'NEW_BOOKING'
-                                   : isPediatricQuestion ? 'PEDIATRIC_CONSULTATION'
-                                   : matchedQuestion ? 'DENTAL_QUESTION'
-                                   : isAdviceRequest ? 'DENTAL_ADVICE'
-                                   : 'GENERAL',
-                        priority: isUrgentRequest ? 'HIGH' : 'NORMAL',
-                        topic: isPediatricQuestion ? 'Pediatric Dental Care' 
-                               : (matchedQuestion ? matchedQuestion.topic 
-                               : (isAdviceRequest ? 'General Dental Advice' : null)),
-                        originalQuestion: message,  // Store the exact question asked
-                        isChildRelated: isPediatricQuestion  // Flag for pediatric questions
+                    const leadContext = {
+                        businessId: session.businessId,
+                        name: aiResponse.contactInfo.name,
+                        phone: aiResponse.contactInfo.phone,
+                        email: aiResponse.contactInfo.email,
+                        // Use detected service first, then session interest, then fallback to 'Dental Consultation'
+                        serviceInterest: aiResponse.serviceContext || session.serviceInterest || 'Dental Consultation',
+                        problemDescription: session.problemDescription || null, 
+                        messageHistory: session.messages 
                     };
-
-                    // Save the lead with enhanced context
-                    await saveLead(
-                        businessId,
-                        contactInfo,
-                        // Use the detected service if available, otherwise fall back to other conditions
-                        session.serviceInterest || (
-                            isUrgentRequest ? 'Emergency Dental Care' 
-                            : isPediatricQuestion ? 'Pediatric Dental Consultation'
-                            : matchedQuestion ? `Dental Question - ${matchedQuestion.topic}`
-                            : isAdviceRequest ? 'Dental Question - General Advice'
-                            : (serviceContext || 'Dental Consultation')
-                        ),
-                        detailedContext
-                    );
-
-                    // Track new lead with additional context for urgent cases
-                    await trackChatEvent(businessId, 'NEW_LEAD', { 
-                        service: session.serviceInterest || (isUrgentRequest ? 'Emergency Dental Care' : serviceContext),
-                        priority: isUrgentRequest ? 'HIGH' : 'NORMAL'
-                    });
+                    console.log('[Controller] Data being sent to saveLead:', JSON.stringify(leadContext, null, 2));
                     
-                    // Update session with contact info
-                    session.contactInfo = contactInfo;
-                    // Don't overwrite the service interest if it was already detected
-                    if (!session.serviceInterest) {
-                        session.serviceInterest = serviceContext;
-                    }
+                    // Ensure this call passes the single object
+                    await saveLead(leadContext); 
+                    
+                    console.log('[Controller] saveLead function executed successfully for sessionId:', sessionId); 
+                    session.contactInfo = aiResponse.contactInfo; 
+                    await trackChatEvent(businessId, 'LEAD_GENERATED', { service: leadContext.serviceInterest });
+
                 } catch (error) {
-                    console.error("Error saving lead:", error);
+                    // Log the error caught here in the controller
+                    console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack); 
                 }
+            } else if (aiResponse.type !== 'ERROR') { 
+                 console.log(`[Controller] AI response type is ${aiResponse.type}. Not saving lead.`);
             }
+            // --- END OF REPLACEMENT ---
 
             // Track hourly activity
             try {
