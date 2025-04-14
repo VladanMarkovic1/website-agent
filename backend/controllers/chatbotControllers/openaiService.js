@@ -85,44 +85,66 @@ const handleServiceInquiry = async (message, context) => {
     const normalizedMessage = message.toLowerCase();
     const services = context.services || [];
     
-    console.log('Handling service inquiry for message:', normalizedMessage);
-    console.log('Available services:', JSON.stringify(services, null, 2));
+    console.log('[Service Match] Handling service inquiry for message:', normalizedMessage);
+    console.log('[Service Match] Available services:', services.map(s => s.name).join(', '));
 
-    // Try to find a matching service from the database
     let matchingService = null;
+    let highestMatchScore = 0; // Use a score to find the best match
 
-    // First check for direct mentions (e.g., "interested in teeth whitening")
+    // Iterate through each service provided by the business
     for (const service of services) {
         if (!service || !service.name) continue;
-        
-        const serviceName = service.name.toLowerCase().replace(/\s+/g, ' ').trim();
-        console.log('Checking service:', serviceName);
 
-        // Direct match for "interested in X" format
-        if (normalizedMessage.includes(`interested in ${serviceName}`)) {
-            console.log('Found exact match for interested in:', service.name);
-            matchingService = service;
-            break;
+        const serviceNameLower = service.name.toLowerCase().trim();
+        const serviceWords = serviceNameLower.split(/\s+/); // Split by space
+        let currentScore = 0;
+
+        console.log(`[Service Match] Checking service: "${service.name}"`);
+
+        // --- Scoring Logic --- 
+
+        // 1. Exact Match (Highest Score)
+        if (normalizedMessage.includes(serviceNameLower)) {
+            console.log(`[Service Match] Found exact phrase match for "${service.name}"`);
+            currentScore = 3;
         }
 
-        // Match all words in the service name
-        const serviceWords = serviceName.split(' ');
-        const allWordsMatch = serviceWords.every(word => 
-            normalizedMessage.includes(word.toLowerCase())
-        );
+        // 2. All Words Match (High Score)
+        if (currentScore < 3) { 
+            const allWordsPresent = serviceWords.every(word => normalizedMessage.includes(word));
+            if (allWordsPresent) {
+                console.log(`[Service Match] Found all words match for "${service.name}"`);
+                currentScore = Math.max(currentScore, 2); // Don't override exact match
+            }
+        }
+        
+        // 3. Significant Word Match (e.g., 'implants' in 'dental implants') (Medium Score)
+        // Check if the core word(s) of the service name are present
+        if (currentScore < 2) {
+            // Prioritize longer words as potentially more significant
+            const significantWords = serviceWords.filter(word => word.length > 3); 
+            const significantMatch = significantWords.length > 0 && significantWords.some(word => normalizedMessage.includes(word));
 
-        if (allWordsMatch) {
-            console.log('Found all words match for:', service.name);
+            if (significantMatch) {
+                 console.log(`[Service Match] Found significant word match for "${service.name}"`);
+                 currentScore = Math.max(currentScore, 1);
+            }
+        }
+        
+        // --- Update Best Match --- 
+        if (currentScore > highestMatchScore) {
+            highestMatchScore = currentScore;
             matchingService = service;
-            break;
+            console.log(`[Service Match] New best match: "${service.name}" with score ${highestMatchScore}`);
         }
     }
 
-    // If a specific service is found in the database
-    if (matchingService) {
-        console.log('Generating response for service:', matchingService.name);
-        console.log('Service details:', JSON.stringify(matchingService, null, 2));
-        
+    // If a sufficiently good match is found
+    if (matchingService && highestMatchScore > 0) { // Require at least a significant word match
+        console.log('[Service Match] Final matched service:', matchingService.name);
+        console.log('[Service Match] Service details:', JSON.stringify(matchingService, null, 2));
+
+        // --- Build Response --- 
         // Get service description or use default
         const serviceDescription = matchingService.description || 
             `${matchingService.name} is one of our specialized dental services`;
