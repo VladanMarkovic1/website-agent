@@ -59,4 +59,81 @@ export const RESPONSE_TEMPLATES = {
     problem_followup_fallback: (category) => `Based on your concern about ${category}, it's best to have our specialist evaluate it. Would you like to schedule a consultation? I'll need your name, phone, and email.`,
     error_fallback: "I apologize, but I'm having trouble understanding. Could you please rephrase that?",
     api_error_fallback: "I apologize, but I'm having trouble accessing our service information right now. Would you like to share your name, phone number, and email so our team can reach out to you directly?"
-}; 
+};
+
+// --- Keywords --- 
+
+// Keywords indicating a dental problem (used by controller override logic)
+export const DENTAL_KEYWORDS_FOR_TRACKING = [
+    'pain', 'hurt', 'ache', 'sensitive', 'broken', 'chipped', 
+    'bleeding', 'swollen', 'cavity', 'tooth', 'teeth', 'gum',
+    'wisdom', 'crown', 'filling', 'root canal', 'cleaning',
+    'implant', 'denture', 'bridge', 'extraction'
+];
+
+// Keywords indicating a booking/scheduling request
+export const BOOKING_KEYWORDS = [
+    'schedule', 'appointment', 'book', 'booking', 'reserve',
+    'slot', 'time', 'available', 'availability', 'when can'
+];
+
+// Keywords indicating a rescheduling request
+export const RESCHEDULE_KEYWORDS = [
+    'reschedule', 'change appointment', 'move appointment',
+    'different time', 'another time', 'change my appointment',
+    'switch appointment', 'postpone'
+];
+
+// Keywords indicating a cancellation request
+export const CANCEL_KEYWORDS = [
+    'cancel', 'cancelation', 'cancellation', 'delete appointment',
+    'remove appointment', 'drop appointment'
+];
+
+// Keywords indicating an urgent request
+export const URGENT_KEYWORDS = [
+    'urgent', 'emergency', 'severe', 'extreme', 'asap',
+    'right away', 'immediate', 'today', 'as soon as possible',
+    'terrible pain', 'severe pain', 'unbearable', 'emergency slot'
+];
+
+// Keywords indicating a request for advice
+export const ADVICE_KEYWORDS = [
+    'tips', 'advice', 'recommend', 'suggestion', 'guide',
+    'how to', 'what should', 'best way', 'help with',
+    'tell me about', 'information about', 'learn about'
+];
+
+// Keywords for identifying specific health questions
+export const SPECIFIC_HEALTH_QUESTIONS = [
+    { keywords: ['food', 'eat', 'diet', 'drink', 'avoid', 'prevent', 'cavities'], 
+        topic: 'dietary recommendations' },
+    { keywords: ['brush', 'brushing', 'floss', 'flossing', 'clean', 'cleaning'], 
+        topic: 'oral hygiene practices' },
+    { keywords: ['whitening', 'white', 'stain', 'yellow', 'bright', 'color'], 
+        topic: 'teeth whitening' },
+    { keywords: ['sensitive', 'sensitivity', 'cold', 'hot', 'sweet'], 
+        topic: 'tooth sensitivity' },
+    { keywords: ['bad breath', 'breath', 'halitosis', 'smell'], 
+        topic: 'breath freshness' },
+    { keywords: ['child', 'children', 'kid', 'kids', 'baby', 'toddler', 'pediatric', 'grow'],
+        topic: 'pediatric dental care' },
+    { keywords: ['crown', 'crowns', 'cap', 'caps', 'broken tooth', 'damaged tooth'],
+        topic: 'dental crowns' },
+    { keywords: ['implant', 'implants', 'artificial tooth', 'replacement tooth'],
+        topic: 'dental implants' },
+    { keywords: ['veneer', 'veneers', 'cosmetic', 'smile makeover'],
+        topic: 'cosmetic dentistry' },
+    { keywords: ['root canal', 'root treatment', 'infected tooth'],
+        topic: 'root canal treatment' }
+];
+
+// Keywords for checking if message is about specific treatment options
+export const SPECIFIC_SERVICE_QUESTION_KEYWORDS = [
+    'options', 'what', 'how', 'need', 'should'
+];
+
+// Keywords indicating a pediatric context
+export const PEDIATRIC_KEYWORDS = [
+    'child', 'children', 'kid', 'kids', 'baby', 'toddler', 'pediatric', 'grow'
+]; 
