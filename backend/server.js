@@ -72,8 +72,6 @@ const startServer = async () => {
     app.use("/chatbot", chatbotRoutes);
     app.use('/leads', leadRoutes);
     app.use("/admin", adminLimiter, adminRoutes);           // Admin endpoints with stricter limits
-
-    // Analytics routes
     app.use('/analytics', analyticsRoutes);
 
     // Initialize WebSocket Chat
