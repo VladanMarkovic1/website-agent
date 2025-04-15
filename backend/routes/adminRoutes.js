@@ -2,7 +2,8 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticateToken } from '../middleware/auth.js';
 import { adminAuth } from '../middleware/adminAuth.js';
-import adminController from '../controllers/adminControllers/adminController.js';
+import invitationController from '../controllers/adminControllers/sendInvitation.js';
+import businessOwnerController from '../controllers/adminControllers/businessOwnerController.js';
 
 const router = express.Router();
 
@@ -21,12 +22,12 @@ router.use(adminAuth);         // Verify admin role
 router.use(adminLimiter);      // Apply rate limiting
 
 // Get all businesses (admin only)
-router.get('/businesses', adminController.getBusinesses);
+router.get('/businesses', businessOwnerController.getBusinesses);
 
 // Get all business owners (admin only)
-router.get('/business-owners', adminController.getBusinessOwners);
+router.get('/business-owners', businessOwnerController.getBusinessOwners);
 
 // Send invitation (admin only)
-router.post('/invite', adminController.sendInvitation);
+router.post('/invite', invitationController.sendInvitation);
 
 export default router;
