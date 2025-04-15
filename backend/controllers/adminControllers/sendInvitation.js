@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import Invitation from '../../models/Invitation.js';
-import { sendInvitationEmail } from '../emailControllers/invitationEmailService.js';
+import { sendInvitationEmail } from './invitationEmailService.js';
 
 export const sendInvitation = async (req, res) => {
   const { email, businessId } = req.body;

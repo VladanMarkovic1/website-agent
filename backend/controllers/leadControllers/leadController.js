@@ -1,7 +1,7 @@
 import Lead from "../../models/Lead.js";
 import Business from "../../models/Business.js";
 import { sendInstantConfirmation } from "../emailControllers/emailService.js";
-import { trackChatEvent } from "../analyticsControllers/analyticsService.js";
+import { trackChatEvent } from "../analyticsControllers/trackEventService.js";
 
 /**
  * Function to capture and store leads in MongoDB.

@@ -4,7 +4,7 @@ import { saveLead } from "../leadControllers/leadController.js";
 import dotenv from "dotenv";
 import { generateAIResponse } from "./openaiService.js";
 import ChatAnalytics from "../../models/ChatAnalytics.js";
-import { trackChatEvent } from "../analyticsControllers/analyticsService.js";
+import { trackChatEvent } from "../analyticsControllers/trackEventService.js";
 import Contact from "../../models/Contact.js";
 
 // In-memory session storage
