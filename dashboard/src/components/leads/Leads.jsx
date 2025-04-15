@@ -1,42 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../utils/api';
 import { HiOutlineSearch, HiOutlineAdjustments, HiOutlineX, HiOutlineChevronDown, HiOutlineChevronUp, HiOutlineRefresh, HiOutlineExclamation, HiOutlineWifi } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
 
-const STATUS_OPTIONS = [
-  { value: 'new', label: 'New', color: 'green' },
-  { value: 'attempted-contact', label: 'Attempted Contact', color: 'yellow' },
-  { value: 'contacted', label: 'Contacted', color: 'blue' },
-  { value: 'scheduled', label: 'Scheduled', color: 'purple' },
-  { value: 'completed', label: 'Completed', color: 'indigo' },
-  { value: 'no-response', label: 'No Response', color: 'red' }
-];
+import { useFetchLeads } from '../../hooks/useFetchLeads';
+import { useLeadFilters } from '../../hooks/useLeadFilters';
+import { updateLeadStatus } from '../../services/leadService';
+import LeadCard from './LeadCard';
+import LeadDetailsModal from './LeadDetailsModal';
+import { STATUS_OPTIONS } from './constants';
+import Spinner from '../common/Spinner'; // Correct path to the new Spinner component
 
 const Leads = () => {
   const navigate = useNavigate();
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    status: '',
-    service: '',
-    searchTerm: ''
-  });
-  const [sortConfig, setSortConfig] = useState({
-    key: 'createdAt',
-    direction: 'desc'
-  });
-  const [successMessage, setSuccessMessage] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [retryCount, setRetryCount] = useState(0);
+  const [actionError, setActionError] = useState(''); // For errors from status updates etc.
+  const [successMessage, setSuccessMessage] = useState(''); // For general success messages
 
   // Get user info and businessId
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const businessId = user?.businessId;
   
+  // --- Custom Hooks --- 
+  const {
+    leads,
+    setLeads, // Get setLeads to update list after modal actions
+    loading,
+    error: fetchError,
+    isOffline,
+    refreshing,
+    handleRefresh,
+    handleRetry,
+  } = useFetchLeads(businessId);
+
+  const {
+    filters,
+    sortConfig,
+    handleFilterChange,
+    handleSort,
+    filteredLeads
+  } = useLeadFilters(leads);
+  // --- End Custom Hooks ---
+
   // Monitor online/offline status
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -77,17 +83,7 @@ const Leads = () => {
     }, 30000);
 
     return () => clearInterval(pollInterval);
-  }, [businessId, navigate, isOffline, retryCount]);
-
-  const handleRetry = () => {
-    setLoading(true);
-    setError('');
-    setRetryCount(prev => prev + 1);
-  };
-
-  const handleRefresh = () => {
-    fetchLeads(true); // Show loading state for manual refresh
-  };
+  }, [businessId, navigate, isOffline, handleRetry]);
 
   const fetchLeads = async (showLoadingState = true) => {
     if (!businessId) {
@@ -149,583 +145,300 @@ const Leads = () => {
     }
   };
 
-  const handleStatusChange = async (leadId, newStatus) => {
+  // Show temporary success messages
+  const showSuccess = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  // Handle status change directly from the list (Table/Card)
+  const handleListStatusChange = useCallback(async (leadId, newStatus) => {
     if (isOffline) {
-      setError('Cannot update status while offline');
+      setActionError('Cannot update status while offline.');
       return;
     }
-    
+    setActionError(''); // Clear previous action errors
     try {
-      await api.put(`/leads/${businessId}/${leadId}`, { status: newStatus });
-      setLeads(leads.map(lead => 
-        lead._id === leadId ? { ...lead, status: newStatus } : lead
-      ));
+      const updatedLead = await updateLeadStatus(businessId, leadId, newStatus);
+      // Optimistically update the list or re-fetch if needed
+      // Here, we update the state managed by useFetchLeads
+      setLeads(currentLeads =>
+        currentLeads.map(l => (l._id === leadId ? updatedLead : l))
+      );
+      showSuccess('Status updated successfully!');
     } catch (err) {
-      console.error('Error updating lead status:', err);
-      setError(err.response?.data?.error || 'Failed to update lead status.');
-    }
-  };
+      console.error('Error updating lead status from list:', err);
+      setActionError(err.message || 'Failed to update status.');
+    } 
+  }, [businessId, isOffline, setLeads]); // Include setLeads dependency
 
-  const handleAddNote = async (leadId, note, textareaRef) => {
-    if (isOffline) {
-      setError('Cannot add notes while offline');
-      return;
-    }
-    
-    try {
-      if (!note.trim()) {
-        return; // Don't submit empty notes
-      }
-
-      // Validate that leadId is a valid MongoDB ObjectId (24 hex characters)
-      if (!leadId || !/^[0-9a-fA-F]{24}$/.test(leadId)) {
-        setError('Invalid lead ID format');
-        return;
-      }
-      
-      const response = await api.post(`/leads/${businessId}/notes/${leadId}`, { 
-        note: note.trim() 
-      });
-
-      if (response.data) {
-        await fetchLeads(); // Refresh leads to get updated notes
-        setError(''); // Clear any previous errors
-        setSuccessMessage('Note added successfully!');
-        if (textareaRef) textareaRef.value = ''; // Clear textarea
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccessMessage(''), 3000);
-        setSelectedLead(response.data); // Update the selectedLead state as well
-      }
-    } catch (err) {
-      console.error('Error adding note:', err.response || err);
-      
-      // Specific error for 404 (Not Found)
-      if (err.response && err.response.status === 404) {
-        setError('Could not add note: Lead not found. The lead may have been deleted.');
-      } else {
-        setError(err.response?.data?.error || 'Failed to add note.');
-      }
-      
-      // If there's a specific error message in the response, use it
-      if (err.response?.data?.error) {
-        setError(err.response.data.error);
-      }
-    }
-  };
-
-  const handleSort = (key) => {
-    setSortConfig({
-      key,
-      direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc'
-    });
-  };
-
-  const filteredAndSortedLeads = () => {
-    return leads
-      .filter(lead => {
-        const matchesStatus = !filters.status || lead.status === filters.status;
-        const matchesService = !filters.service || lead.service.toLowerCase().includes(filters.service.toLowerCase());
-        const matchesSearch = !filters.searchTerm || 
-          lead.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-          lead.email?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-          lead.phone.includes(filters.searchTerm);
-        return matchesStatus && matchesService && matchesSearch;
-      })
-      .sort((a, b) => {
-        if (sortConfig.key === 'createdAt') {
-          return sortConfig.direction === 'asc' 
-            ? new Date(a.createdAt) - new Date(b.createdAt)
-            : new Date(b.createdAt) - new Date(a.createdAt);
-        }
-        return sortConfig.direction === 'asc'
-          ? a[sortConfig.key] > b[sortConfig.key] ? 1 : -1
-          : a[sortConfig.key] < b[sortConfig.key] ? 1 : -1;
-      });
-  };
-
-  // Mobile Lead Card Component
-  const LeadCard = ({ lead }) => (
-    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="font-medium text-gray-900">{lead.name}</h3>
-          <p className="text-sm text-gray-500">{lead.service}</p>
-        </div>
-        <select
-          value={lead.status}
-          onChange={(e) => handleStatusChange(lead._id, e.target.value)}
-          className={`text-sm rounded-full px-3 py-1 ${
-            lead.status === 'new' ? 'bg-green-100 text-green-800' : 
-            lead.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
-            lead.status === 'attempted-contact' ? 'bg-yellow-100 text-yellow-800' :
-            lead.status === 'scheduled' ? 'bg-purple-100 text-purple-800' :
-            lead.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
-            'bg-red-100 text-red-800'
-          }`}
-        >
-          {STATUS_OPTIONS.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-        <div>
-          <p className="text-gray-500">Phone</p>
-          <p className="font-medium">{lead.phone}</p>
-        </div>
-        <div>
-          <p className="text-gray-500">Email</p>
-          <p className="font-medium truncate">{lead.email || 'N/A'}</p>
-        </div>
-      </div>
-      <div className="flex justify-between items-center">
-        <button
-          onClick={() => setSelectedLead(lead)}
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-        >
-          View Details
-        </button>
-      </div>
-    </div>
-  );
-
-  const LeadDetailsModal = ({ lead, onClose }) => {
-    const textareaRef = React.useRef();
-    const [isAddingNote, setIsAddingNote] = useState(false);
-    const [isDeletingNote, setIsDeletingNote] = useState(false);
-    const [noteError, setNoteError] = useState('');
-    const [currentLead, setCurrentLead] = useState(lead);
-    
-    const addNote = async () => {
-      if (!textareaRef.current?.value.trim()) {
-        return; // Don't submit empty notes
-      }
-      
-      setIsAddingNote(true);
-      setNoteError('');
-      
-      try {
-        // Make sure we're using the correct leadId from the selected lead
-        const response = await api.post(`/leads/${businessId}/notes/${currentLead._id}`, { 
-          note: textareaRef.current.value.trim() 
-        });
-
-        if (response.data) {
-          // Update both the leads array and the current lead in the modal
-          setLeads(leads.map(l => l._id === currentLead._id ? response.data : l));
-          setCurrentLead(response.data);
-          setSelectedLead(response.data); // Update the selectedLead state as well
-          
-          // Clear the textarea
-          if (textareaRef.current) textareaRef.current.value = '';
-          
-          setSuccessMessage('Note added successfully!');
-          setTimeout(() => setSuccessMessage(''), 3000);
-        }
-      } catch (err) {
-        console.error('Error adding note:', err.response || err);
-        
-        if (err.response?.status === 404) {
-          setNoteError('Lead not found. It may have been deleted or moved.');
-        } else {
-          setNoteError(err.response?.data?.error || 'Failed to add note. Please try again.');
-        }
-      } finally {
-        setIsAddingNote(false);
-      }
-    };
-
-    const removeNote = async (noteId) => {
-      if (!window.confirm('Are you sure you want to remove this note?')) {
-        return;
-      }
-
-      setIsDeletingNote(true);
-      setNoteError('');
-      
-      try {
-        const response = await api.delete(`/leads/${businessId}/notes/${currentLead._id}/${noteId}`);
-
-        if (response.data) {
-          // Update both the leads array and the current lead in the modal
-          setLeads(leads.map(l => l._id === currentLead._id ? response.data : l));
-          setCurrentLead(response.data);
-          setSelectedLead(response.data);
-          
-          setSuccessMessage('Note removed successfully!');
-          setTimeout(() => setSuccessMessage(''), 3000);
-        }
-      } catch (err) {
-        console.error('Error removing note:', err.response || err);
-        setNoteError(err.response?.data?.error || 'Failed to remove note. Please try again.');
-      } finally {
-        setIsDeletingNote(false);
-      }
-    };
-    
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
-          <div className="p-4 border-b">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">{currentLead.name}</h2>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <HiOutlineX className="h-6 w-6" />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <h3 className="text-md font-medium text-gray-900 mb-2">Contact Information</h3>
-                <dl className="space-y-2">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Phone:</dt>
-                    <dd className="text-sm text-gray-900">{currentLead.phone}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Email:</dt>
-                    <dd className="text-sm text-gray-900">{currentLead.email}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Service:</dt>
-                    <dd className="text-sm text-gray-900">{currentLead.service}</dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div>
-                <h3 className="text-md font-medium text-gray-900 mb-2">Lead Details</h3>
-                <dl className="space-y-2">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Status:</dt>
-                    <dd className="mt-1">
-                      <select
-                        value={currentLead.status}
-                        onChange={(e) => handleStatusChange(currentLead._id, e.target.value)}
-                        className={`text-sm rounded-full px-3 py-1 ${
-                          currentLead.status === 'new' ? 'bg-green-100 text-green-800' :
-                          currentLead.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
-                          currentLead.status === 'attempted-contact' ? 'bg-yellow-100 text-yellow-800' :
-                          currentLead.status === 'scheduled' ? 'bg-purple-100 text-purple-800' :
-                          currentLead.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
-                          'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {STATUS_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Created:</dt>
-                    <dd className="text-sm text-gray-900">
-                      {new Date(currentLead.createdAt).toLocaleDateString()}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <h3 className="text-md font-medium text-gray-900 mb-2">Context/Reason</h3>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-sm text-gray-700">{currentLead.reason || 'No context provided'}</p>
-              </div>
-            </div>
-
-            <div className="max-h-[calc(100vh-500px)] min-h-[100px] overflow-y-auto">
-              <h3 className="text-md font-medium text-gray-900 mb-2">Notes & History</h3>
-              <div className="space-y-3">
-                {currentLead.callHistory && currentLead.callHistory.length > 0 ? (
-                  currentLead.callHistory.map((entry, index) => (
-                    <div key={entry._id || index} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex justify-between items-start mb-1">
-                        <div className="flex-1">
-                          <p className="text-sm text-gray-700">{entry.notes}</p>
-                          <span className="text-xs text-gray-500 block mt-1">
-                            {new Date(entry.timestamp).toLocaleString()}
-                          </span>
-                        </div>
-                        {entry._id && (
-                          <button
-                            onClick={() => removeNote(entry._id)}
-                            disabled={isDeletingNote}
-                            className="ml-2 p-1 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50"
-                            title="Remove note"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                      {entry.status && (
-                        <p className="text-xs text-gray-500">Status: {entry.status}</p>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-gray-500">No notes or history found for this lead.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 border-t bg-gray-50">
-            {noteError && (
-              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{noteError}</p>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <textarea
-                placeholder="Add a note..."
-                className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                rows="2"
-                ref={textareaRef}
-              />
-              <button
-                onClick={addNote}
-                disabled={isAddingNote}
-                className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-                  isAddingNote 
-                    ? 'bg-gray-400 text-white cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {isAddingNote ? 'Adding...' : 'Add Note'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+  // Callback for when the modal updates a lead (e.g., adds/removes note)
+  const handleLeadUpdateFromModal = useCallback((updatedLead) => {
+    setLeads(currentLeads => 
+        currentLeads.map(l => l._id === updatedLead._id ? updatedLead : l)
     );
-  };
+    // Optionally update the selected lead state if it's still open
+    if (selectedLead && selectedLead._id === updatedLead._id) {
+      setSelectedLead(updatedLead);
+    }
+  }, [setLeads, selectedLead]);
 
-  // Offline state
+  // ---- Helper variables for rendering logic ----
+  const shouldShowLeadsContainer = !loading;
+  // Determine which specific error message to show, if any (excluding security/offline handled separately)
+  const generalFetchError = (!loading && fetchError && !fetchError.includes('No leads found') && !fetchError.includes('security software')) ? fetchError : null;
+  const noLeadsFoundError = (!loading && fetchError && fetchError.includes('No leads found')) ? fetchError : null;
+  // Condition to show the empty state (either no leads fetched or filtered to empty)
+  const showEmptyState = !loading && filteredLeads.length === 0;
+
+  // ---- Render Logic ----
+
   if (isOffline) {
     return (
-      <div className="h-full w-full overflow-y-auto md:pt-0 pt-16 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
-          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 mb-8">
-            <div className="flex flex-col items-center justify-center py-12">
-              <HiOutlineWifi className="w-16 h-16 text-gray-400 mb-4" />
-              <h2 className="text-xl font-bold text-gray-700 mb-2">You're offline</h2>
-              <p className="text-gray-500 text-center max-w-md mb-6">
-                We can't load your leads because you appear to be offline. Please check your 
-                internet connection and try again.
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
-              >
-                <HiOutlineRefresh className="w-5 h-5 mr-2" />
-                Refresh page
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center h-screen p-4 bg-gray-100">
+         <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <HiOutlineWifi className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-700 mb-2">You're offline</h2>
+            <p className="text-gray-500 mb-6">
+             We can't load your leads right now. Please check your connection.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm"
+            >
+              <HiOutlineRefresh className="w-5 h-5 mr-2" />
+              Refresh page
+            </button>
+         </div>
       </div>
     );
   }
 
-  // Security software blocking state
-  if (error && (error.includes('security software') || error.includes('blocked'))) {
+  // Specific error for security software blocking
+  if (fetchError && (fetchError.includes('security software') || fetchError.includes('blocked'))) {
     return (
-      <div className="h-full w-full overflow-y-auto md:pt-0 pt-16 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
-          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 mb-8">
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="bg-red-100 p-3 rounded-full mb-4">
-                <HiOutlineExclamation className="w-12 h-12 text-red-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-700 mb-2">Connection Blocked</h2>
-              <p className="text-gray-500 text-center max-w-md mb-2">
-                Your security software (like Kaspersky) is blocking connections to our server.
-              </p>
-              <p className="text-gray-500 text-center max-w-md mb-6">
-                Please add this website to your trusted sites or temporarily disable web protection 
-                to use all features.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleRetry}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
-                >
-                  <HiOutlineRefresh className="w-5 h-5 mr-2" />
-                  Try again
-                </button>
-              </div>
+      <div className="flex flex-col items-center justify-center h-screen p-4 bg-gray-100">
+         <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="bg-red-100 p-3 rounded-full mb-4 inline-block">
+               <HiOutlineExclamation className="w-12 h-12 text-red-600" />
             </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <h2 className="text-xl font-bold text-gray-700 mb-2">Connection Blocked</h2>
+            <p className="text-gray-500 mb-2 max-w-md mx-auto">
+              Your security software might be blocking connections to our server.
+            </p>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              Please add this website to trusted sites or adjust web protection settings.
+            </p>
+            <button
+              onClick={handleRetry}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm"
+            >
+              <HiOutlineRefresh className="w-5 h-5 mr-2" />
+              Try again
+            </button>
+         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Mobile View - Card Layout */}
-      <div className="md:hidden">
-        {filteredAndSortedLeads().map((lead) => (
-          <div key={lead._id} className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="font-medium text-gray-900">{lead.name}</h3>
-                <p className="text-sm text-gray-500">{lead.service}</p>
+    <div className="min-h-screen bg-gray-100 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          {/* Header with Title, Search, Filter Toggle, Refresh */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold text-gray-800">Leads</h1>
+            <div className="flex items-center gap-2 flex-grow md:flex-grow-0 md:w-auto">
+              <div className="relative flex-grow">
+                <input
+                  type="text"
+                  placeholder="Search name, email, phone..."
+                  value={filters.searchTerm}
+                  onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full border rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+                <HiOutlineSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               </div>
-              <select
-                value={lead.status}
-                onChange={(e) => handleStatusChange(lead._id, e.target.value)}
-                className={`text-sm rounded-full px-3 py-1 ${
-                  lead.status === 'new' ? 'bg-green-100 text-green-800' : 
-                  lead.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
-                  lead.status === 'attempted-contact' ? 'bg-yellow-100 text-yellow-800' :
-                  lead.status === 'scheduled' ? 'bg-purple-100 text-purple-800' :
-                  lead.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
-                  'bg-red-100 text-red-800'
-                }`}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`p-2 rounded-lg ${showFilters ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                title={showFilters ? 'Hide Filters' : 'Show Filters'}
               >
-                {STATUS_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-              <div>
-                <p className="text-gray-500">Phone</p>
-                <p className="font-medium">{lead.phone}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Email</p>
-                <p className="font-medium truncate">{lead.email || 'N/A'}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setSelectedLead(lead)}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-            >
-              View Details
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Desktop View */}
-      <div className="hidden md:block">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name/Service
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Contact
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredAndSortedLeads().map((lead) => (
-              <tr key={lead._id}>
-                <td className="px-6 py-4">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{lead.name}</div>
-                    <div className="text-sm text-gray-500">{lead.service}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div>
-                    <div className="text-sm text-gray-900">{lead.phone}</div>
-                    <div className="text-sm text-gray-500">{lead.email || 'N/A'}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <select
-                    value={lead.status}
-                    onChange={(e) => handleStatusChange(lead._id, e.target.value)}
-                    className={`text-sm rounded-full px-3 py-1 ${
-                      lead.status === 'new' ? 'bg-green-100 text-green-800' : 
-                      lead.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
-                      lead.status === 'attempted-contact' ? 'bg-yellow-100 text-yellow-800' :
-                      lead.status === 'scheduled' ? 'bg-purple-100 text-purple-800' :
-                      lead.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
-                      'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {STATUS_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {new Date(lead.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 text-right text-sm font-medium">
-                  <button
-                    onClick={() => setSelectedLead(lead)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    View Details
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Filters section */}
-      {showFilters && (
-        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full rounded-lg border-gray-300 text-sm"
+                <HiOutlineAdjustments className="h-5 w-5" />
+              </button>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className={`p-2 rounded-lg text-gray-500 hover:bg-gray-100 ${refreshing ? 'animate-spin' : ''}`}
+                title="Refresh Leads"
               >
-                <option value="">All Statuses</option>
-                {STATUS_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
+                <HiOutlineRefresh className="h-5 w-5" />
+              </button>
             </div>
           </div>
+          {/* Filter Section */}
+          {showFilters && (
+            <div className="mt-4 border-t pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                       id="status-filter"
+                       value={filters.status}
+                       onChange={(e) => handleFilterChange('status', e.target.value)}
+                       className="w-full rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                       <option value="">All Statuses</option>
+                       {STATUS_OPTIONS.map(option => (
+                       <option key={option.value} value={option.value}>{option.label}</option>
+                       ))}
+                    </select>
+                 </div>
+                 {/* Add other filters here if needed (e.g., Service) */}
+              </div>
+            </div>
+          )}
         </div>
-      )}
 
-      {selectedLead && (
-        <LeadDetailsModal
-          lead={selectedLead}
-          onClose={() => setSelectedLead(null)}
-        />
-      )}
+        {/* Loading State */}
+        {loading && (
+           <div className="flex justify-center items-center py-10">
+              <Spinner />
+           </div>
+        )}
+
+        {/* General Fetch Error Display */}
+        {generalFetchError && (
+           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4" role="alert">
+             <strong className="font-bold">Error: </strong>
+             <span className="block sm:inline">{generalFetchError}</span>
+             {generalFetchError.includes('Failed') && (
+                 <button onClick={handleRetry} className="ml-4 px-2 py-1 bg-red-100 border border-red-300 rounded text-sm font-medium hover:bg-red-200">Retry</button>
+             )}
+           </div>
+        )}
+
+        {/* Action Error/Success Display */}
+        {actionError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg mb-4 text-sm" role="alert">
+                {actionError}
+            </div>
+        )}
+        {successMessage && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg mb-4 text-sm" role="alert">
+                {successMessage}
+            </div>
+        )}
+
+        {/* Leads Display Area (Render if not loading and no critical errors handled above) */}
+        {shouldShowLeadsContainer && (
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+             {showEmptyState ? (
+                <div className="text-center p-6 text-gray-500">
+                   {noLeadsFoundError ? noLeadsFoundError : 'No leads match the current filters.'}
+                </div>
+             ) : (
+                <React.Fragment>
+                   {/* Mobile View - Card Layout */}
+                   <div className="md:hidden divide-y divide-gray-100">
+                     {filteredLeads.map((lead) => (
+                       <LeadCard
+                         key={lead._id}
+                         lead={lead}
+                         onStatusChange={handleListStatusChange}
+                         onSelectLead={setSelectedLead}
+                       />
+                     ))}
+                   </div>
+
+                   {/* Desktop View - Table Layout */}
+                   <div className="hidden md:block">
+                     <table className="min-w-full divide-y divide-gray-200">
+                       <thead className="bg-gray-50">
+                         <tr>
+                           {/* Add onClick handlers for sorting */}
+                           <th scope="col" onClick={() => handleSort('name')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                              Name/Service {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                           </th>
+                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Contact
+                           </th>
+                           <th scope="col" onClick={() => handleSort('status')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                              Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                           </th>
+                           <th scope="col" onClick={() => handleSort('createdAt')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                              Created {sortConfig.key === 'createdAt' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                           </th>
+                           <th scope="col" className="relative px-6 py-3">
+                             <span className="sr-only">Actions</span>
+                           </th>
+                         </tr>
+                       </thead>
+                       <tbody className="bg-white divide-y divide-gray-200">
+                         {filteredLeads.map((lead) => (
+                           <tr key={lead._id}>
+                             <td className="px-6 py-4">
+                               <div>
+                                 <div className="text-sm font-medium text-gray-900">{lead.name}</div>
+                                 <div className="text-sm text-gray-500">{lead.service}</div>
+                               </div>
+                             </td>
+                             <td className="px-6 py-4">
+                               <div>
+                                 <div className="text-sm text-gray-900">{lead.phone}</div>
+                                 <div className="text-sm text-gray-500 break-all">{lead.email || 'N/A'}</div>
+                               </div>
+                             </td>
+                             <td className="px-6 py-4">
+                               <select
+                                 value={lead.status}
+                                 onChange={(e) => handleListStatusChange(lead._id, e.target.value)}
+                                  onClick={(e) => e.stopPropagation()} // Prevent row click when changing status
+                                  className={`text-sm rounded-full px-3 py-1 border border-transparent ${ 
+                                    lead.status === 'new' ? 'bg-green-100 text-green-800' : 
+                                    lead.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
+                                    lead.status === 'attempted-contact' ? 'bg-yellow-100 text-yellow-800' :
+                                    lead.status === 'scheduled' ? 'bg-purple-100 text-purple-800' :
+                                    lead.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}
+                               >
+                                 {STATUS_OPTIONS.map(option => (
+                                   <option key={option.value} value={option.value}>{option.label}</option>
+                                 ))}
+                               </select>
+                             </td>
+                             <td className="px-6 py-4 text-sm text-gray-500">
+                               {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : 'N/A'}
+                             </td>
+                             <td className="px-6 py-4 text-right text-sm font-medium">
+                               <button
+                                 onClick={() => setSelectedLead(lead)}
+                                 className="text-blue-600 hover:text-blue-800"
+                               >
+                                 View Details
+                               </button>
+                             </td>
+                           </tr>
+                         ))}
+                       </tbody>
+                     </table>
+                   </div>
+                </React.Fragment>
+             )}
+          </div>
+        )}
+
+        {/* Modal */}
+        {selectedLead && (
+          <LeadDetailsModal
+            lead={selectedLead}
+            businessId={businessId}
+            onClose={() => setSelectedLead(null)}
+            onLeadUpdate={handleLeadUpdateFromModal}
+          />
+        )}
+      </div>
     </div>
   );
 };
