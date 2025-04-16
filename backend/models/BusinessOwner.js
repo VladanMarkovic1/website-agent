@@ -26,12 +26,12 @@ BusinessOwnerSchema.pre("save", async function (next) {
 // Method to compare entered password with stored hashed password
 BusinessOwnerSchema.methods.comparePassword = async function (candidatePassword) {
   try {
-    console.log("Attempting to compare passwords:");
-    console.log("Stored hash:", this.password);
-    console.log("Provided password:", candidatePassword);
+    // console.log("Attempting to compare passwords:"); // Optional: Keep for detailed debugging if needed
+    // console.log("Stored hash:", this.password); // Optional: Keep for detailed debugging if needed
+    // console.log("Provided password:", candidatePassword); // REMOVED: Do not log plaintext password
     
     const isMatch = await bcryptjs.compare(candidatePassword, this.password);
-    console.log("Password comparison result:", isMatch);
+    // console.log("Password comparison result:", isMatch); // Optional: Keep for detailed debugging
     return isMatch;
   } catch (error) {
     console.error("Error comparing passwords:", error);
