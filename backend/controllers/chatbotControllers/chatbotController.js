@@ -109,13 +109,38 @@ const processChatMessage = async (message, sessionId, businessId) => {
             if (finalResponse.type === 'CONTACT_INFO' && finalResponse.contactInfo) {
                 console.log('[Controller] CONTACT_INFO type detected. Attempting to save lead...');
                 try {
+                    // --- Start: Determine the best context for the lead --- 
+                    let leadProblemContext = session.problemDescription || null; // Prioritize captured problem
+
+                    if (leadProblemContext) {
+                        console.log(`[Controller] Using captured session problemDescription for lead context: "${leadProblemContext}"`);
+                    } else {
+                        // Fallback: If no problem was captured, try the last user message
+                        const userMessages = session.messages?.filter(m => m.role === 'user');
+                        if (userMessages && userMessages.length > 0) {
+                            leadProblemContext = userMessages[userMessages.length - 1].content;
+                            console.log(`[Controller] Using last user message for lead context (session problemDescription was empty): "${leadProblemContext}"`);
+                        } else if (message && session.isFirstMessage) {
+                            // Edge case: First message contained contact info
+                            leadProblemContext = message;
+                            console.log(`[Controller] Using initial message for lead context (session problemDescription was empty): "${leadProblemContext}"`);
+                        }
+                    }
+                    
+                    // Final fallback if no context could be determined
+                    if (!leadProblemContext) {
+                        leadProblemContext = "User provided contact details after chatbot interaction.";
+                        console.log("[Controller] No specific concern context found, using generic text.");
+                    }
+                    // --- End: Determine context --- 
+
                     const leadContext = {
                         businessId: session.businessId,
                         name: finalResponse.contactInfo.name,
                         phone: finalResponse.contactInfo.phone,
                         email: finalResponse.contactInfo.email,
                         serviceInterest: finalResponse.serviceContext || session.serviceInterest || 'Dental Consultation',
-                        problemDescription: session.problemDescription || null, 
+                        problemDescription: leadProblemContext, // Use the determined context
                         messageHistory: session.messages 
                     };
                     console.log('[Controller] Data being sent to saveLead:', JSON.stringify(leadContext, null, 2));
