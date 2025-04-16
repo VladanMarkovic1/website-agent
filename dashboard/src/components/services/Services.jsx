@@ -14,6 +14,7 @@ const Services = () => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [retryCount, setRetryCount] = useState(0);
   const messageTimeoutRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   // Monitor online/offline status
   useEffect(() => {
@@ -37,6 +38,19 @@ const Services = () => {
       }
     };
   }, []);
+
+  // Effect to scroll container to bottom when services array grows
+  useEffect(() => {
+    if (scrollContainerRef.current && services.length > 0) {
+      setTimeout(() => {
+        const container = scrollContainerRef.current;
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 0);
+    }
+  }, [services.length]);
 
   // Retrieve businessId from stored user data
   const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
@@ -128,12 +142,13 @@ const Services = () => {
 
   // Add a new service
   const addService = () => {
-    setServices([...services, { 
+    const newService = { 
       name: '', 
       description: '', 
       price: '',
       manualOverride: false 
-    }]);
+    };
+    setServices(prevServices => [...prevServices, newService]);
   };
 
   // Remove a service
@@ -251,7 +266,7 @@ const Services = () => {
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto md:pt-0 pt-16 pb-16">
+    <div ref={scrollContainerRef} className="h-full w-full overflow-y-auto md:pt-0 pt-16 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
         <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 mb-8">
           {/* Title section - desktop */}
@@ -366,7 +381,10 @@ const Services = () => {
             ) : (
               <div className="space-y-6">
                 {services.map((service, index) => (
-                  <div key={index} className="bg-gray-50 rounded-xl p-4 md:p-6 transition-all duration-200 hover:shadow-md">
+                  <div 
+                    key={index} 
+                    className="bg-gray-50 rounded-xl p-4 md:p-6 transition-all duration-200 hover:shadow-md"
+                  >
                     <div className="flex justify-between items-start mb-6">
                       <h3 className="text-lg font-medium text-gray-900">Service #{index + 1}</h3>
                       <button
