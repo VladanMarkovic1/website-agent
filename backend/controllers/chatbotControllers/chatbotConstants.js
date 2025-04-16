@@ -33,7 +33,7 @@ export const DENTAL_PROBLEMS = {
     damage: ['broken', 'chipped', 'cracked', 'loose', 'missing'],
     emergency: ['bleeding', 'swollen', 'swelling', 'infection', 'abscess'],
     appearance: ['dot', 'spot', 'stain', 'discoloration', 'black', 'white', 'yellow', 'brown', 'dark', 'white spot', 'whiteish spot', 'whiteish stain', 'whiteish discoloration', 'something '],
-    general: ['cavity', 'decay', 'filling', 'tooth', 'teeth', 'gum', 'jaw']
+    
 };
 
 // Common response templates
