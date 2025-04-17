@@ -23,14 +23,7 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials." });
     }
 
-    console.log("Found user:", {
-      email: user.email,
-      hashedPassword: user.password
-    });
-
-    // Use the model's comparePassword method instead of direct bcryptjs.compare
     const isMatch = await user.comparePassword(password);
-    console.log("Password comparison result:", isMatch);
 
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid credentials." });
