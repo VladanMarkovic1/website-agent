@@ -1,4 +1,3 @@
-
 /**
  * Applies overrides to the initial AI response based on detected request types and session state.
  * 
@@ -10,6 +9,7 @@
  */
 export const applyResponseOverrides = (initialResponse, requestTypes, session, businessData) => {
     const { 
+        normalizedMessage,
         isBookingRequest,
         isRescheduleRequest,
         isCancelRequest,
@@ -73,14 +73,21 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
             console.log('[OverrideService] Overriding with: RESCHEDULE_REQUEST');
         } 
         else if (isCancelRequest) {
-            finalResponse.response = " ❌ I understand you'd like to cancel your appointment. To help you with this, I'll need your full name, phone number, and email address so our team can locate your appointment in the system. Could you please share these details with me?";
+            finalResponse.response = " ❌ I understand you\'d like to cancel your appointment. To help you with this, I\'ll need your full name, phone number, and email address so our team can locate your appointment in the system. Could you please share these details with me?";
             finalResponse.type = 'CANCEL_REQUEST';
             console.log('[OverrideService] Overriding with: CANCEL_REQUEST');
         } 
         else if (isBookingRequest) { 
-            finalResponse.response = " ⏰ I'll be happy to help you schedule an appointment! 📞 To connect you with our scheduling specialist, I just need your full name, phone number, and email address. Once you provide these details, they will reach out to find the perfect time slot for you. Could you please share those details with me?";
-            finalResponse.type = 'BOOKING_REQUEST';
-            console.log('[OverrideService] Overriding with: BOOKING_REQUEST (Generic)');
+            const messageToCheck = normalizedMessage || ''; 
+            const isLikelyQuestion = /^(can|will|do|is|are|how|what|why)\b/.test(messageToCheck) || messageToCheck.endsWith('?');
+
+            if (isLikelyQuestion) {
+                console.log('[OverrideService] Booking keyword detected, but message is a question. Skipping override.');
+            } else {
+                finalResponse.response = " ⏰ I'll be happy to help you schedule an appointment! 📞 To connect you with our scheduling specialist, I just need your full name, phone number, and email address. Once you provide these details, they will reach out to find the perfect time slot for you. Could you please share those details with me?";
+                finalResponse.type = 'BOOKING_REQUEST';
+                console.log('[OverrideService] Overriding with: BOOKING_REQUEST (Generic)');
+            }
         } else {
              console.log('[OverrideService] Override check passed, but no specific override condition met. Keeping original response type:', initialResponse.type);
         }

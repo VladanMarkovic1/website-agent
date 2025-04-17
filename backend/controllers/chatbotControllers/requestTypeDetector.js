@@ -99,6 +99,7 @@ export const detectRequestTypes = (message) => {
     const isSpecificServiceQuestion = checkSpecificServiceQuestion(normalizedMessage);
 
     return {
+        normalizedMessage: normalizedMessage,
         isBookingRequest: checkBookingRequest(normalizedMessage),
         isRescheduleRequest: checkRescheduleRequest(normalizedMessage),
         isCancelRequest: checkCancelRequest(normalizedMessage),
