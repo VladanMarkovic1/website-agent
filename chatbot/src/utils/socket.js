@@ -1,20 +1,16 @@
 import { io } from 'socket.io-client';
 
-// Get or create session ID
-const getSessionId = () => {
-  let sessionId = localStorage.getItem('chatSessionId');
-  if (!sessionId) {
-    sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('chatSessionId', sessionId);
-  }
-  return sessionId;
-};
+// Remove the old getSessionId function that used localStorage
+// const getSessionId = () => { ... };
 
 export const initializeSocket = (businessId) => {
-  const sessionId = getSessionId();
+  // Generate a new, unique session ID for *this specific* chat instance
+  const sessionId = crypto.randomUUID(); 
+  console.log(`[Socket] Initializing with NEW Session ID: ${sessionId}`);
   
   const socket = io(window.DENTAL_CHATBOT_CONFIG.backendUrl || 'http://localhost:5000', {
-    query: { businessId, sessionId },
+    // Pass the unique sessionId and businessId in the query
+    query: { businessId, sessionId }, 
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,
