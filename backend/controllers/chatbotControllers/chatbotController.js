@@ -46,14 +46,15 @@ const processChatMessage = async (message, sessionId, businessId) => {
             throw new Error("Missing required fields: message, sessionId, or businessId");
         }
 
-        // 1. Get Session
-        const { session, isNew: isNewSession } = getOrCreateSession(sessionId, businessId);
+        // 1. Get Session (NOW ASYNC)
+        const { session, isNew: isNewSession } = await getOrCreateSession(sessionId, businessId);
 
         // 2. Track New Conversation (if applicable)
         if (session.isFirstMessage) {
             try {
                 await trackChatEvent(businessId, 'NEW_CONVERSATION');
-                updateSessionData(sessionId, { isFirstMessage: false });
+                // Update session data (NOW ASYNC)
+                await updateSessionData(sessionId, { isFirstMessage: false }); 
             } catch (error) {
                 console.error("Error tracking new conversation:", error);
             }
@@ -74,7 +75,8 @@ const processChatMessage = async (message, sessionId, businessId) => {
                        );
             });
             if (mentionedService && !session.serviceInterest) { // Only set if not already set
-                updateSessionData(sessionId, { serviceInterest: mentionedService.name });
+                // Update session data (NOW ASYNC)
+                await updateSessionData(sessionId, { serviceInterest: mentionedService.name });
                 console.log('[Controller] Detected service interest:', mentionedService.name);
             }
 
@@ -92,17 +94,17 @@ const processChatMessage = async (message, sessionId, businessId) => {
             // 7. Apply Overrides (if needed)
             let finalResponse = applyResponseOverrides(initialResponse, requestTypes, session, businessData);
 
-             // Update session interest if override specified it
+             // Update session interest if override specified it (NOW ASYNC)
              if (finalResponse.serviceContext && finalResponse.serviceContext !== session.serviceInterest) {
-                  updateSessionData(sessionId, { serviceInterest: finalResponse.serviceContext });
+                  await updateSessionData(sessionId, { serviceInterest: finalResponse.serviceContext }); 
              }
 
-            // 8. Track Problem Description
+            // 8. Track Problem Description (NOW ASYNC)
             if (!session.problemDescription && 
                 !['CONTACT_INFO_PROVIDED', 'GREETING'].includes(finalResponse.type) &&
                 (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => messageLower.includes(keyword)) || message.split(' ').length > 5)
                ) {
-                 updateSessionData(sessionId, { problemDescription: message });
+                 await updateSessionData(sessionId, { problemDescription: message }); 
             }
 
             // 9. Handle Lead Saving
@@ -148,8 +150,10 @@ const processChatMessage = async (message, sessionId, businessId) => {
                     await saveLead(leadContext);
                     
                     console.log('[Controller] saveLead function executed successfully for sessionId:', sessionId);
-                    // Update session only AFTER successful save
-                    updateSessionData(sessionId, { contactInfo: finalResponse.contactInfo }); 
+                    
+                    // Update session contact info (NOW ASYNC)
+                    await updateSessionData(sessionId, { contactInfo: finalResponse.contactInfo }); 
+                    
                     await trackChatEvent(businessId, 'LEAD_GENERATED', { service: leadContext.serviceInterest });
 
                 } catch (error) {
@@ -167,7 +171,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 console.error("Error tracking hourly activity:", error);
             }
 
-            // 11. Update Message History in Session
+            // 11. Update Message History in Session (NOW ASYNC)
             const userMessageLog = {
                 role: 'user',
                 content: message,
@@ -184,7 +188,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 serviceContext: finalResponse.serviceContext,
                 problemCategory: finalResponse.problemCategory || null 
             };
-            addMessagesToSession(sessionId, userMessageLog, botMessageLog);
+            await addMessagesToSession(sessionId, userMessageLog, botMessageLog);
 
             // 12. Track Conversation Completion
             if (finalResponse.type === 'GOODBYE' && session.contactInfo) { // Assuming a GOODBYE type exists
@@ -210,10 +214,14 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 type: "ERROR",
                 response: RESPONSE_TEMPLATES.api_error_fallback || "An internal error occurred."
             };
-             // Still try to log the error message to history
-             const userMessageLog = { role: 'user', content: message, timestamp: Date.now() };
-             const botMessageLog = { role: 'assistant', content: errorResponse.response, timestamp: Date.now(), type: 'ERROR' };
-             addMessagesToSession(sessionId, userMessageLog, botMessageLog);
+             // Try to log error messages to session (NOW ASYNC)
+             try {
+                 const userMessageLog = { role: 'user', content: message, timestamp: Date.now() };
+                 const botMessageLog = { role: 'assistant', content: errorResponse.response, timestamp: Date.now(), type: 'ERROR' };
+                 await addMessagesToSession(sessionId, userMessageLog, botMessageLog); 
+             } catch (logError) {
+                 console.error("Failed to log error message to session:", logError);
+             }
             return { ...errorResponse, sessionId }; 
         }
     } catch (error) {
