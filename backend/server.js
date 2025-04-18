@@ -15,6 +15,9 @@ import registrationRoutes from "./routes/registrationRoutes.js";
 import loginRoutes from "./routes/loginRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import clientRoutes from './routes/clientRoutes.js'; // Import the new client routes
+import Business from './models/Business.js'; // Import Business model
+
 dotenv.config();
 
 const startServer = async () => {
@@ -30,13 +33,51 @@ const startServer = async () => {
     // Security middleware
     app.use(helmet()); // Set secure HTTP headers
     
-    // Configure CORS
-    app.use(cors({
-        origin: true, // Allow all origins in development
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials'],
-        credentials: true
-    }));
+    // --- Dynamic CORS Configuration ---
+    // Define allowed origins logic
+    const corsOptions = {
+      origin: async (origin, callback) => {
+        if (!origin) {
+          // Allow requests with no origin (like mobile apps, curl, server-to-server)
+          // In production, you might want to be stricter depending on use case
+          return callback(null, true);
+        }
+        try {
+          // Fetch all active businesses and their allowed origins
+          const businesses = await Business.find({ isActive: true }, 'allowedOrigins').lean(); // Assuming an isActive flag
+          const allowedOrigins = businesses.flatMap(b => b.allowedOrigins || []);
+          // Also allow your dashboard domain(s) - get from ENV or hardcode
+          const dashboardOrigin = process.env.DASHBOARD_URL; // e.g., 'https://your-dashboard.com'
+          if (dashboardOrigin) {
+            allowedOrigins.push(dashboardOrigin);
+          }
+          // Add localhost for development testing if needed
+          if (process.env.NODE_ENV === 'development') {
+             allowedOrigins.push('http://localhost:5173'); // Example Vite default port for chatbot testing
+             allowedOrigins.push('http://localhost:5174'); // Example Vite default port for dashboard testing
+          }
+
+          if (allowedOrigins.includes(origin)) {
+            callback(null, true); // Origin is allowed
+          } else {
+            console.warn(`CORS blocked origin: ${origin}`);
+            callback(new Error('Not allowed by CORS')); // Origin is not allowed
+          }
+        } catch (error) {
+          console.error("Error in CORS origin check:", error);
+          callback(new Error('CORS check failed due to internal error')); // Internal error
+        }
+      },
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'], // Simplify headers if possible
+      credentials: true
+    };
+
+    // Apply CORS middleware
+    app.use(cors(corsOptions));
+    // Handle preflight requests for all routes
+    app.options('*', cors(corsOptions)); 
+    // --- End Dynamic CORS Configuration ---
 
     app.use(express.json());
 
@@ -60,19 +101,20 @@ const startServer = async () => {
     });
 
     // Auth routes first (without general rate limiting)
-    app.use("/auth", authLimiter, registrationRoutes);      // Registration endpoint with auth limits
-    app.use("/auth", authLimiter, loginRoutes);            // Login endpoint with auth limits
+    app.use("/api/v1/auth", authLimiter, registrationRoutes);
+    app.use("/api/v1/auth", authLimiter, loginRoutes);
 
     // Then apply general rate limiting to other routes
     app.use(generalLimiter);
 
-    // Routes with specific rate limits
-    app.use("/scraper", scraperRoutes);
-    app.use("/services", serviceRoutes);
-    app.use("/chatbot", chatbotRoutes);
-    app.use('/leads', leadRoutes);
-    app.use("/admin", adminLimiter, adminRoutes);           // Admin endpoints with stricter limits
-    app.use('/analytics', analyticsRoutes);
+    // API Routes
+    app.use("/api/v1/scraper", scraperRoutes);
+    app.use("/api/v1/services", serviceRoutes);
+    app.use("/api/v1/chatbot", chatbotRoutes);
+    app.use('/api/v1/leads', leadRoutes);
+    app.use("/api/v1/admin", adminLimiter, adminRoutes);           // Admin endpoints with stricter limits
+    app.use('/api/v1/analytics', analyticsRoutes);
+    app.use('/api/v1/clients', clientRoutes); // Mount the client management routes
 
     // Initialize WebSocket Chat
     initWebSocket(io);
