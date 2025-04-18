@@ -13,23 +13,7 @@ export const trackChatEvent = async (businessId, eventType, data = {}) => {
         let allTimeOps = {}; 
 
         // --- Perform Lead Increment Separately --- 
-        if (eventType === 'NEW_LEAD') {
-            console.log('[AnalyticsService] Incrementing totalLeads separately...');
-            try {
-                console.log(`[AnalyticsService] Attempting today\'s lead increment. Filter: { businessId: ${businessId}, date: ${today} }`);
-                const todayUpdateResult = await ChatAnalytics.updateOne({ businessId, date: today }, { $inc: { totalLeads: 1 } }, { upsert: true });
-                console.log('[AnalyticsService] Today lead increment result:', JSON.stringify(todayUpdateResult));
-
-                console.log(`[AnalyticsService] Attempting all-time lead increment. Filter: { businessId: ${businessId}, date: null }`);
-                const allTimeUpdateResult = await ChatAnalytics.updateOne({ businessId, date: null }, { $inc: { totalLeads: 1 } }, { upsert: true });
-                console.log('[AnalyticsService] All-time lead increment result:', JSON.stringify(allTimeUpdateResult));
-
-                console.log('[AnalyticsService] Separate totalLeads increment successful.');
-            } catch (leadIncError) {
-                 console.error('[AnalyticsService] Error during separate totalLeads increment:', leadIncError);
-                 // Decide if we should continue or throw
-            }
-        } else if (eventType === 'LEAD_GENERATED') {
+        if (eventType === 'LEAD_GENERATED') {
              // Similar to NEW_LEAD but potentially triggered after lead save confirmation
              console.log('[AnalyticsService] Tracking LEAD_GENERATED event separately...');
               try {
