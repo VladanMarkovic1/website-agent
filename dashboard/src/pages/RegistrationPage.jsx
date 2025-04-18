@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import api from '../utils/api';
+import apiClient from '../services/api';
 import InputField from '../components/layout/InputField';
 import Button from '../components/layout/SubmitButton';
 
@@ -42,7 +42,7 @@ const Register = () => {
         password: '***'
       });
       
-      const response = await api.post('/auth/register', registrationData);
+      const response = await apiClient.post('/auth/register', registrationData);
       console.log('Registration response:', response.data);
       
       if (response.data && response.data.success) {
