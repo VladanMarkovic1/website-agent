@@ -190,14 +190,44 @@ export const saveLead = async (leadContext) => {
  */
 export const createLeadHandler = async (req, res) => {
     try {
-        const { businessId, message, serviceInterest } = req.body;
-        const responseMessage = await saveLead({ businessId, message, serviceInterest });
-        if (!responseMessage) {
-            return res.status(400).json({ error: "Missing required contact information or lead already exists." });
+        // Get businessId from URL parameters, other data from body
+        const { businessId } = req.params;
+        const { message, serviceInterest } = req.body;
+
+        if (!businessId) {
+            return res.status(400).json({ error: "Business ID missing in URL" });
         }
-        res.status(200).json({ success: true, message: responseMessage });
+        
+        // Extract contact info (name, phone, email) needed by saveLead from body
+        // Ensure validation in the route covers these required fields
+        const { name, phone, email } = req.body; 
+
+        // Construct the context object for saveLead
+        const leadContext = { 
+            businessId, 
+            name, 
+            phone, 
+            email, // Pass email if available
+            message, // This seems ambiguous, saveLead uses messageHistory/problemDescription
+                     // Maybe pass null or a specific source indicator? Let's pass null for now.
+            serviceInterest, 
+            problemDescription: message, // Assuming the direct POST message IS the problem description
+            messageHistory: [{ role: 'user', content: message }] // Provide a minimal history
+        };
+
+        const responseMessage = await saveLead(leadContext);
+        
+        // saveLead now throws errors, so no need to check for !responseMessage here
+        // if (!responseMessage) {
+        //     return res.status(400).json({ error: "Missing required contact information or lead already exists." });
+        // }
+
+        res.status(201).json({ success: true, message: responseMessage }); // Use 201 Created for new resource
+
     } catch (error) {
         console.error("Error creating lead:", error);
-        res.status(500).json({ error: "Internal server error while creating lead." });
+        res.status(error.message?.includes("Missing required contact") ? 400 : 500).json({ 
+            error: error.message || "Internal server error while creating lead." 
+        });
     }
 };
