@@ -3,12 +3,26 @@ import { io } from 'socket.io-client';
 // Remove the old getSessionId function that used localStorage
 // const getSessionId = () => { ... };
 
-export const initializeSocket = (businessId) => {
+export const initializeSocket = (businessId, backendApiUrl) => {
   // Generate a new, unique session ID for *this specific* chat instance
   const sessionId = crypto.randomUUID(); 
-  console.log(`[Socket] Initializing with NEW Session ID: ${sessionId}`);
+  console.log(`[Socket] Initializing with NEW Session ID: ${sessionId} for Business: ${businessId}`);
   
-  const socket = io(window.DENTAL_CHATBOT_CONFIG.backendUrl || 'http://localhost:5000', {
+  // Use the provided backendApiUrl, remove fallback to window config or hardcoded localhost
+  if (!backendApiUrl) {
+    console.error("[Socket] Initialization failed: backendApiUrl is missing.");
+    // Return a dummy object or throw an error to prevent connection attempts
+    return {
+      on: () => {}, 
+      emit: () => { console.error("Socket not initialized, cannot emit."); },
+      close: () => {},
+      connect: () => { console.error("Socket not initialized, cannot connect."); },
+      io: { opts: {} }
+    };
+  }
+  console.log(`[Socket] Connecting to: ${backendApiUrl}`);
+
+  const socket = io(backendApiUrl, {
     // Pass the unique sessionId and businessId in the query
     query: { businessId, sessionId }, 
     transports: ['websocket', 'polling'],

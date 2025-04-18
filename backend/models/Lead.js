@@ -102,7 +102,7 @@ const leadSchema = new mongoose.Schema({
     interactions: [{
         type: {
             type: String,
-            enum: ['email', 'call', 'sms', 'consultation', 'chatbot'],
+            enum: ['email', 'call', 'sms', 'consultation', 'chatbot', 'Status Update'],
             required: true
         },
         status: String,

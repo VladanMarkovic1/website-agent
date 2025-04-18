@@ -1,5 +1,6 @@
 import Invitation from '../../models/Invitation.js';
 import Business from '../../models/Business.js';
+import mongoose from 'mongoose';
 
 export const getBusinessOwners = async (req, res) => {
   try {
@@ -103,7 +104,102 @@ export const getBusinesses = async (req, res) => {
   }
 };
 
+export const deleteBusinessOwner = async (req, res) => {
+  const { ownerId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(ownerId)) {
+    return res.status(400).json({ error: 'Invalid Owner ID format' });
+  }
+
+  try {
+    // We delete the invitation record. If the user has registered, their account might remain.
+    // Depending on requirements, might need to delete the actual BusinessOwner account too.
+    const deletedInvitation = await Invitation.findByIdAndDelete(ownerId);
+
+    if (!deletedInvitation) {
+      return res.status(404).json({ error: 'Invitation record not found for this owner ID' });
+    }
+
+    res.status(200).json({ message: 'Business owner invitation deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting business owner invitation:', error);
+    res.status(500).json({ error: 'Failed to delete business owner invitation' });
+  }
+};
+
+export const updateBusinessOwner = async (req, res) => {
+  const { ownerId } = req.params;
+  const { businessId } = req.body; // Only allowing businessId update for now
+
+  if (!mongoose.Types.ObjectId.isValid(ownerId)) {
+    return res.status(400).json({ error: 'Invalid Owner ID format' });
+  }
+  if (!businessId) {
+      return res.status(400).json({ error: 'New Business ID is required' });
+  }
+
+  try {
+    // Find the business to ensure it exists
+    const businessExists = await Business.findOne({ businessId: businessId });
+    if (!businessExists) {
+        return res.status(404).json({ error: 'Target business not found' });
+    }
+
+    // Find and update the invitation
+    const updatedInvitation = await Invitation.findByIdAndUpdate(
+      ownerId,
+      { $set: { businessId: businessId } },
+      { new: true, runValidators: true } // Return the updated doc and run schema validators
+    );
+
+    if (!updatedInvitation) {
+      return res.status(404).json({ error: 'Invitation record not found for this owner ID' });
+    }
+
+    // Optionally, update the corresponding BusinessOwner record if it exists
+    // await BusinessOwner.findOneAndUpdate({ email: updatedInvitation.email }, { businessId: businessId });
+
+    res.status(200).json({ 
+      message: 'Business owner assignment updated successfully',
+      owner: updatedInvitation // Send back the updated record
+    });
+  } catch (error) {
+    console.error('Error updating business owner assignment:', error);
+    res.status(500).json({ error: 'Failed to update business owner assignment' });
+  }
+};
+
+export const generateScriptTag = async (req, res) => {
+    const { businessId } = req.params;
+
+    if (!businessId) {
+        return res.status(400).json({ error: 'Business ID is required' });
+    }
+
+    try {
+        // Optional: Verify businessId actually exists in the Business collection
+        const businessExists = await Business.findOne({ businessId: businessId });
+        if (!businessExists) {
+            return res.status(404).json({ error: 'Business not found' });
+        }
+        
+        // Construct the script tag
+        // Ensure VITE_WIDGET_URL is set in your backend environment variables
+        const widgetBaseUrl = process.env.VITE_WIDGET_URL || 'http://localhost:5174'; // Default if not set
+        const scriptTag = `<script src="${widgetBaseUrl}/widget.js" data-business-id="${businessId}" defer></script>`;
+
+        res.status(200).json({ scriptTag });
+
+    } catch (error) {
+        console.error('Error generating script tag:', error);
+        res.status(500).json({ error: 'Failed to generate script tag' });
+    }
+};
+
 export default {
     getBusinessOwners,
-    getBusinesses
+    getBusinesses,
+    deleteBusinessOwner,
+    updateBusinessOwner,
+    generateScriptTag
 }; 

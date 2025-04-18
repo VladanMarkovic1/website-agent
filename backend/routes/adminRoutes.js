@@ -3,8 +3,14 @@ import rateLimit from 'express-rate-limit';
 import { authenticateToken } from '../middleware/auth.js';
 import { adminAuth } from '../middleware/adminAuth.js';
 import { sendInvitation } from '../controllers/adminControllers/sendInvitation.js';
-import { getBusinesses, getBusinessOwners } from '../controllers/adminControllers/businessOwnerController.js';
-import { body, validationResult } from 'express-validator';
+import { 
+    getBusinesses, 
+    getBusinessOwners,
+    deleteBusinessOwner,
+    updateBusinessOwner,
+    generateScriptTag 
+} from '../controllers/adminControllers/businessOwnerController.js';
+import { body, param, validationResult } from 'express-validator';
 
 const router = express.Router();
 
@@ -39,6 +45,22 @@ const inviteValidationRules = [
     // Use .isMongoId() if expecting ObjectId
 ];
 
+// Validation rules for updating a business owner
+const updateOwnerValidationRules = [
+    param('ownerId', 'Valid Owner ID parameter is required').isMongoId(),
+    body('businessId', 'New Business ID is required').notEmpty().trim().escape()
+];
+
+// Validation rules for deleting a business owner
+const deleteOwnerValidationRules = [
+    param('ownerId', 'Valid Owner ID parameter is required').isMongoId()
+];
+
+// Validation rules for generating script tag
+const scriptTagValidationRules = [
+    param('businessId', 'Business ID parameter is required').notEmpty().trim().escape()
+];
+
 // Get all businesses (admin only) - No validation needed for input
 router.get('/businesses', getBusinesses);
 
@@ -51,6 +73,30 @@ router.post(
     inviteValidationRules, // Apply validation
     handleValidationErrors, // Handle errors
     sendInvitation         // Call controller
+);
+
+// Delete a business owner invitation (admin only)
+router.delete(
+    '/business-owners/:ownerId',
+    deleteOwnerValidationRules, // Apply validation
+    handleValidationErrors,     // Handle errors
+    deleteBusinessOwner         // Call controller
+);
+
+// Update a business owner assignment (admin only)
+router.put(
+    '/business-owners/:ownerId',
+    updateOwnerValidationRules, // Apply validation
+    handleValidationErrors,     // Handle errors
+    updateBusinessOwner         // Call controller
+);
+
+// Generate script tag for a business (admin only)
+router.get(
+    '/script-tag/:businessId',
+    scriptTagValidationRules,  // Apply validation
+    handleValidationErrors,    // Handle errors
+    generateScriptTag          // Call controller
 );
 
 export default router;

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import api from '../../utils/api';
 import { HiOutlineSearch, HiOutlineAdjustments, HiOutlineX, HiOutlineChevronDown, HiOutlineChevronUp, HiOutlineRefresh, HiOutlineExclamation, HiOutlineWifi } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
 
@@ -65,85 +64,6 @@ const Leads = () => {
       document.documentElement.style.setProperty('--filter-height', '0px');
     }
   }, [showFilters]);
-
-  useEffect(() => {
-    if (!businessId) {
-      console.error('No business ID found - redirecting to login');
-      navigate('/login');
-      return;
-    }
-    
-    fetchLeads();
-    
-    // Set up polling every 30 seconds
-    const pollInterval = setInterval(() => {
-      if (!isOffline) {
-        fetchLeads(false); // Don't show loading state for automatic refreshes
-      }
-    }, 30000);
-
-    return () => clearInterval(pollInterval);
-  }, [businessId, navigate, isOffline, handleRetry]);
-
-  const fetchLeads = async (showLoadingState = true) => {
-    if (!businessId) {
-      setError('No business ID found. Please log in again.');
-      setLoading(false);
-      return;
-    }
-
-    if (isOffline) {
-      setError('You are currently offline. Please check your internet connection.');
-      setLoading(false);
-      return;
-    }
-
-    if (showLoadingState) {
-      setLoading(true);
-    }
-    setRefreshing(true);
-    setError(''); // Clear any previous errors
-
-    try {
-      const response = await api.get(`/leads/${businessId}`);
-      console.log('Fetched leads:', response.data);
-      
-      if (response.data && response.data.success && Array.isArray(response.data.leads)) {
-        setLeads(response.data.leads);
-        if (response.data.count === 0) {
-          setError('No leads found for your business.');
-        }
-      } else {
-        console.warn('Unexpected response format:', response.data);
-        setLeads([]);
-        setError('Received invalid data format from server');
-      }
-    } catch (err) {
-      console.error('Error fetching leads:', err);
-      const errorMessage = err.response?.data?.error || 'Failed to fetch leads. Please try again.';
-      setError(errorMessage);
-      
-      // If error is related to security software, show more helpful message
-      if (err.response?.data?.error?.includes('security software') || 
-          err.response?.data?.error?.includes('blocked') ||
-          errorMessage.includes('Unable to reach the server')) {
-        setError(
-          'Your security software (like Kaspersky) might be blocking connections to our server. ' +
-          'Please add this website to your trusted sites or temporarily disable web protection.'
-        );
-      }
-      
-      if (err.response?.status === 401) {
-        console.log('Authentication error - redirecting to login');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
 
   // Show temporary success messages
   const showSuccess = (message) => {

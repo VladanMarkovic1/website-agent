@@ -3,7 +3,7 @@ import ChatWindow from './ChatWindow';
 import ChatButton from './ChatButton';
 import { initializeSocket } from '../utils/socket';
 
-const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primaryColor }) => {
+const ChatWidget = ({ businessId, backendApiUrl, position = 'bottom-right', buttonText, primaryColor }) => {
   const [isOpen, setIsOpen] = useState(true);
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
@@ -14,7 +14,7 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
 
   // Initialize socket connection
   useEffect(() => {
-    const newSocket = initializeSocket(businessId);
+    const newSocket = initializeSocket(businessId, backendApiUrl);
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
@@ -46,7 +46,7 @@ const ChatWidget = ({ businessId, position = 'bottom-right', buttonText, primary
       newSocket.close();
       setIsConnected(false);
     };
-  }, [businessId]);
+  }, [businessId, backendApiUrl]);
 
   // Handle incoming messages
   useEffect(() => {

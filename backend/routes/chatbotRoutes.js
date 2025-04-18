@@ -22,9 +22,8 @@ const handleValidationErrors = (req, res, next) => {
 const chatMessageValidationRules = [
     body('message', 'Message content is required').notEmpty().trim().escape(),
     body('sessionId', 'Session ID is required').notEmpty().trim().escape(),
-    // Validate businessId - Assuming it should be a slug here based on context
-    body('businessId', 'Business ID is required').notEmpty().trim().escape() 
-    // If businessId was intended to be ObjectId, use .isMongoId()
+    // REMOVED: businessId validation from body - will come from URL parameter
+    // body('businessId', 'Business ID is required').notEmpty().trim().escape() 
 ];
 
 // Rate limiter for chatbot messages
@@ -38,12 +37,12 @@ const chatbotLimiter = rateLimit({
     // keyGenerator: (req, res) => req.apiKey || req.ip 
 });
 
-// ✅ Endpoint for chatbot responses - Now protected by API Key
+// ✅ Endpoint for chatbot responses - Now protected by API Key and uses businessId in path
 router.post(
-    "/message", 
+    "/:businessId/message", // ADDED /:businessId/ to the path
     chatbotLimiter, // Apply rate limiting
     apiKeyAuth, 
-    chatMessageValidationRules, 
+    chatMessageValidationRules, // REMOVED businessId from validation rules array above
     handleValidationErrors,     
     async (req, res) => {        
         try {

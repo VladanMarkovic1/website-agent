@@ -37,9 +37,8 @@ const noteIdParamValidation = [
     param('noteId', 'Note ID must be a valid MongoDB ObjectId').isMongoId()
 ];
 
-// Validation for creating a lead (POST /)
+// Validation for creating a lead (POST /:businessId/)
 const createLeadValidationRules = [
-    body('businessId', 'Business ID is required').notEmpty().trim().escape(), // Assuming slug
     body('name', 'Name is required').notEmpty().trim().escape(),
     body('phone', 'Phone number is required').notEmpty().trim().escape(), // Basic, add more specific phone validation if needed
     body('email').optional({ checkFalsy: true }).isEmail().withMessage('Please provide a valid email').normalizeEmail(),
@@ -79,13 +78,15 @@ router.get(
     getLeads
 );
 
-// POST /leads - Create a new lead (Using createLeadHandler from leadController.js?)
+// POST /leads/:businessId - Create a new lead 
 router.post(
-    "/", 
+    "/:businessId",
     authenticateToken, 
-    createLeadValidationRules, // Apply validation rules
+    businessIdParamValidation,
+    createLeadValidationRules,
     handleValidationErrors,
-    createLeadHandler // Assumes this handler checks validation results
+    checkBusinessOwner,
+    createLeadHandler
 );
 
 // PUT /leads/:businessId/:leadId - Update the status of a lead

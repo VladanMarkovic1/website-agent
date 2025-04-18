@@ -2,16 +2,17 @@ import Service from "../../models/Service.js";
 
 export const getBusinessServices = async (req, res) => {
     try {
-        // Use the business object that was attached by checkBusinessOwner middleware
-        const business = req.business;
+        // Get businessId from params
+        const { businessId } = req.params;
+        // const business = req.business; // Keep if needed for other checks
         
-        if (!business) {
-            return res.status(404).json({ error: "Business not found." });
+        if (!businessId) {
+            return res.status(400).json({ error: "Business ID is required in URL" });
         }
 
-        // Get services
-        const serviceDoc = await Service.findOne({ businessId: business.businessId });
-        console.log(`Fetching services for business ${business.businessId}`);
+        // Get services using businessId from params
+        const serviceDoc = await Service.findOne({ businessId: businessId });
+        console.log(`Fetching services for business ${businessId}`);
         
         // Return empty array if no services exist yet
         return res.status(200).json(serviceDoc ? serviceDoc.services : []);
@@ -23,21 +24,22 @@ export const getBusinessServices = async (req, res) => {
 
 export const updateBusinessServices = async (req, res) => {
     try {
-        // Use the business object that was attached by checkBusinessOwner middleware
-        const business = req.business;
+        // Get businessId from params
+        const { businessId } = req.params;
         const { services } = req.body;
+        // const business = req.business; // Keep if needed for other checks
 
-        if (!business) {
-            return res.status(404).json({ error: "Business not found." });
+        if (!businessId) {
+            return res.status(400).json({ error: "Business ID is required in URL" });
         }
 
-        console.log(`🔹 Updating services for business: ${business.businessId}`);
+        console.log(`🔹 Updating services for business: ${businessId}`);
         console.log(`🔹 Services Data:`, services);
 
-        // Find or create services document
-        let serviceDoc = await Service.findOne({ businessId: business.businessId });
+        // Find or create services document using businessId from params
+        let serviceDoc = await Service.findOne({ businessId: businessId });
         if (!serviceDoc) {
-            serviceDoc = new Service({ businessId: business.businessId, services: [] });
+            serviceDoc = new Service({ businessId: businessId, services: [] });
         }
 
         // Update services

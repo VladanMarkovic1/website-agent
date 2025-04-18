@@ -1,6 +1,6 @@
 import express from "express";
 import { sendFollowUpEmail } from "../controllers/emailControllers/emailService.js";
-import { body, validationResult } from 'express-validator';
+import { body, validationResult, param } from 'express-validator';
 import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
@@ -14,6 +14,12 @@ const handleValidationErrors = (req, res, next) => {
     }
     next();
 };
+
+// Validation for businessId in URL parameter (assuming slug)
+const businessIdParamValidation = [
+    param('businessId', 'Business ID in URL is required').notEmpty().trim().escape()
+    // Use .isMongoId() if expecting ObjectId
+];
 
 // Validation rules for sending follow-up emails
 const followUpEmailValidationRules = [
@@ -33,8 +39,9 @@ const emailLimiter = rateLimit({
 
 // Route to send follow-up emails
 router.post(
-    "/send-followup", 
+    "/:businessId/send-followup",
     emailLimiter, // Apply rate limiting
+    businessIdParamValidation, // ADDED validation for businessId param
     followUpEmailValidationRules, 
     handleValidationErrors,       
     sendFollowUpEmail           

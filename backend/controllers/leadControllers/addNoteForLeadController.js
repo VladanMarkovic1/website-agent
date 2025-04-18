@@ -3,16 +3,22 @@ import Lead from '../../models/Lead.js';
 
 export const addNoteForLeadController = async (req, res) => {
     try {
-        const { leadId } = req.params;
+        // Extract both businessId and leadId from params
+        const { businessId, leadId } = req.params;
         const { note } = req.body;
-        const business = req.business;
+        // const business = req.business; // Keep if needed for other checks, but use businessId from params for query
     
         console.log('Adding note:', {
           leadId,
-          businessId: business._id,
+          // businessId: business._id, // Use businessId from params now
+          businessId: businessId,
           note,
           body: req.body
         });
+
+        if (!businessId || !leadId) {
+            return res.status(400).json({ error: 'Business ID and Lead ID are required in URL' });
+        }
     
         if (!note) {
           return res.status(400).json({ error: "Note content is required" });
@@ -20,9 +26,10 @@ export const addNoteForLeadController = async (req, res) => {
     
         let lead;
         try {
+          // Use businessId from params in the query
           lead = await Lead.findOne({ 
             _id: new mongoose.Types.ObjectId(leadId), 
-            businessId: business.businessId 
+            businessId: businessId 
           });
         } catch (err) {
           // Handle invalid ObjectId format

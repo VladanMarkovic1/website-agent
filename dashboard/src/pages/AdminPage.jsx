@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import apiClient from '../services/api';
 import InputField from '../components/layout/InputField';
 import Button from '../components/layout/SubmitButton';
 import { 
@@ -12,6 +12,8 @@ import {
   HiOutlinePlusCircle,
   HiOutlineRefresh,
   HiOutlineUser,
+  HiOutlineTrash,
+  HiOutlinePencil
 } from 'react-icons/hi';
 
 const AdminPage = () => {
@@ -25,6 +27,12 @@ const AdminPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
 
+  // State for script tag generation
+  const [scriptBusinessId, setScriptBusinessId] = useState('');
+  const [generatedScriptTag, setGeneratedScriptTag] = useState('');
+  const [scriptError, setScriptError] = useState('');
+  const [copySuccess, setCopySuccess] = useState('');
+
   useEffect(() => {
     let isSubscribed = true;
 
@@ -32,8 +40,8 @@ const AdminPage = () => {
       try {
         setLoading(true);
         const [businessesResponse, ownersResponse] = await Promise.all([
-          api.get('/admin/businesses'),
-          api.get('/admin/business-owners')
+          apiClient.get('/admin/businesses'),
+          apiClient.get('/admin/business-owners')
         ]);
 
         if (isSubscribed) {
@@ -73,7 +81,7 @@ const AdminPage = () => {
       setMessage('');
       setError('');
       
-      await api.post('/admin/invite', { 
+      await apiClient.post('/admin/invite', { 
         email, 
         businessId: selectedBusinessId 
       });
@@ -83,7 +91,7 @@ const AdminPage = () => {
       setSelectedBusinessId('');
       
       // Refresh business owners list
-      const response = await api.get('/admin/business-owners');
+      const response = await apiClient.get('/admin/business-owners');
       setBusinessOwners(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send invitation.');
@@ -94,8 +102,8 @@ const AdminPage = () => {
     try {
       setRefreshing(true);
       const [businessesResponse, ownersResponse] = await Promise.all([
-        api.get('/admin/businesses'),
-        api.get('/admin/business-owners')
+        apiClient.get('/admin/businesses'),
+        apiClient.get('/admin/business-owners')
       ]);
       
       setBusinesses(businessesResponse.data);
@@ -106,6 +114,108 @@ const AdminPage = () => {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const handleUpdateOwner = async (ownerId, currentBusinessId, ownerEmail) => {
+    if (!ownerId || ownerId.startsWith('pending_')) {
+      setError('Cannot update pending invitations.');
+      return;
+    }
+
+    // Simple prompt to get the new business ID
+    const newBusinessId = window.prompt(
+        `Enter the new Business ID to assign to ${ownerEmail} (current: ${currentBusinessId || 'None'}):`,
+        currentBusinessId || ''
+    );
+
+    if (newBusinessId === null) return; // User cancelled
+
+    if (!newBusinessId.trim()) {
+        setError('Business ID cannot be empty.');
+        return;
+    }
+
+    if (newBusinessId.trim() === currentBusinessId) {
+        setMessage('No change in Business ID.'); // Or just return
+        return;
+    }
+
+    try {
+      setMessage('');
+      setError('');
+      const response = await apiClient.put(`/admin/business-owners/${ownerId}`, { 
+        businessId: newBusinessId.trim()
+      });
+      
+      setMessage(`Business assignment for ${ownerEmail} updated successfully.`);
+      
+      // Refresh the list or update the specific item
+      setBusinessOwners(prev => 
+        prev.map(owner => {
+          if (owner.id === ownerId) {
+            // Find the new business name for display
+            const newBusiness = businesses.find(b => b.businessId === newBusinessId.trim());
+            return { 
+              ...owner, 
+              businessId: newBusinessId.trim(),
+              businessName: newBusiness ? newBusiness.businessName : 'Unknown Business'
+            };
+          }
+          return owner;
+        })
+      );
+
+    } catch (err) {
+      setError(err.response?.data?.error || `Failed to update assignment for ${ownerEmail}.`);
+    }
+};
+
+  const handleDeleteOwner = async (ownerId, ownerEmail) => {
+    if (!ownerId || ownerId.startsWith('pending_')) {
+      setError('Cannot delete pending invitations directly. Try refreshing.');
+      return;
+    }
+    
+    if (window.confirm(`Are you sure you want to delete the invitation for ${ownerEmail}? This action cannot be undone.`)) {
+      try {
+        setMessage('');
+        setError('');
+        await apiClient.delete(`/admin/business-owners/${ownerId}`);
+        setMessage(`Invitation for ${ownerEmail} deleted successfully.`);
+        setBusinessOwners(prev => prev.filter(owner => owner.id !== ownerId));
+      } catch (err) {
+        setError(err.response?.data?.error || `Failed to delete invitation for ${ownerEmail}.`);
+      }
+    }
+  };
+
+  const handleGenerateScript = async () => {
+    if (!scriptBusinessId) {
+      setScriptError('Please select a business first.');
+      setGeneratedScriptTag('');
+      return;
+    }
+    try {
+      setScriptError('');
+      setGeneratedScriptTag('Generating...');
+      setCopySuccess('');
+      const response = await apiClient.get(`/admin/script-tag/${scriptBusinessId}`);
+      setGeneratedScriptTag(response.data.scriptTag);
+    } catch (err) {
+      setScriptError(err.response?.data?.error || 'Failed to generate script tag.');
+      setGeneratedScriptTag('');
+    }
+  };
+
+  const handleCopyToClipboard = () => {
+    if (!generatedScriptTag || generatedScriptTag === 'Generating...') return;
+    navigator.clipboard.writeText(generatedScriptTag).then(() => {
+      setCopySuccess('Copied!');
+      setTimeout(() => setCopySuccess(''), 2000); // Clear message after 2s
+    }, (err) => {
+      setScriptError('Failed to copy script tag.');
+      console.error('Could not copy text: ', err);
+    });
   };
 
   if (loading) {
@@ -255,12 +365,15 @@ const AdminPage = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {businessOwners.length === 0 ? (
                     <tr>
-                      <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
                         No business owners found
                       </td>
                     </tr>
@@ -284,6 +397,24 @@ const AdminPage = () => {
                             {owner.status || 'pending'}
                           </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {/* Edit Button */}
+                          <button
+                            onClick={() => handleUpdateOwner(owner.id, owner.businessId, owner.email)} 
+                            className="text-indigo-600 hover:text-indigo-900 mr-3 disabled:text-gray-400 disabled:cursor-not-allowed"
+                            disabled={owner.id.startsWith('pending_')} // Disable edit for pending
+                          >
+                            <HiOutlinePencil className="h-5 w-5" />
+                          </button>
+                          {/* Delete Button */}
+                          <button 
+                            onClick={() => handleDeleteOwner(owner.id, owner.email)}
+                            className="text-red-600 hover:text-red-900 disabled:text-gray-400 disabled:cursor-not-allowed"
+                            disabled={owner.id.startsWith('pending_')}
+                          >
+                            <HiOutlineTrash className="h-5 w-5" />
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -292,6 +423,89 @@ const AdminPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Script Tag Generation Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mt-8">
+          <div className="flex items-center mb-6">
+             <HiOutlineGlobe className="h-6 w-6 text-blue-600" /> 
+            <h2 className="ml-2 text-xl font-semibold text-gray-900">Generate Chatbot Script Tag</h2>
+          </div>
+
+          {scriptError && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600 flex items-center">
+                 <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                 </svg>
+                {scriptError}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Business for Script Tag
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <HiOutlineOfficeBuilding className="h-5 w-5 text-gray-400" />
+                </div>
+                <select
+                  value={scriptBusinessId}
+                  onChange={(e) => {
+                      setScriptBusinessId(e.target.value);
+                      setGeneratedScriptTag(''); // Clear previous script on change
+                      setScriptError('');
+                      setCopySuccess('');
+                  }}
+                  className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  required
+                >
+                  <option value="">-- Select a Business --</option>
+                  {businesses.map((business) => (
+                    <option key={business._id} value={business.businessId}>
+                      {business.businessName} ({business.businessId})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleGenerateScript} 
+              disabled={!scriptBusinessId}
+              className="w-full md:w-auto"
+            >
+              <HiOutlineGlobe className="mr-2 h-5 w-5" />
+              Generate Script
+            </Button>
+
+            {generatedScriptTag && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Generated Script Tag (Copy and paste into your website's HTML before the closing &lt;/body&gt; tag):
+                </label>
+                <div className="relative">
+                  <textarea
+                    readOnly
+                    value={generatedScriptTag}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    rows="4"
+                  />
+                  <button
+                    onClick={handleCopyToClipboard}
+                    className="absolute top-2 right-2 inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    title="Copy to Clipboard"
+                  >
+                     {copySuccess ? copySuccess : 'Copy'} 
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

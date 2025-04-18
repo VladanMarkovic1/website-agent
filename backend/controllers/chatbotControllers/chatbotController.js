@@ -235,10 +235,19 @@ const processChatMessage = async (message, sessionId, businessId) => {
     }
 };
 
-// HTTP endpoint handler (remains the same)
+// HTTP endpoint handler 
 export const handleChatMessage = async (req, res) => {
     try {
-        const { message, sessionId, businessId } = req.body;
+        // Get businessId from URL parameters, message/sessionId from body
+        const { businessId } = req.params;
+        const { message, sessionId } = req.body;
+        
+        if (!businessId) {
+            // This shouldn't happen if routing is correct, but good practice
+            return res.status(400).json({ error: "Business ID is missing in the URL" });
+        }
+
+        // Pass businessId from params to the processing function
         const response = await processChatMessage(message, sessionId, businessId);
         res.json(response);
     } catch (error) {

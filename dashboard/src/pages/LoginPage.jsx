@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import { createClient } from '../services/api';
+import apiClient from '../services/api';
 import InputField from '../components/layout/InputField';
 import Button from '../components/layout/SubmitButton';
 import { HiOutlineShieldExclamation } from 'react-icons/hi';
@@ -19,7 +20,7 @@ const Login = () => {
       return;
     }
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await apiClient.post('/auth/login', { email, password });
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);

@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import Business from "../../models/Business.js"; // Import Business model
+import Contact from "../../models/Contact.js"; // Import Contact model
 
 dotenv.config();
 
@@ -133,9 +135,20 @@ const emailTemplates = {
     }
 };
 
-// Send follow-up email
-export const sendFollowUpEmail = async (emailType, recipientData) => {
+// Send follow-up email - ADD businessId parameter
+export const sendFollowUpEmail = async (businessId, emailType, recipientData) => { 
     try {
+        if (!businessId) {
+            throw new Error('Business ID is required to send follow-up email');
+        }
+
+        // Fetch business-specific contact info
+        const contactData = await Contact.findOne({ businessId });
+        const businessPhone = contactData?.phone || process.env.BUSINESS_PHONE || 'the office'; // Fallback
+        // Fetch Business name if needed for templates
+        // const businessData = await Business.findOne({ businessId });
+        // const businessName = businessData?.businessName || 'the office';
+
         const template = emailTemplates[emailType];
         if (!template) throw new Error('Email template not found');
 
@@ -143,20 +156,29 @@ export const sendFollowUpEmail = async (emailType, recipientData) => {
         let subject = template.subject;
         let html = template.html;
         
-        Object.keys(recipientData).forEach(key => {
+        // Merge recipient data and business data for replacement
+        const templateData = {
+            ...recipientData,
+            businessPhone: businessPhone,
+            // businessName: businessName 
+        };
+
+        Object.keys(templateData).forEach(key => {
             const placeholder = new RegExp(`{{${key}}}`, 'g');
-            subject = subject.replace(placeholder, recipientData[key]);
-            html = html.replace(placeholder, recipientData[key]);
+            subject = subject.replace(placeholder, templateData[key]);
+            html = html.replace(placeholder, templateData[key]);
         });
 
         const mailOptions = {
-            from: process.env.EMAIL_USER,
+            // Use business email or fallback if defined
+            from: contactData?.email || process.env.EMAIL_USER, 
             to: recipientData.email,
             subject: subject,
             html: html
         };
 
-        const info = await transporter.sendMail(mailOptions);
+        const transport = await createTransporter(); // Ensure transporter is ready
+        const info = await transport.sendMail(mailOptions);
         console.log('✅ Follow-up email sent:', info.messageId);
         return info;
 
@@ -169,23 +191,36 @@ export const sendFollowUpEmail = async (emailType, recipientData) => {
 // Schedule and send reminder emails
 export const scheduleReminderEmails = async (leadData) => {
     try {
-        // Send initial follow-up immediately
-        await sendFollowUpEmail('initialFollowUp', {
+        if (!leadData || !leadData.businessId) {
+             console.error('❌ Cannot schedule emails: businessId missing from leadData');
+             return; // Or throw error
+        }
+        const businessId = leadData.businessId;
+
+        // Fetch business phone here to pass to sendFollowUpEmail
+        const contactData = await Contact.findOne({ businessId });
+        const businessPhone = contactData?.phone || process.env.BUSINESS_PHONE || 'the office';
+
+        // Send initial follow-up immediately - Pass businessId
+        await sendFollowUpEmail(businessId, 'initialFollowUp', {
             name: leadData.name,
             email: leadData.email,
             phone: leadData.phone,
             service: leadData.service,
-            businessPhone: process.env.BUSINESS_PHONE || '1-800-DENTAL'
+            businessPhone: businessPhone // Pass the specific phone
         });
 
-        // Schedule reminder email for 24 hours later if no response
+        // Schedule reminder email for 24 hours later if no response - Pass businessId
         setTimeout(async () => {
-            await sendFollowUpEmail('reminderEmail', {
+            // Re-fetch business phone in case it changed? Or assume it's stable.
+             const currentContactData = await Contact.findOne({ businessId });
+             const currentBusinessPhone = currentContactData?.phone || process.env.BUSINESS_PHONE || 'the office';
+            await sendFollowUpEmail(businessId, 'reminderEmail', {
                 name: leadData.name,
                 email: leadData.email,
                 service: leadData.service,
                 benefits: getServiceBenefits(leadData.service),
-                businessPhone: process.env.BUSINESS_PHONE || '1-800-DENTAL'
+                businessPhone: currentBusinessPhone // Pass the specific phone
             });
         }, 24 * 60 * 60 * 1000); // 24 hours
 

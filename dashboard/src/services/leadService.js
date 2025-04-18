@@ -1,9 +1,9 @@
-import api from '../utils/api';
+import apiClient from './api';
 
 // Fetches leads for a specific business
 export const getLeads = async (businessId) => {
   try {
-    const response = await api.get(`/leads/${businessId}`);
+    const response = await apiClient.get(`/leads/${businessId}`);
     // Add basic validation for expected success structure
     if (response.data && response.data.success && Array.isArray(response.data.leads)) {
       return response.data; // Return the whole object { success, count, leads }
@@ -25,7 +25,7 @@ export const getLeads = async (businessId) => {
 // Updates the status of a specific lead
 export const updateLeadStatus = async (businessId, leadId, status) => {
   try {
-    const response = await api.put(`/leads/${businessId}/${leadId}`, { status });
+    const response = await apiClient.put(`/leads/${businessId}/${leadId}`, { status });
     return response.data; // Assuming the updated lead is returned
   } catch (error) {
     console.error('Error updating lead status in service:', error);
@@ -45,7 +45,7 @@ export const addLeadNote = async (businessId, leadId, note) => {
        throw new Error("Invalid lead ID format provided.");
    }
   try {
-    const response = await api.post(`/leads/${businessId}/notes/${leadId}`, { note: note.trim() });
+    const response = await apiClient.post(`/leads/${businessId}/notes/${leadId}`, { note: note.trim() });
     return response.data; // Assuming the updated lead with notes is returned
   } catch (error) {
     console.error('Error adding lead note in service:', error);
@@ -65,7 +65,7 @@ export const removeLeadNote = async (businessId, leadId, noteId) => {
        throw new Error("Invalid note ID format provided.");
    }
   try {
-    const response = await api.delete(`/leads/${businessId}/notes/${leadId}/${noteId}`);
+    const response = await apiClient.delete(`/leads/${businessId}/notes/${leadId}/${noteId}`);
     return response.data; // Assuming the updated lead is returned
   } catch (error) {
     console.error('Error removing lead note in service:', error);

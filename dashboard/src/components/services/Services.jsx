@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../../utils/api';
+import apiClient from '../../services/api';
 import InputField from '../layout/InputField';
 import Button from '../layout/SubmitButton';
 import { HiPlus, HiTrash, HiSave, HiRefresh, HiExclamation, HiWifi } from 'react-icons/hi';
@@ -72,7 +72,7 @@ const Services = () => {
       }
 
       try {
-        const response = await api.get(`/services/${businessId}`);
+        const response = await apiClient.get(`/services/${businessId}`);
         // Backend returns array directly
         setServices(Array.isArray(response.data) ? response.data : []);
         setError(''); // Clear any previous errors
@@ -104,13 +104,13 @@ const Services = () => {
       setMessage('Starting website scraping...');
       
       // Trigger scraping
-      await api.get(`/scraper/${businessId}`);
+      await apiClient.get(`/scraper/${businessId}`);
       
       // Wait for 10 seconds to allow scraping to complete
       await new Promise(resolve => setTimeout(resolve, 10000));
       
       // Fetch updated services
-      const response = await api.get(`/services/${businessId}`);
+      const response = await apiClient.get(`/services/${businessId}`);
       setServices(Array.isArray(response.data) ? response.data : []);
       
       setLastScrapeTime(new Date().toLocaleString());
@@ -175,7 +175,7 @@ const Services = () => {
 
     setLoading(true);
     try {
-      await api.put(`/services/${businessId}`, { services });
+      await apiClient.put(`/services/${businessId}`, { services });
       setMessage('Services saved successfully!');
       
       // Clear success message after 3 seconds

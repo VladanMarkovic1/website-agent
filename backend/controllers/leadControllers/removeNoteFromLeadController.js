@@ -3,24 +3,32 @@ import Lead from '../../models/Lead.js';
 
 export const removeNoteFromLeadController = async (req, res) => {
     try {
-        const { leadId, noteId } = req.params;
-        const business = req.business;
+        // Extract businessId, leadId, noteId from params
+        const { businessId, leadId, noteId } = req.params;
+        // const business = req.business; // Keep if needed, use businessId from params for query
 
         console.log('Removing note:', {
             leadId,
             noteId,
-            businessId: business._id
+            // businessId: business._id
+            businessId: businessId
         });
+
+        if (!businessId || !leadId || !noteId) {
+            return res.status(400).json({ error: 'Business ID, Lead ID, and Note ID are required in URL' });
+        }
 
         let lead;
         try {
+            // Use businessId from params in the query
             lead = await Lead.findOne({ 
                 _id: new mongoose.Types.ObjectId(leadId), 
-                businessId: business.businessId 
+                businessId: businessId 
             });
         } catch (err) {
             if (err.name === 'CastError' || err.name === 'BSONError') {
-                return res.status(404).json({ error: "Invalid lead ID format" });
+                // Ensure correct status code for invalid ID format
+                return res.status(400).json({ error: "Invalid Lead ID or Note ID format" }); 
             }
             throw err;
         }
