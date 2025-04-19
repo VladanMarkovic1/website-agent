@@ -1,61 +1,58 @@
 import express from 'express';
-import {
-    getAllClients,
-    getClientById,
-    createClient,
-    updateClient,
-    deleteClient
-} from '../controllers/clientControllers/clientController.js';
 import { authenticateToken } from '../middleware/auth.js';
-// import { checkAdminRole } from '../middleware/checkAdminRole.js'; // TODO: Implement admin role check middleware
+import { checkBusinessOwner } from '../middleware/checkBusinessOwner.js';
+import { 
+    getWidgetSettings,
+    updateWidgetSettings
+} from '../controllers/clientControllers/settingsController.js';
+import { body, param, validationResult } from 'express-validator';
 
 const router = express.Router();
 
-// --- Client/Business Management Routes ---
-// These routes should likely be protected and potentially restricted to admin users
+// Reusable validation error handler
+const handleValidationErrors = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        console.error("Validation errors in clientRoutes:", errors.array());
+        return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+};
 
-// GET /api/v1/clients - Get all clients
+// Validation rules for client ID (assuming slug)
+const clientIdParamValidation = [
+    param('clientId', 'Client ID parameter is required').notEmpty().trim().escape()
+    // Use .isMongoId() if expecting ObjectId
+];
+
+// Validation rules for updating settings
+const updateSettingsValidationRules = [
+    body('widgetConfig.primaryColor').optional().isHexColor().withMessage('Invalid primary color hex code'),
+    body('widgetConfig.position').optional().isIn(['bottom-right', 'bottom-left']).withMessage('Invalid position'),
+    body('widgetConfig.welcomeMessage').optional().trim().escape()
+];
+
+// --- Widget Settings Routes --- (Business Owner Access)
+
+// GET /api/v1/clients/:clientId/settings - Get widget settings for a business
 router.get(
-    '/', 
-    authenticateToken, 
-    // checkAdminRole, // Apply admin check
-    getAllClients
-);
-
-// POST /api/v1/clients - Create a new client
-router.post(
-    '/', 
-    authenticateToken, 
-    // checkAdminRole,
-    // TODO: Add validation middleware for request body
-    createClient
-);
-
-// GET /api/v1/clients/:clientId - Get a single client by ID or businessId
-router.get(
-    '/:clientId',
+    '/:clientId/settings',
     authenticateToken,
-    // checkAdminRole,
-    // TODO: Add validation for clientId parameter
-    getClientById
+    clientIdParamValidation,
+    handleValidationErrors,
+    checkBusinessOwner, // Ensures user owns this clientId
+    getWidgetSettings
 );
 
-// PUT /api/v1/clients/:clientId - Update a client
+// PUT /api/v1/clients/:clientId/settings - Update widget settings for a business
 router.put(
-    '/:clientId',
+    '/:clientId/settings',
     authenticateToken,
-    // checkAdminRole,
-    // TODO: Add validation for clientId parameter and request body
-    updateClient
-);
-
-// DELETE /api/v1/clients/:clientId - Delete a client
-router.delete(
-    '/:clientId',
-    authenticateToken,
-    // checkAdminRole,
-    // TODO: Add validation for clientId parameter
-    deleteClient
+    clientIdParamValidation,
+    updateSettingsValidationRules,
+    handleValidationErrors,
+    checkBusinessOwner, // Ensures user owns this clientId
+    updateWidgetSettings
 );
 
 export default router; 
