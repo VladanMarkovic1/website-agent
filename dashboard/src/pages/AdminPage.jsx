@@ -33,6 +33,12 @@ const AdminPage = () => {
   const [scriptError, setScriptError] = useState('');
   const [copySuccess, setCopySuccess] = useState('');
 
+  // State for API Key generation
+  const [apiKeyBusinessId, setApiKeyBusinessId] = useState('');
+  const [generatedApiKey, setGeneratedApiKey] = useState('');
+  const [apiKeyError, setApiKeyError] = useState('');
+  const [apiKeyCopySuccess, setApiKeyCopySuccess] = useState('');
+
   useEffect(() => {
     let isSubscribed = true;
 
@@ -215,6 +221,41 @@ const AdminPage = () => {
     }, (err) => {
       setScriptError('Failed to copy script tag.');
       console.error('Could not copy text: ', err);
+    });
+  };
+
+  const handleGenerateApiKey = async () => {
+    if (!apiKeyBusinessId) {
+        setApiKeyError('Please select a business first.');
+        setGeneratedApiKey('');
+        return;
+    }
+    // Optional: Confirmation
+    if (!window.confirm(`Generating a new API key for ${apiKeyBusinessId} will invalidate any existing key. Are you sure?`)) {
+        return;
+    }
+
+    try {
+        setApiKeyError('');
+        setGeneratedApiKey('Generating...');
+        setApiKeyCopySuccess('');
+        const response = await apiClient.post(`/admin/api-key/${apiKeyBusinessId}`);
+        setGeneratedApiKey(response.data.apiKey);
+        // Optionally display response.data.message as well
+    } catch (err) {
+        setApiKeyError(err.response?.data?.error || 'Failed to generate API key.');
+        setGeneratedApiKey('');
+    }
+  };
+
+  const handleApiKeyCopyToClipboard = () => {
+    if (!generatedApiKey || generatedApiKey === 'Generating...') return;
+    navigator.clipboard.writeText(generatedApiKey).then(() => {
+        setApiKeyCopySuccess('Copied!');
+        setTimeout(() => setApiKeyCopySuccess(''), 2000); 
+    }, (err) => {
+        setApiKeyError('Failed to copy API key.');
+        console.error('Could not copy text: ', err);
     });
   };
 
@@ -499,6 +540,88 @@ const AdminPage = () => {
                     title="Copy to Clipboard"
                   >
                      {copySuccess ? copySuccess : 'Copy'} 
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* API Key Generation Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mt-8">
+          <div className="flex items-center mb-6">
+             <HiOutlineIdentification className="h-6 w-6 text-blue-600" /> 
+            <h2 className="ml-2 text-xl font-semibold text-gray-900">Generate/Regenerate Chatbot API Key</h2>
+          </div>
+
+          {apiKeyError && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600 flex items-center">
+                 <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                 </svg>
+                {apiKeyError}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Business for API Key
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <HiOutlineOfficeBuilding className="h-5 w-5 text-gray-400" />
+                </div>
+                <select
+                  value={apiKeyBusinessId}
+                  onChange={(e) => {
+                      setApiKeyBusinessId(e.target.value);
+                      setGeneratedApiKey(''); // Clear previous key on change
+                      setApiKeyError('');
+                      setApiKeyCopySuccess('');
+                  }}
+                  className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  required
+                >
+                  <option value="">-- Select a Business --</option>
+                  {businesses.map((business) => (
+                    <option key={business._id} value={business.businessId}>
+                      {business.businessName} ({business.businessId})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleGenerateApiKey} 
+              disabled={!apiKeyBusinessId}
+              className="w-full md:w-auto"
+            >
+              <HiOutlineIdentification className="mr-2 h-5 w-5" />
+              Generate API Key
+            </Button>
+
+            {generatedApiKey && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Generated API Key (Save this securely, it won't be shown again!):
+                </label>
+                <div className="relative">
+                  <input
+                    readOnly
+                    type="text"
+                    value={generatedApiKey}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 font-mono text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    onClick={handleApiKeyCopyToClipboard}
+                    className="absolute top-1/2 right-2 transform -translate-y-1/2 inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    title="Copy API Key"
+                  >
+                     {apiKeyCopySuccess ? apiKeyCopySuccess : 'Copy'} 
                   </button>
                 </div>
               </div>
