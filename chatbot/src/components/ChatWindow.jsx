@@ -3,6 +3,9 @@ import { FaTimes, FaPaperPlane } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 
 const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5' }) => {
+  // Add console log here
+  console.log('[ChatWindow] Rendering with messages:', messages);
+
   const [input, setInput] = useState('');
   const [headerTitle, setHeaderTitle] = useState('Chat with AI Assistant');
   const messagesEndRef = useRef(null);
@@ -61,7 +64,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.map((message, index) => (
           <div
-            key={index}
+            key={message.id}
             className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
