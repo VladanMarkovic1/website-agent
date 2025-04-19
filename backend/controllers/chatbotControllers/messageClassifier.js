@@ -87,14 +87,14 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
         };
     }
 
-    // 6. Check for Greetings
-    if (isNewSession || isGreeting(normalizedMessage)) {
-        return { type: 'GREETING' };
-    }
-
-    // 7. Check for Request to List Services
+    // 6. Check for Request to List Services (Moved BEFORE Greeting)
     if (listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         return { type: 'REQUEST_SERVICE_LIST' };
+    }
+
+    // 7. Check for Greetings (Moved AFTER Request Service List)
+    if (isNewSession || isGreeting(normalizedMessage)) {
+        return { type: 'GREETING' };
     }
 
     // 8. If none of the above, classify as Unknown (will trigger OpenAI fallback)
