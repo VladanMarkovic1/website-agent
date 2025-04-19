@@ -8,7 +8,8 @@ import {
     getBusinessOwners,
     deleteBusinessOwner,
     updateBusinessOwner,
-    generateScriptTag 
+    generateScriptTag,
+    generateApiKey
 } from '../controllers/adminControllers/businessOwnerController.js';
 import { body, param, validationResult } from 'express-validator';
 
@@ -61,6 +62,11 @@ const scriptTagValidationRules = [
     param('businessId', 'Business ID parameter is required').notEmpty().trim().escape()
 ];
 
+// Validation rules for generating API key
+const apiKeyValidationRules = [
+    param('businessId', 'Business ID parameter is required').notEmpty().trim().escape()
+];
+
 // Get all businesses (admin only) - No validation needed for input
 router.get('/businesses', getBusinesses);
 
@@ -97,6 +103,14 @@ router.get(
     scriptTagValidationRules,  // Apply validation
     handleValidationErrors,    // Handle errors
     generateScriptTag          // Call controller
+);
+
+// Generate API Key for a business (admin only)
+router.post(
+    '/api-key/:businessId',
+    apiKeyValidationRules,    // Apply validation
+    handleValidationErrors,   // Handle errors
+    generateApiKey            // Call controller
 );
 
 export default router;
