@@ -32,8 +32,10 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         let responsePayload = {};
 
         // 2. Handle Intent based on Classification
+        console.log(`[generateAIResponse] Entering switch with intent type: ${intent.type}`); // Log before switch
         switch (intent.type) {
             case 'CONTACT_INFO_PROVIDED':
+                console.log('[generateAIResponse] Matched case: CONTACT_INFO_PROVIDED'); // Log case match
                 // This logic seems self-contained enough to stay here
                 const serviceContext = intent.contactInfo.service || lastBotMessage?.detectedService || 'your dental needs';
                 const businessPhoneNumber = businessData?.businessPhoneNumber;
@@ -52,6 +54,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'CONFIRMATION_YES':
+                console.log('[generateAIResponse] Matched case: CONFIRMATION_YES'); // Log case match
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
                     response: RESPONSE_TEMPLATES.contact_after_yes
@@ -59,6 +62,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'SERVICE_INQUIRY_EXPLICIT':
+                console.log('[generateAIResponse] Matched case: SERVICE_INQUIRY_EXPLICIT'); // Log case match
                 // Call the dedicated service matcher
                 const matchedService = await handleServiceInquiry(normalizedMessage, businessData);
                 if (matchedService) {
@@ -79,6 +83,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
             
             case 'PROBLEM_FOLLOWUP':
+                console.log('[generateAIResponse] Matched case: PROBLEM_FOLLOWUP'); // Log case match
                 // This logic depends on constants and context, reasonable to keep here
                 let suggestedServices = [];
                 const problemCategory = intent.problemCategory;
@@ -108,6 +113,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'DENTAL_PROBLEM':
+                 console.log('[generateAIResponse] Matched case: DENTAL_PROBLEM'); // Log case match
                  // This logic depends on constants and context, reasonable to keep here
                 let responseTemplate;
                 let concernDetail = intent.category;
@@ -136,6 +142,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'GREETING':
+                console.log('[generateAIResponse] Matched case: GREETING'); // Log case match
                 responsePayload = {
                     type: 'GREETING',
                     response: RESPONSE_TEMPLATES.greeting
@@ -143,6 +150,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'REQUEST_SERVICE_LIST':
+                 console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST'); // Log case match
                  // This logic depends on context, reasonable to keep here
                 if (businessData.services && businessData.services.length > 0) {
                     const serviceNames = businessData.services.map(s => `• ${s.name}`).join('\n');
@@ -156,12 +164,23 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 }
                 break;
 
+            case 'APPOINTMENT_REQUEST':
+                console.log('[generateAIResponse] Matched case: APPOINTMENT_REQUEST'); // Log case match
+                responsePayload = {
+                    type: 'APPOINTMENT_REQUEST',
+                    response: RESPONSE_TEMPLATES.appointment_request_acknowledge || 
+                              "Okay, I can definitely help with scheduling an appointment. 😊 To get started, could you please provide your full name, phone number, and email address? 📞"
+                };
+                break;
+
             case 'UNKNOWN':
             default:
+                console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); // Log case match
                 // Fallback to AI for anything not classified
                 responsePayload = await generateAIFallbackResponse(message, messageHistory);
                 break;
         }
+        console.log('[generateAIResponse] Exiting switch, final responsePayload:', JSON.stringify(responsePayload)); // Log after switch
 
         console.log('--- generateAIResponse Orchestrator End ---');
         // Ensure payload always has type and response, pass through context

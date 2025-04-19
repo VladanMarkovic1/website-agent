@@ -26,8 +26,8 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
     // Check if an override is potentially needed (keywords match AND no contact info yet)
     const needsOverrideCheck = isPotentiallyOverridingRequest && !session.contactInfo;
     
-    // Apply override only if needed AND the initial response wasn't already handling a specific problem effectively
-    if (needsOverrideCheck && !['DENTAL_PROBLEM', 'CONTACT_INFO_PROVIDED'].includes(initialResponse.type)) {
+    // Apply override only if needed AND the initial response wasn't already handling a specific problem/request effectively
+    if (needsOverrideCheck && !['DENTAL_PROBLEM', 'CONTACT_INFO_PROVIDED', 'APPOINTMENT_REQUEST'].includes(initialResponse.type)) {
         console.log(`[OverrideService] Override check triggered. Initial type: ${initialResponse.type}`);
         
         // --- Specific Overrides ---
