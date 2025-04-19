@@ -1,6 +1,8 @@
 import Invitation from '../../models/Invitation.js';
 import Business from '../../models/Business.js';
 import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 export const getBusinessOwners = async (req, res) => {
   try {
@@ -196,10 +198,45 @@ export const generateScriptTag = async (req, res) => {
     }
 };
 
+export const generateApiKey = async (req, res) => {
+    const { businessId } = req.params;
+
+    if (!businessId) {
+        return res.status(400).json({ error: 'Business ID parameter is required' });
+    }
+
+    try {
+        const business = await Business.findOne({ businessId });
+        if (!business) {
+            return res.status(404).json({ error: 'Business not found' });
+        }
+
+        // Generate a new secure random API key
+        const apiKey = crypto.randomBytes(32).toString('hex'); // 64 characters
+        const saltRounds = 10; // Standard salt rounds
+        const apiKeyHash = await bcrypt.hash(apiKey, saltRounds);
+
+        // Save the hash to the business document
+        business.apiKeyHash = apiKeyHash;
+        await business.save();
+
+        // Return the PLAINTEXT key ONCE
+        res.status(200).json({
+            message: `API Key generated successfully for ${business.businessName}. Store this key securely, it will not be shown again.`,
+            apiKey: apiKey 
+        });
+
+    } catch (error) {
+        console.error('Error generating API key:', error);
+        res.status(500).json({ error: 'Failed to generate API key' });
+    }
+};
+
 export default {
     getBusinessOwners,
     getBusinesses,
     deleteBusinessOwner,
     updateBusinessOwner,
-    generateScriptTag
+    generateScriptTag,
+    generateApiKey
 }; 
