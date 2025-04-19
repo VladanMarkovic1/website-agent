@@ -17,39 +17,12 @@
     <script>
       window.DENTAL_CHATBOT_CONFIG = {
         businessId: 'revive-dental',
-        position: 'bottom-right',
-        buttonText: 'Chat with us',
-        primaryColor: '#007bff',
-        backendUrl: 'http://localhost:5000'
+        backendUrl: 'http://localhost:5000',
+        apiKey: 'f5fde29e061bf4209e97941508fafbfc815f439912f157d3e389b8195bd9611e'
       };
     </script>
 
-    <!-- Load chatbot script -->
-    <script src="/chatbot/dental-chatbot.js"></script>
-
-    <!-- Initialize chatbot -->
-    <script>
-      function initializeChatbot() {
-        if (window.DentalChatbot && window.DentalChatbot.init) {
-          try {
-            console.log('Initializing chatbot with config:', window.DENTAL_CHATBOT_CONFIG);
-            window.DentalChatbot.init(window.DENTAL_CHATBOT_CONFIG);
-          } catch (error) {
-            console.error('Error initializing chatbot:', error);
-          }
-        } else {
-          console.error('Chatbot initialization function not found');
-          // Retry after a short delay
-          setTimeout(initializeChatbot, 1000);
-        }
-      }
-
-      // Initialize when DOM is ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeChatbot);
-      } else {
-        initializeChatbot();
-      }
-    </script>
+    <!-- Load chatbot script - Treat as module -->
+    <script type="module" src="/chatbot/dental-chatbot.js"></script>
   </body>
 </html>
