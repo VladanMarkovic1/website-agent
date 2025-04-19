@@ -1,5 +1,6 @@
 import express from "express";
 import { handleChatMessage } from "../controllers/chatbotControllers/chatbotController.js";
+import { getPublicWidgetConfig } from "../controllers/public/publicSettingsController.js";
 import { apiKeyAuth } from "../middleware/apiKeyAuth.js";
 import { body, validationResult } from 'express-validator'; // Import validators
 import rateLimit from 'express-rate-limit'; // Import rate-limit
@@ -37,9 +38,16 @@ const chatbotLimiter = rateLimit({
     // keyGenerator: (req, res) => req.apiKey || req.ip 
 });
 
+// --- Update Route for Widget Configuration --- 
+router.get(
+    '/config/:businessId',
+    // No API key auth needed for public config
+    getPublicWidgetConfig // Use the specific public controller
+);
+
 // ✅ Endpoint for chatbot responses - Now protected by API Key and uses businessId in path
 router.post(
-    "/:businessId/message", // ADDED /:businessId/ to the path
+    "/:businessId/message", // Use :businessId here for message handling
     chatbotLimiter, // Apply rate limiting
     apiKeyAuth, 
     chatMessageValidationRules, // REMOVED businessId from validation rules array above

@@ -1,150 +1,171 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import ChatWindow from './ChatWindow';
 import ChatButton from './ChatButton';
-import { initializeSocket } from '../utils/socket';
 
-const ChatWidget = ({ businessId, backendApiUrl, position = 'bottom-right', buttonText, primaryColor }) => {
-  const [isOpen, setIsOpen] = useState(true);
-  const [messages, setMessages] = useState([]);
-  const [socket, setSocket] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const hasGreetedRef = useRef(false);
-  const messageQueueRef = useRef([]);
+// Simple ID generator function
+const generateSimpleId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
 
-  // Initialize socket connection
-  useEffect(() => {
-    const newSocket = initializeSocket(businessId, backendApiUrl);
-    setSocket(newSocket);
+const ChatWidget = ({ 
+    businessId, 
+    backendUrl, // Renamed from backendApiUrl for consistency
+    apiKey,     // Added apiKey prop
+    initialPosition = 'bottom-right', 
+    initialButtonText = 'Chat with us', 
+    initialPrimaryColor = '#4F46E5' 
+}) => {
+    const [isOpen, setIsOpen] = useState(true);
+    // Initialize messages state to an empty array
+    const [messages, setMessages] = useState([]);
+    const socketRef = useRef(null);
+    const [sessionId, setSessionId] = useState(null);
 
-    newSocket.on('connect', () => {
-      console.log('Socket connected');
-      setIsConnected(true);
-      
-      // Send greeting if not sent yet
-      if (!hasGreetedRef.current) {
-        newSocket.emit('message', { 
-          businessId,
-          message: 'hello'
-        });
-        hasGreetedRef.current = true;
-      }
-
-      // Process any queued messages
-      while (messageQueueRef.current.length > 0) {
-        const queuedMessage = messageQueueRef.current.shift();
-        newSocket.emit('message', queuedMessage);
-      }
+    // State for dynamically loaded config
+    const [widgetConfig, setWidgetConfig] = useState({
+        primaryColor: initialPrimaryColor,
+        position: initialPosition,
+        welcomeMessage: 'Hello! How can I help you today?' // Default welcome message
     });
+    const [configError, setConfigError] = useState(null);
 
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
-      setIsConnected(false);
-    });
-
-    return () => {
-      newSocket.close();
-      setIsConnected(false);
-    };
-  }, [businessId, backendApiUrl]);
-
-  // Handle incoming messages
-  useEffect(() => {
-    if (!socket) return;
-
-    const messageHandler = (message) => {
-      if (message && message.response) {
-        setMessages((prevMessages) => {
-          // Prevent duplicate messages
-          const isDuplicate = prevMessages.some(
-            (msg) => msg.content === message.response && 
-                    msg.timestamp === message.timestamp
-          );
-          if (isDuplicate) return prevMessages;
-
-          return [...prevMessages, {
-            type: 'assistant',
-            content: message.response,
-            timestamp: new Date().toISOString(),
-            messageType: message.type
-          }];
-        });
-      }
-    };
-
-    socket.on('message', messageHandler);
-
-    return () => {
-      socket.off('message', messageHandler);
-    };
-  }, [socket]);
-
-  // Handle sending messages
-  const sendMessage = async (text) => {
-    if (!text.trim()) return;
-
-    const userMessage = {
-      type: 'user',
-      content: text,
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    
-    const messageData = { 
-      businessId,
-      message: text
-    };
-
-    if (socket && isConnected) {
-      socket.emit('message', messageData);
-    } else {
-      // Queue message to be sent when connection is restored
-      messageQueueRef.current.push(messageData);
-      console.log('Message queued for later sending:', messageData);
-    }
-  };
-
-  // Position styles
-  const positionStyles = {
-    'bottom-right': { bottom: '20px', right: '20px' },
-    'bottom-left': { bottom: '20px', left: '20px' },
-    'top-right': { top: '20px', right: '20px' },
-    'top-left': { top: '20px', left: '20px' },
-  };
-
-  return (
-    <div
-      className="fixed z-50"
-      style={positionStyles[position]}
-    >
-      {isOpen ? (
-        <ChatWindow
-          messages={messages}
-          onSendMessage={sendMessage}
-          onClose={() => setIsOpen(false)}
-          isLoading={isLoading}
-          isConnected={isConnected}
-          primaryColor={primaryColor}
-        />
-      ) : (
-        <ChatButton
-          onClick={() => {
-            setIsOpen(true);
-            if (!hasGreetedRef.current && socket && isConnected) {
-              socket.emit('message', { 
-                businessId,
-                message: 'hello'
-              });
-              hasGreetedRef.current = true;
+    // Function to fetch dynamic config
+    const fetchWidgetConfig = useCallback(async () => {
+        if (!businessId || !backendUrl) return;
+        try {
+            console.log(`[ChatWidget] Fetching config from: ${backendUrl}/api/v1/chatbot/config/${businessId}`);
+            const response = await fetch(`${backendUrl}/api/v1/chatbot/config/${businessId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch config: ${response.statusText}`);
             }
-          }}
-          text={buttonText}
-          primaryColor={primaryColor}
-        />
-      )}
-    </div>
-  );
+            const config = await response.json();
+            console.log("[ChatWidget] Received dynamic config:", config);
+            // Merge fetched config with initial props as fallbacks
+            setWidgetConfig({
+                primaryColor: config.primaryColor || initialPrimaryColor,
+                position: config.position || initialPosition,
+                welcomeMessage: config.welcomeMessage || 'Hello! How can I help you today?'
+            });
+        } catch (error) {
+            console.error('[ChatWidget] Error fetching widget config:', error);
+            setConfigError('Could not load widget configuration.');
+            // Use initial props as fallback for config
+            setWidgetConfig({
+                primaryColor: initialPrimaryColor,
+                position: initialPosition,
+                welcomeMessage: 'Hello! How can I help you today?'
+            });
+        }
+    }, [businessId, backendUrl, initialPrimaryColor, initialPosition]);
+
+    // Initialize Session, Config, and Socket Connection
+    useEffect(() => {
+        // Generate or retrieve session ID
+        let currentSessionId = localStorage.getItem(`chatbot_session_${businessId}`);
+        if (!currentSessionId) {
+            // Use simple ID generator
+            currentSessionId = generateSimpleId(); 
+            localStorage.setItem(`chatbot_session_${businessId}`, currentSessionId);
+        }
+        setSessionId(currentSessionId);
+
+        // Fetch dynamic configuration
+        fetchWidgetConfig();
+
+        if (!businessId || !apiKey || !currentSessionId || !backendUrl) {
+            console.error('[ChatWidget] Missing required info for WebSocket connection (businessId, apiKey, sessionId, backendUrl).');
+            // Don't set configError here if fetchWidgetConfig handles it
+            // setConfigError('Widget configuration incomplete.'); 
+            return; // Prevent connection attempt if essential info missing before fetch
+        }
+
+        // Establish WebSocket connection only if all required info is present
+        console.log(`[ChatWidget] Attempting WebSocket connection to ${backendUrl} for business ${businessId}`);
+        socketRef.current = io(backendUrl, {
+            query: {
+                businessId,
+                apiKey, // Send the API key in the query
+                sessionId: currentSessionId
+            },
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 3 // Limit reconnection attempts
+        });
+
+        socketRef.current.on('connect', () => {
+            console.log('[ChatWidget] Socket connected successfully with ID:', socketRef.current.id);
+        });
+
+        socketRef.current.on('connect_error', (err) => {
+            console.error('[ChatWidget] Socket connection error:', err.message);
+            // Display connection error to user?
+            setConfigError(`Connection error: ${err.message}`); 
+        });
+
+        socketRef.current.on('message', (message) => {
+            console.log('[ChatWidget] Received message from server:', message);
+            // Use functional update to ensure latest state is used
+            setMessages((prevMessages) => {
+                // prevMessages is guaranteed to be the latest state here
+                const newMessages = [...prevMessages, { id: generateSimpleId(), type: 'bot', content: message.response }];
+                console.log('[ChatWidget] Updating messages state to:', newMessages);
+                return newMessages;
+            });
+        });
+
+        // Cleanup on component unmount
+        return () => {
+            if (socketRef.current) {
+                console.log('[ChatWidget] Disconnecting socket...');
+                socketRef.current.disconnect();
+            }
+            localStorage.removeItem(`chatbot_session_${businessId}`); // Clear session on unmount?
+        };
+    }, [businessId, apiKey, backendUrl, fetchWidgetConfig]); // Removed 'messages' dependency
+
+    const handleSendMessage = (text) => {
+        if (!text.trim() || !socketRef.current || !socketRef.current.connected) return;
+
+        // Use simple ID generator and consistent keys
+        const userMessage = { id: generateSimpleId(), type: 'user', content: text }; 
+        setMessages((prevMessages) => [...prevMessages, userMessage]);
+
+        console.log(`[ChatWidget] Sending message: "${text}"`);
+        socketRef.current.emit('message', { 
+            message: text, 
+            // businessId and sessionId are known server-side from the authenticated socket
+        });
+    };
+
+    // Handle null state for messages during initial load
+    // (Optional: Render loading state or nothing until messages are initialized)
+    // if (messages === null) {
+    //     return null; // Or a spinner
+    // }
+
+    // Determine widget positioning class
+    const positionClass = widgetConfig.position === 'bottom-left' ? 'left-5' : 'right-5';
+
+    return (
+        <div className={`fixed bottom-5 ${positionClass} z-50`}>
+            {configError && (
+                 <div className="text-red-500 bg-white p-2 rounded shadow mb-2 text-xs">Error: {configError}</div>
+             )}
+            {isOpen ? (
+                <ChatWindow 
+                    messages={messages} 
+                    onSendMessage={handleSendMessage} 
+                    onClose={() => setIsOpen(false)} 
+                    primaryColor={widgetConfig.primaryColor}
+                    welcomeMessage={widgetConfig.welcomeMessage}
+                />
+            ) : (
+                <ChatButton 
+                    onClick={() => setIsOpen(true)} 
+                    primaryColor={widgetConfig.primaryColor}
+                    text={initialButtonText}
+                />
+            )}
+        </div>
+    );
 };
 
 export default ChatWidget; 
