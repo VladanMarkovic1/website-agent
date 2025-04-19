@@ -4,7 +4,22 @@ import ChatWidget from './components/ChatWidget';
 import './index.css';
 
 // Function to initialize the chatbot
-function initDentalChatbot(config) {
+function initializeChatbot(config) {
+  // Basic validation
+  if (!config || !config.businessId) {
+    console.error("Chatbot Error: Missing configuration or businessId.");
+    return;
+  }
+  if (!config.apiKey) {
+      console.error("Chatbot Error: Missing apiKey in configuration.");
+      // Potentially display an error to the user or disable the widget
+      return; // Stop initialization if key is missing
+  }
+  if (!config.backendUrl) {
+      console.error("Chatbot Error: Missing backendUrl in configuration.");
+      return;
+  }
+
   // Create container for the chatbot if it doesn't exist
   let container = document.getElementById('dental-chatbot-widget');
   if (!container) {
@@ -19,10 +34,12 @@ function initDentalChatbot(config) {
     <React.StrictMode>
       <ChatWidget
         businessId={config.businessId}
-        position={config.position || 'bottom-right'}
-        buttonText={config.buttonText || 'Chat with us'}
-        primaryColor={config.primaryColor || '#4F46E5'}
-        backendUrl={config.backendUrl || 'http://localhost:5000'}
+        backendUrl={config.backendUrl} // Pass backendUrl
+        apiKey={config.apiKey}         // Pass apiKey
+        // Pass initial values from config as fallbacks for ChatWidget's dynamic fetching
+        initialPosition={config.position} 
+        initialButtonText={config.buttonText}
+        initialPrimaryColor={config.primaryColor}
       />
     </React.StrictMode>
   );
@@ -30,25 +47,41 @@ function initDentalChatbot(config) {
   // Return cleanup function
   return () => {
     root.unmount();
-    container.remove();
+    // Only remove container if we created it? Optional.
+    container.remove(); 
   };
 }
 
-// Create the global object
-const DentalChatbot = {
-  init: initDentalChatbot
-};
+// --- Auto-initialization Logic --- 
+// Look for config on the window object provided by the host page
+const configFromWindow = window.DENTAL_CHATBOT_CONFIG || window.chatbotConfig || null;
 
-// Auto-initialize if config is present in window
-if (typeof window !== 'undefined' && window.DENTAL_CHATBOT_CONFIG) {
-  window.addEventListener('DOMContentLoaded', () => {
-    DentalChatbot.init(window.DENTAL_CHATBOT_CONFIG);
-  });
+if (configFromWindow) {
+  console.log("[Widget Loader] Found config object on window:", configFromWindow);
+  initializeChatbot(configFromWindow);
+} else {
+   // Fallback: Try reading from data attributes of the current script tag
+   const currentScript = document.currentScript;
+   if (currentScript && currentScript.dataset.businessId) {
+        console.log("[Widget Loader] Found config in data attributes.");
+        const configFromAttributes = {
+            businessId: currentScript.dataset.businessId,
+            apiKey: currentScript.dataset.apiKey, // Will be undefined if not present
+            backendUrl: currentScript.dataset.backendUrl || 'http://localhost:5000', // Default if not set
+            // Optional: read initial style attributes if needed as fallbacks
+            position: currentScript.dataset.position,
+            primaryColor: currentScript.dataset.primaryColor,
+            buttonText: currentScript.dataset.buttonText
+        };
+         initializeChatbot(configFromAttributes);
+   } else {
+       console.error("[Widget Loader] Chatbot configuration not found on window object or script data attributes.");
+   }
 }
 
-// Export for both window and module usage
-if (typeof window !== 'undefined') {
-  window.DentalChatbot = DentalChatbot;
-}
+// Export for manual initialization (optional)
+// Consider if this global export is needed or if auto-init is sufficient
+window.DentalChatbot = { init: initializeChatbot }; 
 
-export default DentalChatbot; 
+// Remove default export if auto-init is the primary method
+// export default { initDentalChatbot: initializeChatbot }; 

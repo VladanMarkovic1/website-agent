@@ -18,6 +18,8 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import clientRoutes from './routes/clientRoutes.js'; // Import the new client routes
 import Business from './models/Business.js'; // Import Business model
 
+
+
 dotenv.config();
 
 const startServer = async () => {

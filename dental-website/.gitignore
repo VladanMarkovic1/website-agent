@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Chatbot build artifacts copied to public
+/public/chatbot/
