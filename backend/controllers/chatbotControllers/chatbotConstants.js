@@ -50,7 +50,8 @@ export const RESPONSE_TEMPLATES = {
     contact_confirmation_template: (name, service, phone) => 
         `✅ Thank you ${name}! I've noted your interest in ${service}. Our specialist will contact you at ${phone} to provide detailed information and answer all your questions. 😊`,
     procedure_inquiry: "As a dental assistant, I cannot provide specific details about dental procedures. However, I can connect you with our specialist who can explain everything thoroughly. Would you like that?",
-    contact_after_yes: "Great! I'll just need your full name, phone number, and email address to set this up. 😊",
+    appointment_request_acknowledge: "Okay, I can help with that. To arrange a call back with our scheduling team, could you please provide your full name, phone number, and email address? 📞",
+    contact_after_yes: "Great! To arrange that call back, please provide your full name, phone number, and email address. 📞",
     waiting_for_contact: "I'm ready to connect you with our specialist. Just share your full name, phone number, and email address, and I'll take care of the rest.",
     service_list_prefix: "Here are the dental services we offer:\n\n",
     service_list_suffix: "\n\nWould you like to learn more about any specific service, or can I help you schedule a consultation?",
@@ -58,7 +59,10 @@ export const RESPONSE_TEMPLATES = {
     problem_followup_suffix: "\n\nWould you like to learn more about one of these, or shall I help you schedule a consultation to determine the best approach?",
     problem_followup_fallback: (category) => `Based on your concern about ${category}, it's best to have our specialist evaluate it. Would you like to schedule a consultation? I'll need your name, phone, and email.`,
     error_fallback: "I apologize, but I'm having trouble understanding. Could you please rephrase that?",
-    api_error_fallback: "I apologize, but I'm having trouble accessing our service information right now. Would you like to share your name, phone number, and email so our team can reach out to you directly?"
+    api_error_fallback: "I apologize, but I'm having trouble accessing our service information right now. Would you like to share your name, phone number, and email so our team can reach out to you directly?",
+    appointment_confirmation: (details) => `Thanks, ${details.name}! We'll call you back at ${details.phone} soon to finalize your appointment for ${details.service || 'a consultation'}.`,
+    reschedule_prompt: "Sure, I can help with rescheduling. Please provide your name and the original appointment date.",
+    cancel_prompt: "Okay, I can assist with cancellation. Please provide your name and appointment date."
 };
 
 // --- Keywords --- 

@@ -110,25 +110,73 @@ async function _trackProblemDescriptionIfNeeded(session, message, finalResponseT
 }
 
 function _determineLeadProblemContext(session, initialUserMessage) {
-    let leadProblemContext = session.problemDescription || null; 
+    const messages = session.messages || [];
+    let leadProblemContext = session.problemDescription || null; // Check explicitly set context first
+    let contactMsgIndex = -1;
 
-    if (leadProblemContext) {
-        console.log(`[Controller] Using captured session problemDescription for lead context: "${leadProblemContext}"`);
-    } else {
-        const userMessages = session.messages?.filter(m => m.role === 'user');
-        if (userMessages && userMessages.length > 0) {
-            leadProblemContext = userMessages[userMessages.length - 1].content;
-            console.log(`[Controller] Using last user message for lead context (session problemDescription was empty): "${leadProblemContext}"`);
-        } else if (initialUserMessage && session.isFirstMessage) { // Use original message if first and contains contact
-            leadProblemContext = initialUserMessage;
-            console.log(`[Controller] Using initial message for lead context (session problemDescription was empty): "${leadProblemContext}"`);
+    console.log("[Context Check] Starting... Trying session.problemDescription first:", leadProblemContext);
+
+    // If specific context wasn't set (e.g., via availability confirmation), search history
+    if (!leadProblemContext) {
+        console.log("[Context Check] session.problemDescription not set. Searching message history.");
+        // 1. Find the index of the *last* user message containing contact info (or where bot asked for it)
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'user' && messages[i].type === 'CONTACT_INFO') {
+                contactMsgIndex = i;
+                console.log(`[Context Check] Found user CONTACT_INFO message at index ${i}.`);
+                break;
+            } 
+            // Also check if the *bot* asked for contact info just before the last user message
+            if (i === messages.length - 2 && messages[i].role === 'assistant' && (messages[i].type === 'CONTACT_REQUEST' || messages[i].content.includes('provide your full name'))) {
+                 contactMsgIndex = i + 1; // Assume the user msg right after is the contact info
+                 console.log(`[Context Check] Found bot CONTACT_REQUEST message at index ${i}. Assuming contact info follows.`);
+                 break;
+            }
+        }
+        // Default to searching from the end if no clear contact info point found
+        if (contactMsgIndex === -1) {
+             contactMsgIndex = messages.length;
+             console.log("[Context Check] No clear contact info message found, will search backwards from end.");
+        }
+
+        // 2. Search backwards from *before* contact info for the most recent *meaningful* user message
+        console.log(`[Context Check] Searching backwards from index ${contactMsgIndex - 1} for relevant user context.`);
+        const irrelevantTypes = ['CONTACT_INFO', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES']; // Types to ignore
+        for (let i = contactMsgIndex - 1; i >= 0; i--) {
+            if (messages[i].role === 'user') {
+                 console.log(`[Context Check] Checking user message at index ${i}: Type=${messages[i].type}, Content="${messages[i].content}"`);
+                if (!irrelevantTypes.includes(messages[i].type)) {
+                    leadProblemContext = messages[i].content;
+                    console.log(`[Context Check] Found relevant preceding user message context at index ${i}: "${leadProblemContext}"`);
+                    break; // Found the most recent relevant context
+                } else {
+                     console.log(`[Context Check] Skipping user message at index ${i} due to irrelevant type: ${messages[i].type}`);
+                }
+            }
+        }
+         if (!leadProblemContext) {
+             console.log("[Context Check] Backward search finished without finding relevant preceding user message.");
+         }
+    }
+
+    // 3. Fallback to the *very first* user message if still no context
+    if (!leadProblemContext) {
+        const firstUserMessage = messages.find(m => m.role === 'user');
+        if (firstUserMessage) {
+            leadProblemContext = firstUserMessage.content;
+            console.log(`[Context Check] Using first user message as fallback: "${leadProblemContext}"`);
+        } else {
+             console.log("[Context Check] No first user message found either.");
         }
     }
 
+    // 4. Final fallback: Generic message
     if (!leadProblemContext) {
         leadProblemContext = "User provided contact details after chatbot interaction.";
-        console.log("[Controller] No specific concern context found, using generic text.");
+        console.log("[Context Check] No specific concern context found, using generic text.");
     }
+    
+    console.log("[Context Check] Final determined context:", leadProblemContext);
     return leadProblemContext;
 }
 
@@ -153,8 +201,11 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, initialUserMess
             problemDescription: leadProblemContext,
             messageHistory: session.messages 
         };
-        console.log('[Controller] Data being sent to saveLead:', JSON.stringify(leadContext, null, 2));
         
+        // --- ADD LOGGING BEFORE SAVELEAD --- 
+        console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2));
+        // --- END LOGGING ---
+
         await saveLead(leadContext);
         console.log('[Controller] saveLead function executed successfully for sessionId:', session.sessionId);
         
@@ -171,24 +222,30 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, initialUserMess
     }
 }
 
-async function _logInteractionMessages(sessionId, userMessageContent, finalResponse) {
+async function _logInteractionMessages(sessionId, userMessageContent, userMessageType, finalResponse) {
      const userMessageLog = {
         role: 'user',
         content: userMessageContent,
         timestamp: Date.now(),
-        type: finalResponse.type,
-        serviceContext: finalResponse.serviceContext,
-        problemCategory: finalResponse.problemCategory || null 
+        type: userMessageType,
     };
     const botMessageLog = {
         role: 'assistant',
         content: finalResponse.response,
         timestamp: Date.now(),
         type: finalResponse.type,
-        serviceContext: finalResponse.serviceContext,
-        problemCategory: finalResponse.problemCategory || null 
+        problemCategory: finalResponse.problemCategory || null
     };
+    console.log('[Controller] Logging user message:', userMessageLog);
+    console.log('[Controller] Logging bot message:', botMessageLog);
     await addMessagesToSession(sessionId, userMessageLog, botMessageLog);
+    // Also store the last bot response type in the session for context checking
+    try {
+        await updateSessionData(sessionId, { lastBotResponseType: finalResponse.type });
+        console.log(`[Session Update] Stored lastBotResponseType: ${finalResponse.type}`);
+    } catch(err) {
+        console.error("[Session Update] Error storing lastBotResponseType:", err);
+    }
 }
 
 async function _trackConversationCompletionIfNeeded(finalResponse, session) {
@@ -211,45 +268,64 @@ const processChatMessage = async (message, sessionId, businessId) => {
 
         // 1. Initialize Session & Track Start
         const { session, isNewSession } = await _initializeSessionAndTrackStart(sessionId, businessId);
+        const lastBotResponseType = session.lastBotResponseType; // Get previous bot response type
 
         try {
             // 2. Fetch Business Data
             const businessData = await _getBusinessData(businessId);
 
-            // 3. Detect Initial Service Interest (if needed)
+            // 3. Detect User Request Types
+            const detectedTypes = detectRequestTypes(message); // Get the result
+            const requestTypes = Array.isArray(detectedTypes) ? detectedTypes : []; 
+            const userMessageType = requestTypes[0] || 'UNKNOWN';
+            console.log(`[Controller] Detected request types for user message: ${requestTypes.join(', ')}. Primary: ${userMessageType}`);
+            console.log(`[Controller] Last bot response type from session: ${lastBotResponseType}`); // Log previous type
+
+            // --- Add logging BEFORE context refinement check ---
+            console.log(`[Context Check] About to evaluate: lastBotResponseType === 'AVAILABILITY_INFO' (${lastBotResponseType === 'AVAILABILITY_INFO'}) && userMessageType === 'AFFIRMATION' (${userMessageType === 'AFFIRMATION'})`);
+
+            // --- Context Refinement based on Affirmation after Availability Info ---
+            if (lastBotResponseType === 'AVAILABILITY_INFO' && userMessageType === 'AFFIRMATION') {
+                const newContext = "User confirmed interest after checking appointment availability.";
+                // --- Add logging INSIDE context refinement block ---
+                console.log("*** [Context Update] CORRECT BLOCK ENTERED: Setting specific problemDescription. ***", newContext);
+                await updateSessionData(sessionId, { problemDescription: newContext });
+                session.problemDescription = newContext; // Update local session object immediately
+            }
+            // --- End Context Refinement ---
+
+            // 4. Detect Initial Service Interest (if needed)
             await _detectAndSetInitialServiceInterest(session, businessData, message);
 
-            // 4. Generate Initial Response (including first override pass based on AI type)
+            // 5. Generate Initial Response (including first override pass based on AI type)
             let finalResponse = await _generateAndRefineResponse(message, businessData, session.messages, isNewSession, session);
             console.log(`[Controller Flow] Response after _generateAndRefineResponse (inc. AI type overrides):`, JSON.stringify(finalResponse, null, 2));
 
-            // 5. Apply Overrides based on detected user message types
+            // 6. Apply Overrides based on detected user message types
             console.log("[Override Check 2] Applying overrides based on detected user message types:");
-            const requestTypes = detectRequestTypes(message);
-            console.log("[Override Check 2] Detected request types:", requestTypes);
             finalResponse = applyResponseOverrides(finalResponse, requestTypes, session, businessData);
             console.log(`[Controller Flow] Final response after user type overrides (type: ${finalResponse.type}):`, finalResponse.response);
 
-            // 6. Track Problem Description (if needed)
+            // 7. Track Problem Description (if needed)
             await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type);
             
-            // 7. Handle Lead Saving (if needed)
+            // 8. Handle Lead Saving (if needed)
             await _handleLeadSavingIfNeeded(finalResponse, session, message);
 
-            // 8. Track Hourly Activity
+            // 9. Track Hourly Activity
             try {
                 await trackChatEvent(businessId, 'HOURLY_ACTIVITY');
             } catch (error) {
                 console.error("Error tracking hourly activity:", error);
             }
 
-            // 9. Log Interaction Messages
-            await _logInteractionMessages(sessionId, message, finalResponse);
+            // 10. Log Interaction Messages
+            await _logInteractionMessages(sessionId, message, userMessageType, finalResponse);
 
-            // 10. Track Conversation Completion (if needed)
+            // 11. Track Conversation Completion (if needed)
             await _trackConversationCompletionIfNeeded(finalResponse, session);
 
-            // 11. Return Final Response
+            // 12. Return Final Response
             return {
                 response: finalResponse.response,
                 type: finalResponse.type,
@@ -265,7 +341,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
             };
             // Attempt to log error to session
             try {
-                 await _logInteractionMessages(sessionId, message, errorResponse);
+                 await _logInteractionMessages(sessionId, message, userMessageType, errorResponse);
              } catch (logError) {
                  console.error("Failed to log error message to session:", logError);
              }
