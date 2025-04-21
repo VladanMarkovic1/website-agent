@@ -1,4 +1,4 @@
-import apiClient from './api';
+import apiClient from '../utils/api';
 
 // Fetches leads for a specific business
 export const getLeads = async (businessId) => {
