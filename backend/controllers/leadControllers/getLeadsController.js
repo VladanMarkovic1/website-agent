@@ -15,11 +15,20 @@ export const getLeads = async (req, res) => {
 
         // Fetch leads and count them
         const leads = await Lead.find({ businessId })
-                              .sort({ createdAt: -1 })
+                              .sort({ lastContactedAt: -1 })
                               .lean(); // Use lean for performance
         const count = leads.length;
 
         console.log(`✅ Found ${count} leads for business ${businessId}`);
+
+        // --- Log the top sorted leads for verification ---
+        if (leads && leads.length > 0) {
+            console.log("Top 3 sorted leads (ID, LastContacted):");
+            leads.slice(0, 3).forEach(lead => {
+                console.log(`  - ID: ${lead._id}, LastContactedAt: ${lead.lastContactedAt}`);
+            });
+        }
+        // --- End logging ---
 
         // Return in the format expected by the frontend hook
         res.status(200).json({

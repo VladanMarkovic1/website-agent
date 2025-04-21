@@ -1,5 +1,6 @@
 import Lead from "../../models/Lead.js";
 import Business from "../../models/Business.js";
+import Service from "../../models/Service.js";
 import { trackChatEvent } from "../analyticsControllers/trackEventService.js";
 
 /**
@@ -7,7 +8,19 @@ import { trackChatEvent } from "../analyticsControllers/trackEventService.js";
  * This is your core function that returns a response message.
  */
 
+// Helper function to find a service name within text
+async function findServiceInText(businessId, text) {
+    if (!text) return null;
+    const serviceData = await Service.findOne({ businessId });
+    if (!serviceData || !serviceData.services) return null;
 
+    const normalizedText = text.toLowerCase();
+    // Find the first service whose name appears in the text
+    const foundService = serviceData.services.find(service => 
+        service.name && normalizedText.includes(service.name.toLowerCase())
+    );
+    return foundService ? foundService.name : null;
+}
 
 export const saveLead = async (leadContext) => {
     try {
@@ -54,6 +67,23 @@ export const saveLead = async (leadContext) => {
 
         console.log('Formatted Lead Context:', formattedContext);
 
+        // --- Determine Service for Lead Record ---
+        let finalService = serviceInterest; // Start with explicitly provided interest
+        // If no explicit interest or it's the default, try extracting from problem description
+        if (!finalService || finalService === 'your dental needs' || finalService === 'Dental Consultation') {
+             console.log('[Service Extraction] Trying to find service in problemDescription:', problemDescription);
+             const extractedService = await findServiceInText(businessId, problemDescription);
+             if (extractedService) {
+                 finalService = extractedService;
+                 console.log('[Service Extraction] Found service in text:', finalService);
+             } else {
+                 finalService = 'Dental Consultation'; // Fallback if nothing found
+                 console.log('[Service Extraction] No specific service found in text, using default.');
+             }
+        }
+        console.log('[Service Extraction] Final service to be saved:', finalService);
+        // --- End Service Determination ---
+
         // Check for existing lead
         const existingLead = await Lead.findOne({
             businessId: business.businessId,
@@ -68,19 +98,21 @@ export const saveLead = async (leadContext) => {
             existingLead.name = name;
             existingLead.phone = phone;
             existingLead.email = email || existingLead.email; // Keep old email if new one not provided
-            existingLead.service = serviceInterest || existingLead.service;
-            existingLead.reason = formattedContext.reason; // Update reason
+            existingLead.service = finalService;
+            existingLead.reason = formattedContext.reason;
             existingLead.lastContactedAt = new Date(); // Update last contacted time
-            // Optionally update context or add interaction
+            existingLead.status = 'new'; // **RESET STATUS TO NEW on re-engagement**
+            
+            // Update interaction log
             existingLead.interactions.push({
                 type: 'chatbot',
-                status: 'Updated Contact Info',
-                message: `User provided/updated contact info. Concern: ${formattedContext.reason}`,
-                service: serviceInterest
+                status: 'Re-engaged via Chatbot', // Changed status message
+                message: `User re-engaged via chatbot. Concern: ${formattedContext.reason}`,
+                service: finalService // Log the specific interest if available
             });
             
             await existingLead.save();
-            console.log("✅ Existing lead updated successfully");
+            console.log("✅ Existing lead updated successfully (Status reset to 'new')"); // Updated log
             // Return confirmation for existing lead
             return `Thank you, ${name}. I've updated your information with us.`
         }
@@ -92,8 +124,8 @@ export const saveLead = async (leadContext) => {
             name,
             phone,
             email,
-            service: serviceInterest || 'Dental Consultation', // Changed fallback
-            reason: formattedContext.reason, // Use formatted reason
+            service: finalService,
+            reason: formattedContext.reason,
             source: 'chatbot',
             status: 'new', // Explicitly 'new', which is valid
             lastContactedAt: new Date(),
@@ -101,7 +133,7 @@ export const saveLead = async (leadContext) => {
                  type: 'chatbot',
                  status: 'Lead Created',
                  message: `Initial contact via chatbot. Concern: ${formattedContext.reason}`,
-                 service: serviceInterest // Keep this as the potentially more specific interest if available
+                 service: finalService // Keep this as the potentially more specific interest if available
             }],
             // Store raw message history if needed, or just the summary
             // context: { rawHistory: messageHistory }
@@ -119,9 +151,9 @@ export const saveLead = async (leadContext) => {
         console.log("✅ New lead saved successfully");
 
         // --- ADD LOG BEFORE TRACKING --- 
-        console.log(`[LeadController] About to call trackChatEvent for NEW_LEAD. BusinessId: ${businessId}, Service: ${serviceInterest}`);
+        console.log(`[LeadController] About to call trackChatEvent for NEW_LEAD. BusinessId: ${businessId}, Service: ${finalService}`);
         // Track the new lead event
-        await trackChatEvent(businessId, 'NEW_LEAD', { service: serviceInterest });
+        await trackChatEvent(businessId, 'NEW_LEAD', { service: finalService });
 
         // Return confirmation for new lead (maybe use template from openaiService?)
         // Using the contact_confirmation template structure:

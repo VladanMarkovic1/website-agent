@@ -53,6 +53,20 @@ const Leads = () => {
   } = useLeadFilters(leads);
   // --- End Custom Hooks ---
 
+  // --- NEW useEffect to set initial sort order --- 
+  useEffect(() => {
+    // Only run when leads are loaded.
+    if (leads && leads.length > 0) {
+      // If the sort is not already 'lastContactedAt' descending, set it.
+      if (sortConfig.key !== 'lastContactedAt' || sortConfig.direction !== 'desc') {
+        console.log('[Leads.jsx] Initial leads loaded. Ensuring client sort is lastContactedAt (desc).');
+        handleSort('lastContactedAt'); // Call once. Assumes it toggles or sets correctly.
+      }
+    }
+    // Depend on leads array, the sort function, and the sort config key/direction
+  }, [leads, handleSort, sortConfig.key, sortConfig.direction]); 
+  // --- End NEW useEffect ---
+
   // Monitor online/offline status
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -297,6 +311,9 @@ const Leads = () => {
                            <th scope="col" onClick={() => handleSort('status')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
                               Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
                            </th>
+                           <th scope="col" onClick={() => handleSort('lastContactedAt')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                              Last Contacted {sortConfig.key === 'lastContactedAt' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                           </th>
                            <th scope="col" onClick={() => handleSort('createdAt')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
                               Created {sortConfig.key === 'createdAt' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
                            </th>
@@ -338,6 +355,9 @@ const Leads = () => {
                                    <option key={option.value} value={option.value}>{option.label}</option>
                                  ))}
                                </select>
+                             </td>
+                             <td className="px-6 py-4 text-sm text-gray-500">
+                               {lead.lastContactedAt ? new Date(lead.lastContactedAt).toLocaleDateString() : 'N/A'}
                              </td>
                              <td className="px-6 py-4 text-sm text-gray-500">
                                {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : 'N/A'}
