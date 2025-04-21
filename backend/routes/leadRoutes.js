@@ -1,6 +1,6 @@
 import express from "express";
 import { getLeads } from '../controllers/leadControllers/getLeadsController.js';
-import { createLeadHandler } from '../controllers/leadControllers/leadController.js';
+import { createLeadHandler } from '../controllers/leadControllers/createLeadHandler.js';
 import { updateLeadStatus } from '../controllers/leadControllers/updateLeadStatusController.js';
 import { authenticateToken } from "../middleware/auth.js";
 import { checkBusinessOwner } from "../middleware/checkBusinessOwner.js";

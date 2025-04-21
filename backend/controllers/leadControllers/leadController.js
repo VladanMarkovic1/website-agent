@@ -31,29 +31,6 @@ const extractUserConcern = (messageHistory) => {
     };
 };
 
-const formatLeadContext = (initialMessage, detectedService, messageHistory) => {
-    const userConcern = extractUserConcern(messageHistory);
-    
-    // Create a more empathetic response based on the concern
-    let formattedReason = "";
-    if (userConcern?.isEmergency) {
-        formattedReason = `URGENT DENTAL CARE NEEDED - Patient reported: ${userConcern.message}\n` +
-            `This appears to be a dental emergency requiring immediate attention.\n` +
-            `Service Category: ${detectedService || 'Emergency Dental Care'}\n` +
-            `Priority: Immediate follow-up recommended`;
-    } else {
-        formattedReason = userConcern?.message ? 
-            `Patient's Concern: ${userConcern.message}\n` +
-            `Service Interest: ${detectedService || 'General Dental Care'}` : 
-            "General inquiry about dental services";
-    }
-
-    return {
-        initialMessage: userConcern?.message || initialMessage || "No initial message",
-        reason: formattedReason
-    };
-};
-
 export const saveLead = async (leadContext) => {
     try {
         // Log the entire received object immediately
@@ -180,53 +157,5 @@ export const saveLead = async (leadContext) => {
             throw new Error(`Lead validation failed: ${error.message}`); // Re-throw specific error
         }
         throw error; // Re-throw other errors to be caught by the caller
-    }
-};
-
-/**
- * Express route handler for creating a lead.
- * Expects businessId, message, and optionally serviceInterest in req.body.
- */
-export const createLeadHandler = async (req, res) => {
-    try {
-        // Get businessId from URL parameters, other data from body
-        const { businessId } = req.params;
-        const { message, serviceInterest } = req.body;
-
-        if (!businessId) {
-            return res.status(400).json({ error: "Business ID missing in URL" });
-        }
-        
-        // Extract contact info (name, phone, email) needed by saveLead from body
-        // Ensure validation in the route covers these required fields
-        const { name, phone, email } = req.body; 
-
-        // Construct the context object for saveLead
-        const leadContext = { 
-            businessId, 
-            name, 
-            phone, 
-            email, // Pass email if available
-            message, // This seems ambiguous, saveLead uses messageHistory/problemDescription
-                     // Maybe pass null or a specific source indicator? Let's pass null for now.
-            serviceInterest, 
-            problemDescription: message, // Assuming the direct POST message IS the problem description
-            messageHistory: [{ role: 'user', content: message }] // Provide a minimal history
-        };
-
-        const responseMessage = await saveLead(leadContext);
-        
-        // saveLead now throws errors, so no need to check for !responseMessage here
-        // if (!responseMessage) {
-        //     return res.status(400).json({ error: "Missing required contact information or lead already exists." });
-        // }
-
-        res.status(201).json({ success: true, message: responseMessage }); // Use 201 Created for new resource
-
-    } catch (error) {
-        console.error("Error creating lead:", error);
-        res.status(error.message?.includes("Missing required contact") ? 400 : 500).json({ 
-            error: error.message || "Internal server error while creating lead." 
-        });
     }
 };

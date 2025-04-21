@@ -7,12 +7,12 @@ import { generateAIResponse } from "./openaiService.js";
 import { getOrCreateSession, updateSessionData, addMessagesToSession } from "./sessionService.js";
 import { detectRequestTypes } from "./requestTypeDetector.js";
 import { applyResponseOverrides } from "./overrideService.js";
-import { DENTAL_KEYWORDS_FOR_TRACKING } from "./chatbotConstants.js"; // Only needed for problem description tracking
+import { DENTAL_KEYWORDS_FOR_TRACKING, RESPONSE_TEMPLATES } from "./chatbotConstants.js"; // Import RESPONSE_TEMPLATES too
 
 // Removed session map, timeout, cleanup (moved to sessionService)
 
 // Fetch business data (could be further extracted later)
-async function getBusinessData(businessId) {
+async function _getBusinessData(businessId) {
     const [business, serviceData, contactData] = await Promise.all([
         Business.findOne({ businessId }),
         Service.findOne({ businessId }),
@@ -38,7 +38,155 @@ async function getBusinessData(businessId) {
     };
 }
 
-// --- Refactored Main Processing Logic --- 
+// --- Helper Functions --- 
+
+async function _initializeSessionAndTrackStart(sessionId, businessId) {
+    const { session, isNew: isNewSession } = await getOrCreateSession(sessionId, businessId);
+    if (session.isFirstMessage) {
+        try {
+            await trackChatEvent(businessId, 'NEW_CONVERSATION');
+            await updateSessionData(sessionId, { isFirstMessage: false }); 
+        } catch (error) {
+            console.error("Error tracking new conversation:", error);
+        }
+    }
+    return { session, isNewSession };
+}
+
+async function _detectAndSetInitialServiceInterest(session, businessData, message) {
+    if (session.serviceInterest) return; // Already set
+
+    const messageLower = message.toLowerCase();
+    const mentionedService = businessData.services.find(service => {
+        if (!service || !service.name) return false;
+        const serviceName = service.name.toLowerCase();
+        return messageLower.includes(serviceName) || 
+               serviceName.split(' ').every(word => messageLower.includes(word.toLowerCase()));
+    });
+
+    if (mentionedService) {
+        await updateSessionData(session.sessionId, { serviceInterest: mentionedService.name });
+        console.log('[Controller] Detected service interest:', mentionedService.name);
+        session.serviceInterest = mentionedService.name; // Update local session object too
+    }
+}
+
+async function _generateAndRefineResponse(message, businessData, sessionMessages, isNewSession, session) {
+    const initialResponse = await generateAIResponse(message, businessData, sessionMessages, isNewSession);
+    const requestTypes = detectRequestTypes(message);
+    let finalResponse = applyResponseOverrides(initialResponse, requestTypes, session, businessData);
+
+    // Update session interest if override specified it
+    if (finalResponse.serviceContext && finalResponse.serviceContext !== session.serviceInterest) {
+        await updateSessionData(session.sessionId, { serviceInterest: finalResponse.serviceContext }); 
+        session.serviceInterest = finalResponse.serviceContext; // Update local session object
+    }
+    return finalResponse;
+}
+
+async function _trackProblemDescriptionIfNeeded(session, message, finalResponseType) {
+    if (!session.problemDescription && 
+        !['CONTACT_INFO_PROVIDED', 'GREETING'].includes(finalResponseType) &&
+        (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => message.toLowerCase().includes(keyword)) || message.split(' ').length > 5)
+       ) {
+         await updateSessionData(session.sessionId, { problemDescription: message }); 
+         session.problemDescription = message; // Update local session object
+    }
+}
+
+function _determineLeadProblemContext(session, initialUserMessage) {
+    let leadProblemContext = session.problemDescription || null; 
+
+    if (leadProblemContext) {
+        console.log(`[Controller] Using captured session problemDescription for lead context: "${leadProblemContext}"`);
+    } else {
+        const userMessages = session.messages?.filter(m => m.role === 'user');
+        if (userMessages && userMessages.length > 0) {
+            leadProblemContext = userMessages[userMessages.length - 1].content;
+            console.log(`[Controller] Using last user message for lead context (session problemDescription was empty): "${leadProblemContext}"`);
+        } else if (initialUserMessage && session.isFirstMessage) { // Use original message if first and contains contact
+            leadProblemContext = initialUserMessage;
+            console.log(`[Controller] Using initial message for lead context (session problemDescription was empty): "${leadProblemContext}"`);
+        }
+    }
+
+    if (!leadProblemContext) {
+        leadProblemContext = "User provided contact details after chatbot interaction.";
+        console.log("[Controller] No specific concern context found, using generic text.");
+    }
+    return leadProblemContext;
+}
+
+async function _handleLeadSavingIfNeeded(finalResponse, session, initialUserMessage) {
+    if (!(finalResponse.type === 'CONTACT_INFO' && finalResponse.contactInfo)) {
+        if (finalResponse.type !== 'ERROR') {
+            console.log(`[Controller] Final response type is ${finalResponse.type}. Not saving lead.`);
+        }
+        return; // Only proceed if it's a CONTACT_INFO type with contactInfo
+    }
+
+    console.log('[Controller] CONTACT_INFO type detected. Attempting to save lead...');
+    try {
+        const leadProblemContext = _determineLeadProblemContext(session, initialUserMessage);
+
+        const leadContext = {
+            businessId: session.businessId,
+            name: finalResponse.contactInfo.name,
+            phone: finalResponse.contactInfo.phone,
+            email: finalResponse.contactInfo.email,
+            serviceInterest: finalResponse.serviceContext || session.serviceInterest || 'Dental Consultation',
+            problemDescription: leadProblemContext,
+            messageHistory: session.messages 
+        };
+        console.log('[Controller] Data being sent to saveLead:', JSON.stringify(leadContext, null, 2));
+        
+        await saveLead(leadContext);
+        console.log('[Controller] saveLead function executed successfully for sessionId:', session.sessionId);
+        
+        // Update session contact info 
+        await updateSessionData(session.sessionId, { contactInfo: finalResponse.contactInfo }); 
+        session.contactInfo = finalResponse.contactInfo; // Update local session object
+        
+        await trackChatEvent(session.businessId, 'LEAD_GENERATED', { service: leadContext.serviceInterest });
+
+    } catch (error) {
+        console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack);
+        // Decide if the finalResponse should be modified here to indicate save failure to the user?
+        // For now, we just log the error.
+    }
+}
+
+async function _logInteractionMessages(sessionId, userMessageContent, finalResponse) {
+     const userMessageLog = {
+        role: 'user',
+        content: userMessageContent,
+        timestamp: Date.now(),
+        type: finalResponse.type,
+        serviceContext: finalResponse.serviceContext,
+        problemCategory: finalResponse.problemCategory || null 
+    };
+    const botMessageLog = {
+        role: 'assistant',
+        content: finalResponse.response,
+        timestamp: Date.now(),
+        type: finalResponse.type,
+        serviceContext: finalResponse.serviceContext,
+        problemCategory: finalResponse.problemCategory || null 
+    };
+    await addMessagesToSession(sessionId, userMessageLog, botMessageLog);
+}
+
+async function _trackConversationCompletionIfNeeded(finalResponse, session) {
+    if (finalResponse.type === 'GOODBYE' && session.contactInfo) { // Assuming a GOODBYE type exists
+        try {
+            await trackChatEvent(session.businessId, 'CONVERSATION_COMPLETED');
+        } catch (error) {
+            console.error("Error tracking conversation completion:", error);
+        }
+    }
+}
+
+// --- Main Orchestrator Function --- 
 
 const processChatMessage = async (message, sessionId, businessId) => {
     try {
@@ -46,191 +194,67 @@ const processChatMessage = async (message, sessionId, businessId) => {
             throw new Error("Missing required fields: message, sessionId, or businessId");
         }
 
-        // 1. Get Session (NOW ASYNC)
-        const { session, isNew: isNewSession } = await getOrCreateSession(sessionId, businessId);
-
-        // 2. Track New Conversation (if applicable)
-        if (session.isFirstMessage) {
-            try {
-                await trackChatEvent(businessId, 'NEW_CONVERSATION');
-                // Update session data (NOW ASYNC)
-                await updateSessionData(sessionId, { isFirstMessage: false }); 
-            } catch (error) {
-                console.error("Error tracking new conversation:", error);
-            }
-        }
+        // 1. Initialize Session & Track Start
+        const { session, isNewSession } = await _initializeSessionAndTrackStart(sessionId, businessId);
 
         try {
-            // 3. Get Business Data
-            const businessData = await getBusinessData(businessId);
+            // 2. Fetch Business Data
+            const businessData = await _getBusinessData(businessId);
 
-            // 4. Detect Simple Service Mention (for session context)
-            const messageLower = message.toLowerCase();
-            const mentionedService = businessData.services.find(service => {
-                if (!service || !service.name) return false;
-                const serviceName = service.name.toLowerCase();
-                return messageLower.includes(serviceName) || 
-                       serviceName.split(' ').every(word => 
-                           messageLower.includes(word.toLowerCase())
-                       );
-            });
-            if (mentionedService && !session.serviceInterest) { // Only set if not already set
-                // Update session data (NOW ASYNC)
-                await updateSessionData(sessionId, { serviceInterest: mentionedService.name });
-                console.log('[Controller] Detected service interest:', mentionedService.name);
-            }
+            // 3. Detect Initial Service Interest (if needed)
+            await _detectAndSetInitialServiceInterest(session, businessData, message);
 
-            // 5. Generate Initial AI Response
-            const initialResponse = await generateAIResponse(
-                message, 
-                businessData,
-                session.messages,
-                isNewSession
-            );
+            // 4. Generate and Refine Response
+            const finalResponse = await _generateAndRefineResponse(message, businessData, session.messages, isNewSession, session);
 
-            // 6. Detect Request Types for Potential Override
-            const requestTypes = detectRequestTypes(message);
+            // 5. Track Problem Description (if needed)
+            await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type);
+            
+            // 6. Handle Lead Saving (if needed)
+            await _handleLeadSavingIfNeeded(finalResponse, session, message);
 
-            // 7. Apply Overrides (if needed)
-            let finalResponse = applyResponseOverrides(initialResponse, requestTypes, session, businessData);
-
-             // Update session interest if override specified it (NOW ASYNC)
-             if (finalResponse.serviceContext && finalResponse.serviceContext !== session.serviceInterest) {
-                  await updateSessionData(sessionId, { serviceInterest: finalResponse.serviceContext }); 
-             }
-
-            // 8. Track Problem Description (NOW ASYNC)
-            if (!session.problemDescription && 
-                !['CONTACT_INFO_PROVIDED', 'GREETING'].includes(finalResponse.type) &&
-                (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => messageLower.includes(keyword)) || message.split(' ').length > 5)
-               ) {
-                 await updateSessionData(sessionId, { problemDescription: message }); 
-            }
-
-            // 9. Handle Lead Saving
-            if (finalResponse.type === 'CONTACT_INFO' && finalResponse.contactInfo) {
-                console.log('[Controller] CONTACT_INFO type detected. Attempting to save lead...');
-                try {
-                    // --- Start: Determine the best context for the lead --- 
-                    let leadProblemContext = session.problemDescription || null; // Prioritize captured problem
-
-                    if (leadProblemContext) {
-                        console.log(`[Controller] Using captured session problemDescription for lead context: "${leadProblemContext}"`);
-                    } else {
-                        // Fallback: If no problem was captured, try the last user message
-                        const userMessages = session.messages?.filter(m => m.role === 'user');
-                        if (userMessages && userMessages.length > 0) {
-                            leadProblemContext = userMessages[userMessages.length - 1].content;
-                            console.log(`[Controller] Using last user message for lead context (session problemDescription was empty): "${leadProblemContext}"`);
-                        } else if (message && session.isFirstMessage) {
-                            // Edge case: First message contained contact info
-                            leadProblemContext = message;
-                            console.log(`[Controller] Using initial message for lead context (session problemDescription was empty): "${leadProblemContext}"`);
-                        }
-                    }
-                    
-                    // Final fallback if no context could be determined
-                    if (!leadProblemContext) {
-                        leadProblemContext = "User provided contact details after chatbot interaction.";
-                        console.log("[Controller] No specific concern context found, using generic text.");
-                    }
-                    // --- End: Determine context --- 
-
-                    const leadContext = {
-                        businessId: session.businessId,
-                        name: finalResponse.contactInfo.name,
-                        phone: finalResponse.contactInfo.phone,
-                        email: finalResponse.contactInfo.email,
-                        serviceInterest: finalResponse.serviceContext || session.serviceInterest || 'Dental Consultation',
-                        problemDescription: leadProblemContext, // Use the determined context
-                        messageHistory: session.messages 
-                    };
-                    console.log('[Controller] Data being sent to saveLead:', JSON.stringify(leadContext, null, 2));
-                    
-                    await saveLead(leadContext);
-                    
-                    console.log('[Controller] saveLead function executed successfully for sessionId:', sessionId);
-                    
-                    // Update session contact info (NOW ASYNC)
-                    await updateSessionData(sessionId, { contactInfo: finalResponse.contactInfo }); 
-                    
-                    await trackChatEvent(businessId, 'LEAD_GENERATED', { service: leadContext.serviceInterest });
-
-                } catch (error) {
-                    console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack);
-                    // Potentially modify finalResponse to indicate save failure?
-                }
-            } else if (finalResponse.type !== 'ERROR') { 
-                 console.log(`[Controller] Final response type is ${finalResponse.type}. Not saving lead.`);
-            }
-
-            // 10. Track Hourly Activity
+            // 7. Track Hourly Activity
             try {
                 await trackChatEvent(businessId, 'HOURLY_ACTIVITY');
             } catch (error) {
                 console.error("Error tracking hourly activity:", error);
             }
 
-            // 11. Update Message History in Session (NOW ASYNC)
-            const userMessageLog = {
-                role: 'user',
-                content: message,
-                timestamp: Date.now(),
-                type: finalResponse.type, // Log final type
-                serviceContext: finalResponse.serviceContext, // Log final context
-                problemCategory: finalResponse.problemCategory || null 
-            };
-            const botMessageLog = {
-                role: 'assistant',
-                content: finalResponse.response,
-                timestamp: Date.now(),
-                type: finalResponse.type,
-                serviceContext: finalResponse.serviceContext,
-                problemCategory: finalResponse.problemCategory || null 
-            };
-            await addMessagesToSession(sessionId, userMessageLog, botMessageLog);
+            // 8. Log Interaction Messages
+            await _logInteractionMessages(sessionId, message, finalResponse);
 
-            // 12. Track Conversation Completion
-            if (finalResponse.type === 'GOODBYE' && session.contactInfo) { // Assuming a GOODBYE type exists
-                try {
-                    await trackChatEvent(businessId, 'CONVERSATION_COMPLETED');
-                } catch (error) {
-                    console.error("Error tracking conversation completion:", error);
-                }
-            }
+            // 9. Track Conversation Completion (if needed)
+            await _trackConversationCompletionIfNeeded(finalResponse, session);
 
-            // 13. Return Final Response
+            // 10. Return Final Response
             return {
                 response: finalResponse.response,
                 type: finalResponse.type,
                 sessionId
             };
 
-        } catch (error) {
-            // Error during business data fetch or response generation/override
-            console.error("Error processing message:", error);
-            // Use a generic error response from constants
-             const errorResponse = {
+        } catch (processingError) {
+            // Handle errors during the main processing steps (after session init)
+            console.error("Error processing message:", processingError);
+            const errorResponse = {
                 type: "ERROR",
                 response: RESPONSE_TEMPLATES.api_error_fallback || "An internal error occurred."
             };
-             // Try to log error messages to session (NOW ASYNC)
-             try {
-                 const userMessageLog = { role: 'user', content: message, timestamp: Date.now() };
-                 const botMessageLog = { role: 'assistant', content: errorResponse.response, timestamp: Date.now(), type: 'ERROR' };
-                 await addMessagesToSession(sessionId, userMessageLog, botMessageLog); 
+            // Attempt to log error to session
+            try {
+                 await _logInteractionMessages(sessionId, message, errorResponse);
              } catch (logError) {
                  console.error("Failed to log error message to session:", logError);
              }
             return { ...errorResponse, sessionId }; 
         }
-    } catch (error) {
-        // Catch errors from session creation or initial validation
-        console.error("Critical error in message processing entry:", error);
+    } catch (initializationError) {
+        // Handle critical errors during session initialization or initial validation
+        console.error("Critical error in message processing entry:", initializationError);
         return {
             response: "I apologize, but I'm experiencing critical technical difficulties.",
             type: "ERROR",
-            sessionId: sessionId || 'error' // Use provided sessionId if available
+            sessionId: sessionId || 'error' 
         };
     }
 };
@@ -238,16 +262,12 @@ const processChatMessage = async (message, sessionId, businessId) => {
 // HTTP endpoint handler 
 export const handleChatMessage = async (req, res) => {
     try {
-        // Get businessId from URL parameters, message/sessionId from body
         const { businessId } = req.params;
         const { message, sessionId } = req.body;
         
         if (!businessId) {
-            // This shouldn't happen if routing is correct, but good practice
             return res.status(400).json({ error: "Business ID is missing in the URL" });
         }
-
-        // Pass businessId from params to the processing function
         const response = await processChatMessage(message, sessionId, businessId);
         res.json(response);
     } catch (error) {
@@ -258,7 +278,7 @@ export const handleChatMessage = async (req, res) => {
     }
 };
 
-// WebSocket message processor (remains the same)
+// WebSocket message processor 
 export const processWebSocketMessage = async (message, sessionId, businessId) => {
     try {
         return await processChatMessage(message, sessionId, businessId);
