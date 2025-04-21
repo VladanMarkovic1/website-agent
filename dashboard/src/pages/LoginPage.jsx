@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createClient } from '../services/api';
-import apiClient from '../services/api';
+import apiClient from '../utils/api';
 import InputField from '../components/layout/InputField';
 import Button from '../components/layout/SubmitButton';
 import { HiOutlineShieldExclamation } from 'react-icons/hi';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSecurityBlocked, setIsSecurityBlocked] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -23,8 +24,9 @@ const Login = () => {
       const response = await apiClient.post('/auth/login', { email, password });
       const { token, user } = response.data;
       
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      console.log('User object received from login API:', user);
+      
+      login(token, user);
       
       if (user.role === 'admin') {
         navigate('/admin');
