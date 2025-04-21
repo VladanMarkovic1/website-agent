@@ -1,6 +1,7 @@
 import Business from "../../models/Business.js";
 import Service from "../../models/Service.js";
 import Contact from "../../models/Contact.js";
+import ExtraInfo from "../../models/ExtraInfo.js";
 import { saveLead } from "../leadControllers/leadController.js";
 import { trackChatEvent } from "../analyticsControllers/trackEventService.js";
 import { generateAIResponse } from "./openaiService.js";
@@ -13,10 +14,11 @@ import { DENTAL_KEYWORDS_FOR_TRACKING, RESPONSE_TEMPLATES } from "./chatbotConst
 
 // Fetch business data (could be further extracted later)
 async function _getBusinessData(businessId) {
-    const [business, serviceData, contactData] = await Promise.all([
+    const [business, serviceData, contactData, extraInfoData] = await Promise.all([
         Business.findOne({ businessId }),
         Service.findOne({ businessId }),
-        Contact.findOne({ businessId })
+        Contact.findOne({ businessId }),
+        ExtraInfo.findOne({ businessId })
     ]);
 
     if (!business) {
@@ -29,13 +31,17 @@ async function _getBusinessData(businessId) {
         price: service.price || null
     })) || [];
 
-    return {
+    const fullBusinessData = {
         ...business.toObject(),
         services: services,
         businessPhoneNumber: contactData?.phone || null,
         businessEmail: contactData?.email || null,
-        address: contactData?.address || null
+        address: contactData?.address || null,
+        operatingHours: extraInfoData?.operatingHours || null
     };
+
+    console.log("[Business Data Check] Fetched business data:", JSON.stringify(fullBusinessData, null, 2)); // Log fetched data
+    return fullBusinessData;
 }
 
 // --- Helper Functions --- 
@@ -72,16 +78,25 @@ async function _detectAndSetInitialServiceInterest(session, businessData, messag
 }
 
 async function _generateAndRefineResponse(message, businessData, sessionMessages, isNewSession, session) {
+    console.log(`[AI Call Prep] Calling generateAIResponse. isNewSession=${isNewSession}. Message: "${message}". History length: ${sessionMessages?.length || 0}`);
+    if (sessionMessages && sessionMessages.length > 0) {
+        console.log(`[AI Call Prep] Last ${Math.min(3, sessionMessages.length)} messages:`, JSON.stringify(sessionMessages.slice(-3), null, 2));
+    }
     const initialResponse = await generateAIResponse(message, businessData, sessionMessages, isNewSession);
-    const requestTypes = detectRequestTypes(message);
-    let finalResponse = applyResponseOverrides(initialResponse, requestTypes, session, businessData);
+    console.log(`[AI Response Log] Initial AI Response object:`, JSON.stringify(initialResponse, null, 2)); // Log initial AI response object
+
+    // --- First Override Pass (Based on AI response type) ---
+    console.log("[Override Check 1] Applying overrides based on initial AI response type.");
+    let responseAfterOverride1 = applyResponseOverrides(initialResponse, [], session, businessData);
+    console.log("[Override Check 1] Response after first override pass:", JSON.stringify(responseAfterOverride1, null, 2));
 
     // Update session interest if override specified it
-    if (finalResponse.serviceContext && finalResponse.serviceContext !== session.serviceInterest) {
-        await updateSessionData(session.sessionId, { serviceInterest: finalResponse.serviceContext }); 
-        session.serviceInterest = finalResponse.serviceContext; // Update local session object
+    if (responseAfterOverride1.serviceContext && responseAfterOverride1.serviceContext !== session.serviceInterest) {
+        console.log(`[Override Check 1] Updating session service interest from ${session.serviceInterest} to ${responseAfterOverride1.serviceContext}`);
+        await updateSessionData(session.sessionId, { serviceInterest: responseAfterOverride1.serviceContext });
+        session.serviceInterest = responseAfterOverride1.serviceContext; // Update local session object
     }
-    return finalResponse;
+    return responseAfterOverride1; // Return the response after the first override pass
 }
 
 async function _trackProblemDescriptionIfNeeded(session, message, finalResponseType) {
@@ -204,29 +219,37 @@ const processChatMessage = async (message, sessionId, businessId) => {
             // 3. Detect Initial Service Interest (if needed)
             await _detectAndSetInitialServiceInterest(session, businessData, message);
 
-            // 4. Generate and Refine Response
-            const finalResponse = await _generateAndRefineResponse(message, businessData, session.messages, isNewSession, session);
+            // 4. Generate Initial Response (including first override pass based on AI type)
+            let finalResponse = await _generateAndRefineResponse(message, businessData, session.messages, isNewSession, session);
+            console.log(`[Controller Flow] Response after _generateAndRefineResponse (inc. AI type overrides):`, JSON.stringify(finalResponse, null, 2));
 
-            // 5. Track Problem Description (if needed)
+            // 5. Apply Overrides based on detected user message types
+            console.log("[Override Check 2] Applying overrides based on detected user message types:");
+            const requestTypes = detectRequestTypes(message);
+            console.log("[Override Check 2] Detected request types:", requestTypes);
+            finalResponse = applyResponseOverrides(finalResponse, requestTypes, session, businessData);
+            console.log(`[Controller Flow] Final response after user type overrides (type: ${finalResponse.type}):`, finalResponse.response);
+
+            // 6. Track Problem Description (if needed)
             await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type);
             
-            // 6. Handle Lead Saving (if needed)
+            // 7. Handle Lead Saving (if needed)
             await _handleLeadSavingIfNeeded(finalResponse, session, message);
 
-            // 7. Track Hourly Activity
+            // 8. Track Hourly Activity
             try {
                 await trackChatEvent(businessId, 'HOURLY_ACTIVITY');
             } catch (error) {
                 console.error("Error tracking hourly activity:", error);
             }
 
-            // 8. Log Interaction Messages
+            // 9. Log Interaction Messages
             await _logInteractionMessages(sessionId, message, finalResponse);
 
-            // 9. Track Conversation Completion (if needed)
+            // 10. Track Conversation Completion (if needed)
             await _trackConversationCompletionIfNeeded(finalResponse, session);
 
-            // 10. Return Final Response
+            // 11. Return Final Response
             return {
                 response: finalResponse.response,
                 type: finalResponse.type,

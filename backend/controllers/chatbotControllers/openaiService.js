@@ -166,11 +166,36 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
             case 'APPOINTMENT_REQUEST':
                 console.log('[generateAIResponse] Matched case: APPOINTMENT_REQUEST'); // Log case match
-                responsePayload = {
-                    type: 'APPOINTMENT_REQUEST',
-                    response: RESPONSE_TEMPLATES.appointment_request_acknowledge || 
-                              "Okay, I can definitely help with scheduling an appointment. 😊 To get started, could you please provide your full name, phone number, and email address? 📞"
-                };
+
+                // --- Add check for availability keywords --- 
+                const availabilityKeywords = [
+                    'weekend', 'saturday', 'sunday', 
+                    'noon', 'afternoon', 'evening', 'morning',
+                    'hours', 'available', 'availability', 'when',
+                    'monday', 'tuesday', 'wednesday', 'thursday', 'friday',
+                    'time'
+                ];
+                const containsAvailabilityKeyword = availabilityKeywords.some(keyword => normalizedMessage.includes(keyword));
+                const hasOperatingHours = !!businessData.operatingHours;
+
+                console.log(`[Availability Check] Contains keywords: ${containsAvailabilityKeyword}, Has operating hours: ${hasOperatingHours}`);
+
+                if (containsAvailabilityKeyword && hasOperatingHours) {
+                    console.log('[generateAIResponse] APPOINTMENT_REQUEST contains availability keywords. Calling AI Fallback to answer based on hours.');
+                    // Pass specific instructions to the fallback AI
+                    const fallbackMessage = `The user is asking about appointment availability: "${message}". Please answer their specific question based *only* on the provided operating hours: "${businessData.operatingHours}". Do not ask for contact details yet. State the relevant hours if applicable.`;
+                    responsePayload = await generateAIFallbackResponse(fallbackMessage, messageHistory, true); // Pass true to indicate it's a targeted query
+                    // Ensure the type reflects it's an availability answer, not a booking attempt
+                    responsePayload.type = 'AVAILABILITY_INFO'; 
+                } else {
+                     console.log('[generateAIResponse] APPOINTMENT_REQUEST without specific availability keywords or hours. Proceeding with standard contact request.');
+                     responsePayload = {
+                        type: 'APPOINTMENT_REQUEST',
+                        response: RESPONSE_TEMPLATES.appointment_request_acknowledge || 
+                                  "Okay, I can definitely help with scheduling an appointment. 😊 To get started, could you please provide your full name, phone number, and email address? 📞"
+                    };
+                }
+                // --- End check for availability keywords ---
                 break;
 
             case 'UNKNOWN':
