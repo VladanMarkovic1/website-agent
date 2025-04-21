@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getAuthToken } from '../context/AuthContext.jsx'; // Import the getter
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
@@ -18,7 +19,9 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // Get token using the exported getter function
+    const token = getAuthToken(); 
+    console.log('API Interceptor - Attaching token:', token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -101,9 +104,14 @@ api.interceptors.response.use(
       // Handle authentication errors
       if (error.response.status === 401) {
         console.log('🔑 Authentication error - redirecting to login');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        // Clear sessionStorage (AuthProvider useEffect will clear the currentToken variable)
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        // Redirect to login
+        if (window.location.pathname !== '/login') { // Avoid redirect loops
+            window.location.href = '/login';
+        }
+        // It's important to return a rejected promise to stop further processing
         return Promise.reject(error);
       }
       
