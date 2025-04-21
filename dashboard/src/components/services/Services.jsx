@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import apiClient from '../../services/api';
+import apiClient from '../../utils/api';
 import InputField from '../layout/InputField';
 import Button from '../layout/SubmitButton';
 import { HiPlus, HiTrash, HiSave, HiRefresh, HiExclamation, HiWifi } from 'react-icons/hi';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useNavigate } from 'react-router-dom';
 
 const Services = () => {
   const [services, setServices] = useState([]);
@@ -15,6 +17,9 @@ const Services = () => {
   const [retryCount, setRetryCount] = useState(0);
   const messageTimeoutRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const businessId = user?.businessId;
 
   // Monitor online/offline status
   useEffect(() => {
@@ -52,16 +57,14 @@ const Services = () => {
     }
   }, [services.length]);
 
-  // Retrieve businessId from stored user data
-  const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
-  const businessId = user?.businessId;
-
   // Fetch services on component mount or when retry is triggered
   useEffect(() => {
     const fetchServices = async () => {
       if (!businessId) {
-        setError('No business information found.');
+        console.error('[Services] Missing businessId, redirecting...');
+        setError('No business information found. Please log in again.');
         setLoading(false);
+        navigate('/login');
         return;
       }
 
@@ -93,7 +96,7 @@ const Services = () => {
     };
 
     fetchServices();
-  }, [businessId, isOffline, retryCount]);
+  }, [businessId, isOffline, retryCount, navigate]);
 
   // Handle website scraping
   const handleScrape = async () => {
