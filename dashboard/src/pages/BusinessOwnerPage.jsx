@@ -9,21 +9,25 @@ import {
   HiOutlineX,
   HiOutlineChartBar,
 } from 'react-icons/hi';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const BusinessOwnerPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { user, logout } = useAuth();
 
   useEffect(() => {
+    if (!user) {
+      console.warn('[BusinessOwnerPage] No user found in context, redirecting to login.');
+      navigate('/login');
+      return;
+    }
     setIsSidebarOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, user, navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
+    logout();
   };
 
   const navigation = [
@@ -32,6 +36,10 @@ const BusinessOwnerPage = () => {
     { name: 'Services', href: '/dashboard/services', icon: HiOutlineOfficeBuilding },
     { name: 'Settings', href: '/dashboard/settings', icon: HiOutlineCog },
   ];
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-x-auto">
