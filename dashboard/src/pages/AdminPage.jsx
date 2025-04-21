@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../services/api';
+import apiClient from '../utils/api';
 import InputField from '../components/layout/InputField';
 import Button from '../components/layout/SubmitButton';
 import { 
@@ -15,6 +15,7 @@ import {
   HiOutlineTrash,
   HiOutlinePencil
 } from 'react-icons/hi';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const AdminPage = () => {
   const [email, setEmail] = useState('');
@@ -26,6 +27,7 @@ const AdminPage = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   // State for script tag generation
   const [scriptBusinessId, setScriptBusinessId] = useState('');
@@ -76,9 +78,7 @@ const AdminPage = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
+    logout();
   };
 
   const handleSubmit = async (e) => {
