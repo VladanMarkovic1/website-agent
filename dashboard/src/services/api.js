@@ -1,16 +1,16 @@
 import axios from 'axios';
 
 // Get the API base URL from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-if (!API_BASE_URL) {
+if (!API_BACKEND_URL) {
     console.error("Error: VITE_API_BASE_URL is not defined in the environment variables.");
     // Handle this appropriately - maybe show an error message to the user
 }
 
 // Create an Axios instance
 const apiClient = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: API_BACKEND_URL,
     headers: {
         'Content-Type': 'application/json',
     },
