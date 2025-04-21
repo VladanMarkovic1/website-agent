@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { getAnalyticsData, getTodaysAnalytics } from '../../services/analyticsService';
 import { format } from 'date-fns';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useNavigate } from 'react-router-dom';
 
 const AnalyticsDashboard = () => {
     const [analytics, setAnalytics] = useState(null);
     const [todaysSummary, setTodaysSummary] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const businessId = user.businessId;
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const businessId = user?.businessId;
 
     useEffect(() => {
         const fetchData = async () => {
             if (!businessId) {
+                console.error('[Analytics] Missing businessId, redirecting...');
                 setError('Business ID not found. Please log in again.');
                 setLoading(false);
+                navigate('/login');
                 return;
             }
 
@@ -53,17 +58,7 @@ const AnalyticsDashboard = () => {
         const pollInterval = setInterval(fetchData, 30000);
 
         return () => clearInterval(pollInterval);
-    }, [businessId]);
-
-    if (!businessId) {
-        return (
-            <div className="p-6">
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    Business ID not found. Please log in again.
-                </div>
-            </div>
-        );
-    }
+    }, [businessId, navigate]);
 
     return (
         <div className="p-6">
