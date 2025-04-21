@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { HiOutlineSearch, HiOutlineAdjustments, HiOutlineX, HiOutlineChevronDown, HiOutlineChevronUp, HiOutlineRefresh, HiOutlineExclamation, HiOutlineWifi } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
 
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useFetchLeads } from '../../hooks/useFetchLeads';
 import { useLeadFilters } from '../../hooks/useLeadFilters';
 import { updateLeadStatus } from '../../services/leadService';
@@ -16,11 +17,20 @@ const Leads = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [actionError, setActionError] = useState(''); // For errors from status updates etc.
   const [successMessage, setSuccessMessage] = useState(''); // For general success messages
+  const { user } = useAuth(); // Get user from Auth context
 
-  // Get user info and businessId
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  // Derive businessId safely from the user context
   const businessId = user?.businessId;
-  
+
+  // Redirect if businessId is missing (should not happen if logged in correctly)
+  useEffect(() => {
+    if (!businessId) {
+      console.error('[Leads.jsx] Missing businessId, redirecting to login.');
+      // Consider calling logout() from context here too for full cleanup
+      navigate('/login'); 
+    }
+  }, [businessId, navigate]);
+
   // --- Custom Hooks --- 
   const {
     leads,
@@ -28,6 +38,7 @@ const Leads = () => {
     loading,
     error: fetchError,
     isOffline,
+    setIsOffline, // Allow hook to update offline state
     refreshing,
     handleRefresh,
     handleRetry,
