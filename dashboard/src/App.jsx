@@ -9,49 +9,52 @@ import Settings from './components/settings/Settings';
 import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/auth/ProtectedRoutes';
 import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
-    <BrowserRouter future={{ v7_startTransition: true }}>
-      <Routes future={{ v7_relativeSplatPath: true }}>
-        {/* Public Routes */}
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-       
-        {/* Protected Dashboard Routes */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        >
-          {/* Nested Dashboard Routes */}
-          <Route index element={<Navigate to="/dashboard/leads" replace />} />
-          <Route path="leads" element={<Leads />} />
-          <Route path="services" element={<Services />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="analytics" element={<AnalyticsDashboard />} />
-        </Route>
+    <AuthProvider>
+      <BrowserRouter future={{ v7_startTransition: true }}>
+        <Routes future={{ v7_relativeSplatPath: true }}>
+          {/* Public Routes */}
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+         
+          {/* Protected Dashboard Routes */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          >
+            {/* Nested Dashboard Routes */}
+            <Route index element={<Navigate to="/dashboard/leads" replace />} />
+            <Route path="leads" element={<Leads />} />
+            <Route path="services" element={<Services />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="analytics" element={<AnalyticsDashboard />} />
+          </Route>
 
-        {/* Protected Admin Route */}
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <AdminPage />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Redirect root to login page */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        
-        {/* Redirect any unknown routes to login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Protected Admin Route */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Redirect root to login page */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Redirect any unknown routes to login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
