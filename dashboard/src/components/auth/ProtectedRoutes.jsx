@@ -1,21 +1,28 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { useAuth, getAuthToken } from '../../context/AuthContext.jsx';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const token = localStorage.getItem('token');
-  const user = token ? JSON.parse(localStorage.getItem('user')) : null;
+  const { user } = useAuth();
+  const currentToken = getAuthToken();
 
-  // If no token is present, redirect to login.
-  if (!token) {
-    return <Navigate to="/login" />;
+  console.log('[ProtectedRoute] Check:', { 
+      currentToken: !!currentToken,
+      userRole: user?.role, 
+      requiredRole 
+  });
+
+  if (!currentToken) {
+    console.log('[ProtectedRoute] No token found, redirecting to /login');
+    return <Navigate to="/login" replace />;
   }
 
-  // If a required role is provided, ensure the logged-in user matches it.
-  if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/login" />;
+  if (requiredRole && (!user || user.role !== requiredRole)) {
+    console.log(`[ProtectedRoute] Role mismatch (User: ${user?.role}, Required: ${requiredRole}), redirecting to /login`);
+    return <Navigate to="/login" replace />;
   }
 
-  // Otherwise, render the child component(s).
+  console.log('[ProtectedRoute] Access granted.');
   return children;
 };
 
