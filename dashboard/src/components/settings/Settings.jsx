@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import apiClient from '../../services/api'; // Import apiClient
+import apiClient from '../../utils/api'; // Import apiClient from correct path
 import InputField from '../layout/InputField'; // Re-use InputField
 import Button from '../layout/SubmitButton'; // Re-use Button
 import { HiSave } from 'react-icons/hi'; // Icon for save button
+import { useAuth } from '../../context/AuthContext.jsx'; // Import useAuth
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const Settings = () => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const businessId = user?.businessId;
+  const { user } = useAuth(); // Get user from context
+  const navigate = useNavigate(); // Initialize useNavigate
+  const businessId = user?.businessId; // Safely derive businessId
 
   // State for widget settings form
   const [primaryColor, setPrimaryColor] = useState('#3B82F6'); // Default blue
@@ -22,8 +25,10 @@ const Settings = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       if (!businessId) {
+        console.error('[Settings] Missing businessId, redirecting...');
         setError('Business ID not found. Cannot load settings.');
         setLoading(false);
+        navigate('/login'); // Redirect if no businessId
         return;
       }
       try {
@@ -45,7 +50,7 @@ const Settings = () => {
     };
 
     fetchSettings();
-  }, [businessId]); // Re-run if businessId changes (though unlikely here)
+  }, [businessId, navigate]); // Re-run if businessId changes (though unlikely here)
 
   const handleSaveSettings = async (e) => {
     e.preventDefault(); // Prevent default form submission
@@ -81,6 +86,12 @@ const Settings = () => {
         setTimeout(() => setSuccessMessage(''), 3000);
     }
   };
+
+  // Render null or loading indicator if user/businessId isn't available yet
+  if (!user || !businessId) { 
+      // You might want a more sophisticated loading state here
+      return null; 
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-8">
