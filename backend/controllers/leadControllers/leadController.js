@@ -7,29 +7,7 @@ import { trackChatEvent } from "../analyticsControllers/trackEventService.js";
  * This is your core function that returns a response message.
  */
 
-// Helper functions
-const extractUserConcern = (messageHistory) => {
-    if (!messageHistory || messageHistory.length === 0) return null;
-    
-    // Find first non-greeting user message that indicates a dental concern
-    const concernMessage = messageHistory
-        .filter(msg => msg.isUser && 
-            !msg.message.toLowerCase().includes('hello') && 
-            !msg.message.toLowerCase().includes('hi'))
-        .map(msg => msg.message)
-        .find(msg => msg);
 
-    // Check for emergency keywords
-    const emergencyKeywords = ['broken', 'pain', 'bleeding', 'swelling', 'accident', 'emergency'];
-    const isEmergency = emergencyKeywords.some(keyword => 
-        concernMessage?.toLowerCase().includes(keyword)
-    );
-
-    return {
-        message: concernMessage || null,
-        isEmergency
-    };
-};
 
 export const saveLead = async (leadContext) => {
     try {
