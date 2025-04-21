@@ -1,4 +1,4 @@
-import apiClient from './api';
+import apiClient from '../utils/api';
 
 export const getAnalyticsData = async (businessId, startDate, endDate) => {
     try {
