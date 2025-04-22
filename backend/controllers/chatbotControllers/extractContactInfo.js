@@ -1,4 +1,3 @@
-
 /**
  * Checks if message contains contact information
  * @param {string} message - User's message
@@ -73,8 +72,8 @@ export function extractContactInfo(message) {
     const phone = message.match(phoneRegex)?.[1]?.replace(/\s+/g, '');
     let name = message.match(nameRegex)?.[1];
 
-    // If we found at least two pieces of information
-    if ((email && phone) || (email && name) || (phone && name)) {
+    // If we found at least ONE piece of information using the individual regex
+    if (email || phone || name) { 
         return {
             email: email || null,
             phone: phone || null,

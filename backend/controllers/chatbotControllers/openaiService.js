@@ -16,17 +16,40 @@ dotenv.config();
 // Removed handleServiceInquiry (moved to serviceMatcher.js)
 // Removed _generateOpenAIFallback (moved to aiFallbackService.js)
 
+// Helper function to create prompt for missing info
+const createMissingInfoPrompt = (missingFields, providedInfo) => {
+    let prompt = "";
+    if (providedInfo.name && providedInfo.phone && !providedInfo.email) {
+        prompt = `Thanks, ${providedInfo.name}! Got your phone number. Could you also provide your email address?`;
+    } else if (providedInfo.name && !providedInfo.phone && providedInfo.email) {
+        prompt = `Thanks, ${providedInfo.name}! Got your email. Could you also provide your phone number?`;
+    } else if (!providedInfo.name && providedInfo.phone && providedInfo.email) {
+        prompt = `Got your phone and email! Could you please provide your full name too?`;
+    } else if (providedInfo.name && !providedInfo.phone && !providedInfo.email) {
+        prompt = `Thanks, ${providedInfo.name}! Could you also share your phone number and email address?`;
+    } else if (!providedInfo.name && providedInfo.phone && !providedInfo.email) {
+        prompt = `Got your phone number! Could you also share your name and email address?`;
+    } else if (!providedInfo.name && !providedInfo.phone && providedInfo.email) {
+        prompt = `Got your email address! Could you also share your name and phone number?`;
+    } else {
+        // Default fallback if logic somehow misses a case (shouldn't happen)
+        prompt = RESPONSE_TEMPLATES.contact_after_yes; 
+    }
+    return prompt;
+};
+
 // --- Main Exported Function (Orchestrator) --- 
 
-export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false) => {
+export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false, previousPartialInfo = { name: null, phone: null, email: null }) => {
     try {
         console.log('--- generateAIResponse Orchestrator Start ---');
         console.log('User Message:', message);
+        console.log('Previous Partial Info:', previousPartialInfo); // Log previous info
         const lastBotMessage = messageHistory.filter(msg => msg.role === 'assistant').pop();
         const normalizedMessage = message.toLowerCase().trim(); // Normalize once here
 
         // 1. Classify Intent
-        const intent = classifyUserIntent(message, messageHistory, businessData.services, isNewSession);
+        const intent = classifyUserIntent(message, messageHistory, businessData.services, isNewSession, previousPartialInfo);
         console.log('Classified Intent:', JSON.stringify(intent));
 
         let responsePayload = {};
@@ -36,13 +59,14 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         switch (intent.type) {
             case 'CONTACT_INFO_PROVIDED':
                 console.log('[generateAIResponse] Matched case: CONTACT_INFO_PROVIDED');
-                const serviceContext = intent.contactInfo.service || lastBotMessage?.detectedService || 'your dental needs';
+                const contactInfo = intent.contactInfo; // Already contains full accumulated info
+                const serviceContext = contactInfo.service || lastBotMessage?.detectedService || 'your dental needs';
                 const businessPhoneNumber = businessData?.businessPhoneNumber;
                 
                 // Updated confirmation message emphasizing the call back for scheduling
-                const confirmationPrefix = `✅ Thank you, ${intent.contactInfo.name}! Your information has been received. We've noted your interest in ${serviceContext}.\n\n`;
+                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! Your information has been received. We've noted your interest in ${serviceContext}.\n\n`;
                 // Revised suffix to mention booking ideal time
-                const scheduleSuffix = `🧑‍⚕️ Our team will call you back at ${intent.contactInfo.phone} as soon as possible during business hours to discuss your needs and book your ideal appointment time.\n\n`; 
+                const scheduleSuffix = `🧑‍⚕️ Our team will call you back at ${contactInfo.phone} as soon as possible during business hours to discuss your needs and book your ideal appointment time.\n\n`; 
                 const callUsSuffix = businessPhoneNumber 
                     ? `📞 If your situation requires immediate attention or you prefer to speak with us sooner, please feel free to call us directly at ${businessPhoneNumber}.`
                     : ''; // Omit if no phone number
@@ -50,8 +74,17 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 responsePayload = {
                     type: 'CONTACT_INFO',
                     response: confirmationPrefix + scheduleSuffix + callUsSuffix, // Assemble the message
-                    contactInfo: intent.contactInfo,
+                    contactInfo: contactInfo, // Pass the complete, accumulated info
                     serviceContext
+                };
+                break;
+
+            case 'PARTIAL_CONTACT_INFO_PROVIDED':
+                console.log('[generateAIResponse] Matched case: PARTIAL_CONTACT_INFO_PROVIDED');
+                responsePayload = {
+                    type: 'PARTIAL_CONTACT_REQUEST', // Indicate bot is asking for more
+                    response: createMissingInfoPrompt(intent.missingFields, intent.contactInfo),
+                    contactInfo: intent.contactInfo // Pass back the updated partial info
                 };
                 break;
 
@@ -188,20 +221,30 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         console.log('[generateAIResponse] Exiting switch, final responsePayload:', JSON.stringify(responsePayload)); // Log after switch
 
         console.log('--- generateAIResponse Orchestrator End ---');
-        // Ensure payload always has type and response, pass through context
+        // Return both the original classified intent and the final payload
         return {
-            type: responsePayload.type || 'ERROR',
-            response: responsePayload.response || RESPONSE_TEMPLATES.error_fallback,
-            contactInfo: responsePayload.contactInfo || null, 
-            serviceContext: responsePayload.serviceContext || null, 
-            problemCategory: responsePayload.problemCategory || null 
+            classifiedIntent: intent, // The original result from classifyUserIntent
+            responsePayload: {
+                 type: responsePayload.type || 'ERROR',
+                 response: responsePayload.response || RESPONSE_TEMPLATES.error_fallback,
+                 contactInfo: responsePayload.contactInfo || null, 
+                 serviceContext: responsePayload.serviceContext || null, 
+                 problemCategory: responsePayload.problemCategory || null 
+            }
         };
 
     } catch (error) {
         console.error("Error in generateAIResponse orchestrator:", error);
+        // Still need to return the expected structure even on error
         return {
-            type: 'ERROR',
-            response: RESPONSE_TEMPLATES.error_fallback
+             classifiedIntent: { type: 'ERROR', contactInfo: null }, // Provide a minimal classifiedIntent
+             responsePayload: {
+                 type: 'ERROR',
+                 response: RESPONSE_TEMPLATES.error_fallback,
+                 contactInfo: null,
+                 serviceContext: null,
+                 problemCategory: null
+             }
         };
     }
 };

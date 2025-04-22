@@ -41,7 +41,12 @@ const chatSessionSchema = new mongoose.Schema({
         default: Date.now, 
         index: true // Index for efficient cleanup of old sessions
     },
-    contactInfo: { // Store captured contact info
+    partialContactInfo: {
+        name: { type: String, default: null },
+        phone: { type: String, default: null },
+        email: { type: String, default: null },
+    },
+    contactInfo: { // Store captured COMPLETE contact info (after lead save)
         name: String,
         phone: String,
         email: String,

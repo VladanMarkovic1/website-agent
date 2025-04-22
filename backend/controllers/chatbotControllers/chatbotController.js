@@ -77,17 +77,23 @@ async function _detectAndSetInitialServiceInterest(session, businessData, messag
     }
 }
 
-async function _generateAndRefineResponse(message, businessData, sessionMessages, isNewSession, session) {
+async function _generateAndRefineResponse(message, businessData, sessionMessages, isNewSession, session, previousPartialInfo) {
     console.log(`[AI Call Prep] Calling generateAIResponse. isNewSession=${isNewSession}. Message: "${message}". History length: ${sessionMessages?.length || 0}`);
     if (sessionMessages && sessionMessages.length > 0) {
         console.log(`[AI Call Prep] Last ${Math.min(3, sessionMessages.length)} messages:`, JSON.stringify(sessionMessages.slice(-3), null, 2));
     }
-    const initialResponse = await generateAIResponse(message, businessData, sessionMessages, isNewSession);
-    console.log(`[AI Response Log] Initial AI Response object:`, JSON.stringify(initialResponse, null, 2)); // Log initial AI response object
+    
+    // *** Assume generateAIResponse now returns { classifiedIntent, responsePayload } ***
+    const aiResult = await generateAIResponse(message, businessData, sessionMessages, isNewSession, previousPartialInfo);
+    const classifiedIntent = aiResult.classifiedIntent; // Original classification
+    const initialResponsePayload = aiResult.responsePayload; // Payload after internal logic/switch in generateAIResponse
+    
+    console.log(`[AI Response Log] Original Classified Intent:`, JSON.stringify(classifiedIntent, null, 2)); 
+    console.log(`[AI Response Log] Initial Response Payload from generateAIResponse:`, JSON.stringify(initialResponsePayload, null, 2)); 
 
-    // --- First Override Pass (Based on AI response type) ---
-    console.log("[Override Check 1] Applying overrides based on initial AI response type.");
-    let responseAfterOverride1 = applyResponseOverrides(initialResponse, [], session, businessData);
+    // --- First Override Pass (Based on the response payload type from generateAIResponse) ---
+    console.log("[Override Check 1] Applying overrides based on initial response payload type.");
+    let responseAfterOverride1 = applyResponseOverrides(initialResponsePayload, [], session, businessData);
     console.log("[Override Check 1] Response after first override pass:", JSON.stringify(responseAfterOverride1, null, 2));
 
     // Update session interest if override specified it
@@ -96,7 +102,9 @@ async function _generateAndRefineResponse(message, businessData, sessionMessages
         await updateSessionData(session.sessionId, { serviceInterest: responseAfterOverride1.serviceContext });
         session.serviceInterest = responseAfterOverride1.serviceContext; // Update local session object
     }
-    return responseAfterOverride1; // Return the response after the first override pass
+    
+    // Return both the potentially overridden payload and the original classified intent
+    return { classifiedIntent, responsePayload: responseAfterOverride1 }; 
 }
 
 async function _trackProblemDescriptionIfNeeded(session, message, finalResponseType) {
@@ -180,45 +188,48 @@ function _determineLeadProblemContext(session, initialUserMessage) {
     return leadProblemContext;
 }
 
-async function _handleLeadSavingIfNeeded(finalResponse, session, initialUserMessage) {
-    if (!(finalResponse.type === 'CONTACT_INFO' && finalResponse.contactInfo)) {
+async function _handleLeadSavingIfNeeded(finalResponse, session, initialUserMessage, classifiedIntent) {
+    // Check the original classified intent type
+    if (!(classifiedIntent && classifiedIntent.type === 'CONTACT_INFO_PROVIDED' && classifiedIntent.contactInfo)) {
         if (finalResponse.type !== 'ERROR') {
-            console.log(`[Controller] Final response type is ${finalResponse.type}. Not saving lead.`);
+            console.log(`[Controller] Original classified type (${classifiedIntent?.type}) is not CONTACT_INFO_PROVIDED or contactInfo missing. Not saving lead.`);
         }
-        return; // Only proceed if it's a CONTACT_INFO type with contactInfo
+        return; // Only proceed if original classification was complete contact info
     }
 
-    console.log('[Controller] CONTACT_INFO type detected. Attempting to save lead...');
+    console.log('[Controller] Original classification CONTACT_INFO_PROVIDED detected. Attempting to save lead...');
     try {
         const leadProblemContext = _determineLeadProblemContext(session, initialUserMessage);
 
         const leadContext = {
             businessId: session.businessId,
-            name: finalResponse.contactInfo.name,
-            phone: finalResponse.contactInfo.phone,
-            email: finalResponse.contactInfo.email,
-            serviceInterest: finalResponse.serviceContext || session.serviceInterest || 'Dental Consultation',
+            name: classifiedIntent.contactInfo.name, // Use info from classifiedIntent
+            phone: classifiedIntent.contactInfo.phone,
+            email: classifiedIntent.contactInfo.email,
+            serviceInterest: finalResponse.serviceContext || session.serviceInterest || 'Dental Consultation', // Can still use finalResponse for service context if refined
             problemDescription: leadProblemContext,
             messageHistory: session.messages 
         };
         
-        // --- ADD LOGGING BEFORE SAVELEAD --- 
         console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2));
-        // --- END LOGGING ---
-
+        
         await saveLead(leadContext);
         console.log('[Controller] saveLead function executed successfully for sessionId:', session.sessionId);
         
-        // Update session contact info 
-        await updateSessionData(session.sessionId, { contactInfo: finalResponse.contactInfo }); 
-        session.contactInfo = finalResponse.contactInfo; // Update local session object
+        // Update session contact info (this stores the *complete* info, might be redundant but okay)
+        await updateSessionData(session.sessionId, { contactInfo: classifiedIntent.contactInfo }); 
+        session.contactInfo = classifiedIntent.contactInfo; // Update local session object
+
+        // --- CLEAR Partial Info from Session --- 
+        console.log('[Controller] Clearing partialContactInfo from session after successful lead save.');
+        await updateSessionData(session.sessionId, { partialContactInfo: null });
+        session.partialContactInfo = null; // Also clear local session object state
+        // --- END CLEAR --- 
         
         await trackChatEvent(session.businessId, 'LEAD_GENERATED', { service: leadContext.serviceInterest });
 
     } catch (error) {
         console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack);
-        // Decide if the finalResponse should be modified here to indicate save failure to the user?
-        // For now, we just log the error.
     }
 }
 
@@ -269,6 +280,8 @@ const processChatMessage = async (message, sessionId, businessId) => {
         // 1. Initialize Session & Track Start
         const { session, isNewSession } = await _initializeSessionAndTrackStart(sessionId, businessId);
         const lastBotResponseType = session.lastBotResponseType; // Get previous bot response type
+        const partialContactInfo = session.partialContactInfo || { name: null, phone: null, email: null }; // Get previous partial info
+        console.log('[Controller] Retrieved previous partial contact info from session:', partialContactInfo);
 
         try {
             // 2. Fetch Business Data
@@ -297,20 +310,64 @@ const processChatMessage = async (message, sessionId, businessId) => {
             // 4. Detect Initial Service Interest (if needed)
             await _detectAndSetInitialServiceInterest(session, businessData, message);
 
-            // 5. Generate Initial Response (including first override pass based on AI type)
-            let finalResponse = await _generateAndRefineResponse(message, businessData, session.messages, isNewSession, session);
-            console.log(`[Controller Flow] Response after _generateAndRefineResponse (inc. AI type overrides):`, JSON.stringify(finalResponse, null, 2));
+            // Re-read partial info from the session object *just before* the AI call
+            const currentPartialInfo = session.partialContactInfo || { name: null, phone: null, email: null };
+            console.log(`[AI Call Prep] Using partial info for AI/Classifier call:`, currentPartialInfo);
 
-            // 6. Apply Overrides based on detected user message types
-            console.log("[Override Check 2] Applying overrides based on detected user message types:");
-            finalResponse = applyResponseOverrides(finalResponse, requestTypes, session, businessData);
-            console.log(`[Controller Flow] Final response after user type overrides (type: ${finalResponse.type}):`, finalResponse.response);
-
-            // 7. Track Problem Description (if needed)
-            await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type);
+            // 5. Generate Initial Response (passing the most recent partialContactInfo)
+            //    This now returns { classifiedIntent, responsePayload }
+            const { classifiedIntent, responsePayload: intermediateResponse } = await _generateAndRefineResponse(message, businessData, session.messages, isNewSession, session, currentPartialInfo);
+            console.log(`[Controller Flow] Response payload after _generateAndRefineResponse (inc. AI type overrides):`, JSON.stringify(intermediateResponse, null, 2));
             
-            // 8. Handle Lead Saving (if needed)
-            await _handleLeadSavingIfNeeded(finalResponse, session, message);
+            // Store the type determined by the *original classifier* run
+            const originalClassifiedType = classifiedIntent.type; 
+            console.log(`[Override Check 2 Prep] Original Classified Type: ${originalClassifiedType}`);
+            console.log(`[Override Check 2 Prep] Type before user message override: ${intermediateResponse.type}`);
+
+            // 6. Apply Overrides based on detected user message types (acts on the intermediateResponse payload)
+            console.log("[Override Check 2] Applying overrides based on detected user message types:", requestTypes);
+            let finalResponse = applyResponseOverrides(intermediateResponse, requestTypes, session, businessData);
+            console.log(`[Controller Flow] Final response payload after user type overrides (type: ${finalResponse.type}):`, finalResponse.response);
+
+            // --- Correction Step ---
+            // If the *original classifier* determined contact info was complete, 
+            // ensure the subsequent overrides didn't discard that critical state for lead saving.
+            // We primarily ensure the lead saving function gets called correctly later.
+            // We might still want the final *response text* to be e.g., a confirmation, not necessarily the raw "CONTACT_INFO_PROVIDED" response.
+            if (originalClassifiedType === 'CONTACT_INFO_PROVIDED' && finalResponse.type !== 'CONTACT_INFO_PROVIDED') {
+                console.warn(`[Override Info] Original classification was CONTACT_INFO_PROVIDED, but final response type is ${finalResponse.type}. Lead saving check will use original classification.`);
+                // We don't necessarily force finalResponse.type back here, 
+                // as the text in finalResponse might be a better confirmation message.
+                // The lead saving logic (_handleLeadSavingIfNeeded) now checks originalClassifiedType.
+            }
+            // --- End Correction Step ---
+
+            // --- Refined Save Partial Info Back to Session ---
+            // Save partial info IF the *original classifier* detected it.
+            // Use the contactInfo from the *original classification* result.
+            if (originalClassifiedType === 'PARTIAL_CONTACT_INFO_PROVIDED' && classifiedIntent.contactInfo) {
+                 const partialInfoToSave = classifiedIntent.contactInfo;
+                 // Only save if it's different from what's already in the session to avoid unnecessary DB writes
+                 if (JSON.stringify(partialInfoToSave) !== JSON.stringify(session.partialContactInfo)) {
+                     console.log('[Controller] Saving/Updating partial contact info to session (based on original classification):', partialInfoToSave);
+                     await updateSessionData(sessionId, { partialContactInfo: partialInfoToSave });
+                     session.partialContactInfo = partialInfoToSave; // Keep local session object in sync
+                 } else {
+                      console.log('[Controller] Partial info detected by classifier, but it matches existing session data. No update needed.');
+                 }
+            } else if (session.partialContactInfo && 
+                       originalClassifiedType !== 'CONTACT_INFO_PROVIDED' && 
+                       originalClassifiedType !== 'PARTIAL_CONTACT_INFO_PROVIDED') {
+                // If we had partial info previously, but the classifier didn't detect partial/complete this turn, log it.
+                console.log(`[Controller] Classifier did not detect partial/complete info this turn (type: ${originalClassifiedType}). Keeping existing partial info in session:`, session.partialContactInfo);
+            }
+            // --- End Refined Save Partial Info ---
+            
+            // 7. Track Problem Description (if needed)
+            await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type); // Use finalResponse.type for tracking relevance
+            
+            // 8. Handle Lead Saving (if needed - passes original classified intent)
+            await _handleLeadSavingIfNeeded(finalResponse, session, message, classifiedIntent);
 
             // 9. Track Hourly Activity
             try {
@@ -319,7 +376,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 console.error("Error tracking hourly activity:", error);
             }
 
-            // 10. Log Interaction Messages
+            // 10. Log Interaction Messages (stores last bot response type)
             await _logInteractionMessages(sessionId, message, userMessageType, finalResponse);
 
             // 11. Track Conversation Completion (if needed)
