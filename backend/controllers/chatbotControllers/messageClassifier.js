@@ -1,4 +1,4 @@
-import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES, SERVICE_FAQ_KEYWORDS, OPERATING_HOURS_KEYWORDS } from './chatbotConstants.js';
+import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES, SERVICE_FAQ_KEYWORDS, OPERATING_HOURS_KEYWORDS, RESCHEDULE_KEYWORDS, CANCEL_KEYWORDS } from './chatbotConstants.js';
 import { extractContactInfo } from './extractContactInfo.js';
 
 const isGreeting = (normalizedMsg) => {
@@ -212,19 +212,33 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
     }
     // --- END NEW CHECK 4 ---
 
-    // 5. Check for Availability Keywords (Appointment) 
+    // --- NEW CHECK 5: Reschedule Request ---
+    if (RESCHEDULE_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
+        console.log('[Classifier] Found reschedule keyword. Classifying as RESCHEDULE_REQUEST.');
+        return { type: 'RESCHEDULE_REQUEST' };
+    }
+    // --- END NEW CHECK 5 ---
+    
+    // --- NEW CHECK 6: Cancel Request ---
+    if (CANCEL_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
+        console.log('[Classifier] Found cancel keyword. Classifying as CANCEL_REQUEST.');
+        return { type: 'CANCEL_REQUEST' };
+    }
+    // --- END NEW CHECK 6 ---
+
+    // 7. Check for Availability Keywords (Appointment) 
     if (availabilityKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         console.log('[Classifier] Found availability keyword. Classifying as APPOINTMENT_REQUEST.');
         return { type: 'APPOINTMENT_REQUEST' };
     }
 
-    // 6. Check for General Appointment Keywords
+    // 8. Check for General Appointment Keywords
     if (appointmentKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         console.log('[Classifier] Found general appointment keyword. Classifying as APPOINTMENT_REQUEST.');
         return { type: 'APPOINTMENT_REQUEST' };
     }
     
-    // 7. Check for Request to List Services
+    // 9. Check for Request to List Services
     if (listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         console.log('[Classifier] Found list service keyword. Classifying as REQUEST_SERVICE_LIST.');
         return { type: 'REQUEST_SERVICE_LIST' };
@@ -246,7 +260,7 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
     }
     // --- END NEW CHECK 7 ---
 
-    // 8. Check for Simple Confirmations (after specific prompts)
+    // 10. Check for Simple Confirmations (after specific prompts)
     if (lastBotMessage && ('yes' === normalizedMessage || 'sure' === normalizedMessage || 'okay' === normalizedMessage || 'ok' === normalizedMessage)) {
         // Avoid triggering confirmation if the bot just asked for contact info (handled above)
         if (!didBotRequestContactInfo(lastBotMessage.content)) {
@@ -260,13 +274,13 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
         }
     }
 
-    // 9. Check for Explicit Service Inquiry Keywords
+    // 11. Check for Explicit Service Inquiry Keywords
     if (serviceInquiryKeywords.some(kw => normalizedMessage.includes(kw))) {
         console.log('[Classifier] Found explicit service keyword. Classifying as SERVICE_INQUIRY_EXPLICIT.');
         return { type: 'SERVICE_INQUIRY_EXPLICIT' };
     }
 
-    // 10. Check for Follow-up after Dental Problem
+    // 12. Check for Follow-up after Dental Problem
     if (lastBotMessage?.type === 'DENTAL_PROBLEM' && 
         (normalizedMessage.includes('which service') || normalizedMessage.includes('what service') || 
          normalizedMessage.includes('can help') || normalizedMessage.includes('what should i do'))) {
@@ -277,7 +291,7 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
         };
     }
 
-    // 11. Check for Initial Dental Problem Report
+    // 13. Check for Initial Dental Problem Report
     const dentalProblem = isDentalProblem(normalizedMessage);
     if (dentalProblem.isIssue) {
         console.log('[Classifier] Found dental problem. Classifying as DENTAL_PROBLEM.');
@@ -288,13 +302,13 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
         };
     }
 
-    // 12. Check for Greetings (Only based on content, not isNewSession)
+    // 14. Check for Greetings (Only based on content, not isNewSession)
     if (isGreeting(normalizedMessage)) {
         console.log('[Classifier] Found greeting content. Classifying as GREETING.');
         return { type: 'GREETING' };
     }
 
-    // 13. If none of the above, classify as Unknown
+    // 15. If none of the above, classify as Unknown
     console.log('[Classifier] No specific intent matched. Classifying as UNKNOWN.');
     return { type: 'UNKNOWN' };
 }; 
