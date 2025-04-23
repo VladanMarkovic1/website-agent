@@ -206,10 +206,21 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'REQUEST_SERVICE_LIST':
-                 console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST'); // Log case match
+                 console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST');
                  // This logic depends on context, reasonable to keep here
                 if (businessData.services && businessData.services.length > 0) {
-                    const serviceNames = businessData.services.map(s => `• ${s.name}`).join('\n');
+                    // Helper function to decode &amp; repeatedly
+                    const decodeAmps = (text) => {
+                        if (!text) return text;
+                        let decoded = text;
+                        // Keep replacing &amp; until none are left
+                        while (decoded.includes('&amp;')) {
+                            decoded = decoded.replace(/&amp;/g, '&');
+                        }
+                        return decoded;
+                    };
+                    // Map and decode service names
+                    const serviceNames = businessData.services.map(s => `• ${decodeAmps(s.name)}`).join('\n');
                     responsePayload = {
                         type: 'SERVICE_LIST',
                         response: RESPONSE_TEMPLATES.service_list_prefix + serviceNames + RESPONSE_TEMPLATES.service_list_suffix
