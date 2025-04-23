@@ -7,7 +7,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   console.log('[ChatWindow] Rendering with messages:', messages);
 
   const [input, setInput] = useState('');
-  const [headerTitle, setHeaderTitle] = useState('Chat with AI Assistant');
+  const [headerTitle, setHeaderTitle] = useState('Chat Assistant');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -53,10 +53,10 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         <h2 className="text-base font-semibold truncate">{headerTitle}</h2>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-white/20 rounded-full transition-colors ml-2"
+          className="text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent"
           aria-label="Close chat"
         >
-          <FaTimes />
+          <FaTimes className="w-4 h-4" />
         </button>
       </div>
 

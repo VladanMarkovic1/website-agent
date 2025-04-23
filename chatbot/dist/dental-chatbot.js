@@ -44403,7 +44403,7 @@ function defaultUrlTransform(value2) {
 const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = "#4F46E5" }) => {
   console.log("[ChatWindow] Rendering with messages:", messages);
   const [input, setInput] = reactExports.useState("");
-  const [headerTitle, setHeaderTitle] = reactExports.useState("Chat with AI Assistant");
+  const [headerTitle, setHeaderTitle] = reactExports.useState("Chat Assistant");
   const messagesEndRef = reactExports.useRef(null);
   const inputRef = reactExports.useRef(null);
   reactExports.useEffect(() => {
@@ -44443,9 +44443,9 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             "button",
             {
               onClick: onClose,
-              className: "p-1 hover:bg-white/20 rounded-full transition-colors ml-2",
+              className: "text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent",
               "aria-label": "Close chat",
-              children: /* @__PURE__ */ jsxRuntimeExports.jsx(FaTimes, {})
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(FaTimes, { className: "w-4 h-4" })
             }
           )
         ]
