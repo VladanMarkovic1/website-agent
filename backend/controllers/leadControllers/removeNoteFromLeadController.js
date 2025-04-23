@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Lead from '../../models/Lead.js';
+import { decrypt } from "../../utils/encryption.js"; // Import decrypt utility
 
 export const removeNoteFromLeadController = async (req, res) => {
     try {
@@ -49,7 +50,25 @@ export const removeNoteFromLeadController = async (req, res) => {
         await lead.save();
         
         console.log('Note removed successfully');
-        res.status(200).json(lead);
+
+        // Manually decrypt fields before sending the response
+        const leadToSend = { ...lead.toObject() }; // Convert to plain object
+        try {
+            if (leadToSend.name && leadToSend.nameIv) {
+                leadToSend.name = decrypt(leadToSend.name, leadToSend.nameIv);
+            }
+            if (leadToSend.phone && leadToSend.phoneIv) {
+                leadToSend.phone = decrypt(leadToSend.phone, leadToSend.phoneIv);
+            }
+            if (leadToSend.email && leadToSend.emailIv) {
+                leadToSend.email = decrypt(leadToSend.email, leadToSend.emailIv);
+            }
+        } catch (decryptionError) {
+            console.error(`Error decrypting lead ${leadToSend._id} after removing note:`, decryptionError);
+            // Fallback to sending encrypted data on error
+        }
+
+        res.status(200).json(leadToSend);
     } catch (error) {
         console.error("Error removing note:", error);
         res.status(500).json({ error: "Failed to remove note: " + error.message });
