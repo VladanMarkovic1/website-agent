@@ -291,18 +291,30 @@ const processChatMessage = async (message, sessionId, businessId) => {
         const finalResponse = applyResponseOverrides(responseAfterOverride1, userMessageTypes, session, businessData); 
         console.log(`[Controller Flow] Final response payload after user type overrides (type: ${finalResponse.type}):`, finalResponse.response); 
 
-        // Store/update partial contact info if detected by classifier
-        if (classifiedIntent && classifiedIntent.partialContactInfo && Object.keys(classifiedIntent.partialContactInfo).length > 0) {
-             const updatedPartialInfo = { ...previousPartialInfo, ...classifiedIntent.partialContactInfo };
-             await updateSessionData(sessionId, { partialContactInfo: updatedPartialInfo });
-             session.partialContactInfo = updatedPartialInfo; // Update local state
-             console.log('[Controller] Updated partialContactInfo in session:', updatedPartialInfo);
-        } else if (finalResponse.type !== 'CONTACT_INFO' && classifiedIntent?.type !== 'CONTACT_INFO_PROVIDED'){
-            console.log(`[Controller] Classifier did not detect partial/complete info this turn (type: ${classifiedIntent?.type}). Keeping existing partial info in session:`, previousPartialInfo);
-        } // Else: Complete info was provided or override occurred, lead save handles session update/clear
+        // --- Store/Update Partial Contact Info in Session ---
+        // Use the contactInfo from the original classification attempt
+        if (classifiedIntent?.type === 'PARTIAL_CONTACT_INFO_PROVIDED' && classifiedIntent.contactInfo) {
+             const accumulatedPartialInfo = classifiedIntent.contactInfo; // This has merged previous + current extraction
+             // Only update session if the accumulated info differs from what was already there
+             // (or if there was no previous partial info)
+             if (!session.partialContactInfo || JSON.stringify(session.partialContactInfo) !== JSON.stringify(accumulatedPartialInfo)) {
+                  await updateSessionData(sessionId, { partialContactInfo: accumulatedPartialInfo });
+                  session.partialContactInfo = accumulatedPartialInfo; // Update local state
+                  console.log('[Controller] Updated partialContactInfo in session:', accumulatedPartialInfo);
+             } else {
+                  console.log('[Controller] Partial info detected, but session already has the same accumulated data.');
+             }
+        } else if (classifiedIntent?.type === 'CONTACT_INFO_PROVIDED'){
+             // If complete info was provided, ensure partial info is cleared later during lead saving 
+             // (which already happens in _handleLeadSavingIfNeeded)
+             console.log('[Controller] Complete contact info provided.');
+        } else if (session.partialContactInfo) {
+             // If we have partial info in session, but classifier didn't detect partial/complete this turn
+             console.log(`[Controller] Classifier did not detect partial/complete info this turn (type: ${classifiedIntent?.type}). Keeping existing partial info in session:`, session.partialContactInfo);
+        }
+        // --- END Store/Update Partial Contact Info --- 
 
-        // Track problem description if needed (using the revised logic)
-        // This now attempts to store the *first* relevant message during the flow
+        // Track problem description if needed 
         await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type);
 
         // Save Lead if contact info provided
