@@ -40,11 +40,12 @@ const createMissingInfoPrompt = (missingFields, providedInfo) => {
 
 // --- Main Exported Function (Orchestrator) --- 
 
-export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false, previousPartialInfo = { name: null, phone: null, email: null }) => {
+export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false, previousPartialInfo = { name: null, phone: null, email: null }, sessionServiceInterest = null) => {
     try {
         console.log('--- generateAIResponse Orchestrator Start ---');
         console.log('User Message:', message);
         console.log('Previous Partial Info:', previousPartialInfo); // Log previous info
+        console.log('Session Service Interest:', sessionServiceInterest); // <-- Log added parameter
         const lastBotMessage = messageHistory.filter(msg => msg.role === 'assistant').pop();
         const normalizedMessage = message.toLowerCase().trim(); // Normalize once here
 
@@ -60,11 +61,30 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             case 'CONTACT_INFO_PROVIDED':
                 console.log('[generateAIResponse] Matched case: CONTACT_INFO_PROVIDED');
                 const contactInfo = intent.contactInfo; // Already contains full accumulated info
-                const serviceContext = contactInfo.service || lastBotMessage?.detectedService || 'your dental needs';
+                
+                // --- MODIFIED LOGIC FOR serviceContext ---
+                // Prioritize sessionServiceInterest if it exists and is specific
+                let determinedServiceContext = 'your dental needs'; // Default
+                if (sessionServiceInterest && sessionServiceInterest !== 'your dental needs' && sessionServiceInterest !== 'Dental Consultation' && sessionServiceInterest !== 'General Inquiry') {
+                    determinedServiceContext = sessionServiceInterest;
+                    console.log(`[generateAIResponse] Using session service interest: ${determinedServiceContext}`);
+                } else if (contactInfo.service) {
+                    // Fallback 1: Service extracted alongside contact info
+                    determinedServiceContext = contactInfo.service;
+                    console.log(`[generateAIResponse] Using service extracted with contact info: ${determinedServiceContext}`);
+                } else if (lastBotMessage?.detectedService) {
+                    // Fallback 2: Service detected in last bot message (less reliable)
+                    determinedServiceContext = lastBotMessage.detectedService;
+                    console.log(`[generateAIResponse] Using service from last bot message: ${determinedServiceContext}`);
+                } else {
+                    console.log(`[generateAIResponse] Using default service context: ${determinedServiceContext}`);
+                }
+                // --- END MODIFIED LOGIC ---
+                
                 const businessPhoneNumber = businessData?.businessPhoneNumber;
                 
                 // Updated confirmation message emphasizing the call back for scheduling
-                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! Your information has been received. We've noted your interest in ${serviceContext}.\n\n`;
+                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! Your information has been received. We've noted your interest in ${determinedServiceContext}.\n\n`; // Use determined context
                 // Revised suffix to mention booking ideal time
                 const scheduleSuffix = `🧑‍⚕️ Our team will call you back at ${contactInfo.phone} as soon as possible during business hours to discuss your needs and book your ideal appointment time.\n\n`; 
                 const callUsSuffix = businessPhoneNumber 
@@ -75,7 +95,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                     type: 'CONTACT_INFO',
                     response: confirmationPrefix + scheduleSuffix + callUsSuffix, // Assemble the message
                     contactInfo: contactInfo, // Pass the complete, accumulated info
-                    serviceContext
+                    serviceContext: determinedServiceContext // Use the determined context
                 };
                 break;
 

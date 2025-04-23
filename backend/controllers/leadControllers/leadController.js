@@ -67,21 +67,32 @@ export const saveLead = async (leadContext) => {
 
         console.log('Formatted Lead Context:', formattedContext);
 
-        // --- Determine Service for Lead Record ---
-        let finalService = serviceInterest; // Start with explicitly provided interest
-        // If no explicit interest or it's the default, try extracting from problem description
-        if (!finalService || finalService === 'your dental needs' || finalService === 'Dental Consultation') {
-             console.log('[Service Extraction] Trying to find service in problemDescription:', problemDescription);
+        // --- Determine Service for Lead Record (REVISED LOGIC) ---
+        let finalService = serviceInterest; // Start with the interest passed from the controller
+        const isGenericInterest = !finalService || [
+            'your dental needs', 
+            'dental consultation', 
+            'general inquiry'
+            // Add any other generic placeholders used
+        ].includes(finalService.toLowerCase());
+
+        console.log(`[Service Determination] Received serviceInterest: "${serviceInterest}", Is Generic: ${isGenericInterest}`);
+
+        // ONLY try extracting from problemDescription if the passed interest was missing or generic
+        if (isGenericInterest) {
+             console.log('[Service Determination] Passed interest is generic/missing. Trying to find service in problemDescription:', problemDescription);
              const extractedService = await findServiceInText(businessId, problemDescription);
              if (extractedService) {
                  finalService = extractedService;
-                 console.log('[Service Extraction] Found service in text:', finalService);
+                 console.log('[Service Determination] Found service in text:', finalService);
              } else {
-                 finalService = 'Dental Consultation'; // Fallback if nothing found
-                 console.log('[Service Extraction] No specific service found in text, using default.');
+                 // If still no specific service, use a standard default
+                 finalService = 'Dental Consultation'; 
+                 console.log('[Service Determination] No specific service found in text, using default:', finalService);
              }
+        } else {
+             console.log('[Service Determination] Using the specific serviceInterest passed from controller:', finalService);
         }
-        console.log('[Service Extraction] Final service to be saved:', finalService);
         // --- End Service Determination ---
 
         // Check for existing lead
@@ -127,16 +138,14 @@ export const saveLead = async (leadContext) => {
             service: finalService,
             reason: formattedContext.reason,
             source: 'chatbot',
-            status: 'new', // Explicitly 'new', which is valid
+            status: 'new',
             lastContactedAt: new Date(),
             interactions: [{
                  type: 'chatbot',
                  status: 'Lead Created',
-                 message: `Initial contact via chatbot. Concern: ${formattedContext.reason}`,
-                 service: finalService // Keep this as the potentially more specific interest if available
+                 message: `Initial contact via chatbot. Concern: ${problemDescription}`,
+                 service: finalService
             }],
-            // Store raw message history if needed, or just the summary
-            // context: { rawHistory: messageHistory }
         });
 
         console.log("Creating new lead with data:", {
@@ -150,14 +159,10 @@ export const saveLead = async (leadContext) => {
         await lead.save();
         console.log("✅ New lead saved successfully");
 
-        // --- ADD LOG BEFORE TRACKING --- 
         console.log(`[LeadController] About to call trackChatEvent for NEW_LEAD. BusinessId: ${businessId}, Service: ${finalService}`);
-        // Track the new lead event
         await trackChatEvent(businessId, 'NEW_LEAD', { service: finalService });
 
-        // Return confirmation for new lead (maybe use template from openaiService?)
-        // Using the contact_confirmation template structure:
-        return `✅ Thank you ${name}! I've noted your interest in ${lead.service}. Our specialist will contact you at ${phone} soon.`;
+        return `✅ Thank you ${name}! I've noted your concern: "${problemDescription}". Our specialist for ${finalService} will contact you at ${phone} soon.`;
 
     } catch (error) {
         console.error("❌ Error in saveLead function:", error);
