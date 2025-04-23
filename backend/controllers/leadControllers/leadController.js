@@ -130,6 +130,8 @@ export const saveLead = async (leadContext) => {
 
         // Create NEW lead with required fields
         console.log("➕ Creating new lead...");
+        // Add log to check variables right before creating the Lead object
+        console.log("[Lead Creation Check] Values before new Lead():", { name, phone, email }); 
         const lead = new Lead({
             businessId: business.businessId,
             name,
