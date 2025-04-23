@@ -1,4 +1,4 @@
-import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES } from './chatbotConstants.js';
+import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES, SERVICE_FAQ_KEYWORDS, OPERATING_HOURS_KEYWORDS } from './chatbotConstants.js';
 import { extractContactInfo } from './extractContactInfo.js';
 
 const isGreeting = (normalizedMsg) => {
@@ -42,6 +42,25 @@ const listServiceKeywords = [
 
 // Keywords indicating potential service inquiry
 const serviceInquiryKeywords = ['interested in', 'about', 'want'];
+
+// Helper function to find a matching service name in the message
+// (More robust matching might be needed depending on service name complexity)
+export const findServiceNameInMessage = (normalizedMsg, services = []) => {
+    if (!services || services.length === 0) return null;
+    // Find the first service whose name appears in the message
+    const foundService = services.find(service => 
+        service.name && normalizedMsg.includes(service.name.toLowerCase())
+    );
+    return foundService ? foundService.name : null;
+};
+
+// Helper function to determine the type of question asked
+const getQuestionType = (normalizedMsg) => {
+    if (SERVICE_FAQ_KEYWORDS.pain.some(kw => normalizedMsg.includes(kw))) return 'pain';
+    if (SERVICE_FAQ_KEYWORDS.duration.some(kw => normalizedMsg.includes(kw))) return 'duration';
+    if (SERVICE_FAQ_KEYWORDS.cost.some(kw => normalizedMsg.includes(kw))) return 'cost';
+    return 'details'; // Default if specific keywords not found but pattern matches
+};
 
 // Helper to check if a bot message requests contact info
 const didBotRequestContactInfo = (botMessageContent) => {
@@ -186,25 +205,48 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
         return { type: 'URGENT_APPOINTMENT_REQUEST' };
     }
 
-    // 3. Check for Availability Keywords 
+    // --- NEW CHECK 4: Operating Hours Inquiry ---
+    if (OPERATING_HOURS_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
+        console.log('[Classifier] Found operating hours keyword. Classifying as OPERATING_HOURS_INQUIRY.');
+        return { type: 'OPERATING_HOURS_INQUIRY' };
+    }
+    // --- END NEW CHECK 4 ---
+
+    // 5. Check for Availability Keywords (Appointment) 
     if (availabilityKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         console.log('[Classifier] Found availability keyword. Classifying as APPOINTMENT_REQUEST.');
         return { type: 'APPOINTMENT_REQUEST' };
     }
 
-    // 4. Check for General Appointment Keywords
+    // 6. Check for General Appointment Keywords
     if (appointmentKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         console.log('[Classifier] Found general appointment keyword. Classifying as APPOINTMENT_REQUEST.');
         return { type: 'APPOINTMENT_REQUEST' };
     }
     
-    // 5. Check for Request to List Services
+    // 7. Check for Request to List Services
     if (listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         console.log('[Classifier] Found list service keyword. Classifying as REQUEST_SERVICE_LIST.');
         return { type: 'REQUEST_SERVICE_LIST' };
     }
 
-    // 6. Check for Simple Confirmations (after specific prompts)
+    // --- NEW CHECK 7: Service FAQ ---
+    const mentionedServiceName = findServiceNameInMessage(normalizedMessage, services);
+    const questionKeywords = [...SERVICE_FAQ_KEYWORDS.pain, ...SERVICE_FAQ_KEYWORDS.duration, ...SERVICE_FAQ_KEYWORDS.cost];
+    const isServiceFAQ = mentionedServiceName && questionKeywords.some(kw => normalizedMessage.includes(kw));
+
+    if (isServiceFAQ) {
+        const questionType = getQuestionType(normalizedMessage);
+        console.log(`[Classifier] Found service FAQ. Service: ${mentionedServiceName}, Type: ${questionType}. Classifying as SERVICE_FAQ.`);
+        return {
+            type: 'SERVICE_FAQ',
+            serviceName: mentionedServiceName,
+            questionType: questionType
+        };
+    }
+    // --- END NEW CHECK 7 ---
+
+    // 8. Check for Simple Confirmations (after specific prompts)
     if (lastBotMessage && ('yes' === normalizedMessage || 'sure' === normalizedMessage || 'okay' === normalizedMessage || 'ok' === normalizedMessage)) {
         // Avoid triggering confirmation if the bot just asked for contact info (handled above)
         if (!didBotRequestContactInfo(lastBotMessage.content)) {
@@ -218,13 +260,13 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
         }
     }
 
-    // 7. Check for Explicit Service Inquiry Keywords
+    // 9. Check for Explicit Service Inquiry Keywords
     if (serviceInquiryKeywords.some(kw => normalizedMessage.includes(kw))) {
         console.log('[Classifier] Found explicit service keyword. Classifying as SERVICE_INQUIRY_EXPLICIT.');
         return { type: 'SERVICE_INQUIRY_EXPLICIT' };
     }
 
-    // 8. Check for Follow-up after Dental Problem
+    // 10. Check for Follow-up after Dental Problem
     if (lastBotMessage?.type === 'DENTAL_PROBLEM' && 
         (normalizedMessage.includes('which service') || normalizedMessage.includes('what service') || 
          normalizedMessage.includes('can help') || normalizedMessage.includes('what should i do'))) {
@@ -235,7 +277,7 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
         };
     }
 
-    // 9. Check for Initial Dental Problem Report
+    // 11. Check for Initial Dental Problem Report
     const dentalProblem = isDentalProblem(normalizedMessage);
     if (dentalProblem.isIssue) {
         console.log('[Classifier] Found dental problem. Classifying as DENTAL_PROBLEM.');
@@ -246,13 +288,13 @@ export const classifyUserIntent = (message, messageHistory = [], services = [], 
         };
     }
 
-    // 10. Check for Greetings (Only based on content, not isNewSession)
+    // 12. Check for Greetings (Only based on content, not isNewSession)
     if (isGreeting(normalizedMessage)) {
         console.log('[Classifier] Found greeting content. Classifying as GREETING.');
         return { type: 'GREETING' };
     }
 
-    // 11. If none of the above, classify as Unknown
+    // 13. If none of the above, classify as Unknown
     console.log('[Classifier] No specific intent matched. Classifying as UNKNOWN.');
     return { type: 'UNKNOWN' };
 }; 

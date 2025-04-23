@@ -26,9 +26,20 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
     // Check if an override is potentially needed (keywords match AND no contact info yet)
     const needsOverrideCheck = isPotentiallyOverridingRequest && !session.contactInfo;
     
-    // Apply override only if needed AND the initial response wasn't already handling a specific problem/request effectively
-    if (needsOverrideCheck && !['DENTAL_PROBLEM', 'CONTACT_INFO_PROVIDED', 'APPOINTMENT_REQUEST'].includes(initialResponse.type)) {
-        console.log(`[OverrideService] Override check triggered. Initial type: ${initialResponse.type}`);
+    // Define initial types that indicate the conversation is already on a booking/contact track
+    const bookingOrContactTypes = [
+        'DENTAL_PROBLEM', // Already asking for contact
+        'CONTACT_INFO_PROVIDED', // Already provided
+        'APPOINTMENT_REQUEST', // Generic booking request (before details extracted)
+        'APPOINTMENT_REQUEST_DETAILED', // Booking request with details (after extraction)
+        'CONTACT_REQUEST', // Bot explicitly asked for contact
+        'PARTIAL_CONTACT_REQUEST' // Bot asking for missing pieces
+        // Add any other relevant types here
+    ];
+
+    // Apply override only if needed AND the initial response wasn't already handling booking/contact effectively
+    if (needsOverrideCheck && !bookingOrContactTypes.includes(initialResponse.type)) {
+        console.log(`[OverrideService] Override check triggered. Initial type: ${initialResponse.type} is not in booking/contact list.`);
         
         // --- Specific Overrides ---
         if (isBookingRequest && session.serviceInterest && initialResponse.type !== 'BOOKING_SPECIFIC_SERVICE') {

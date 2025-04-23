@@ -1,12 +1,13 @@
 // import OpenAI from "openai"; // No longer needed here
 import dotenv from "dotenv";
-import { classifyUserIntent } from "./messageClassifier.js";
+import { classifyUserIntent, findServiceNameInMessage } from "./messageClassifier.js";
 import { handleServiceInquiry } from "./serviceMatcher.js";
 import { generateAIFallbackResponse } from "./aiFallbackService.js";
 import {
     // CHATBOT_PERSONALITY, // Not needed directly here anymore
     RESPONSE_TEMPLATES,
-    DENTAL_PROBLEMS // Still needed for PROBLEM_FOLLOWUP logic
+    DENTAL_PROBLEMS,
+    TIME_PREFERENCE_KEYWORDS // Added TIME_PREFERENCE_KEYWORDS
 } from "./chatbotConstants.js";
 
 dotenv.config();
@@ -221,14 +222,38 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
             case 'APPOINTMENT_REQUEST':
                 console.log('[generateAIResponse] Matched case: APPOINTMENT_REQUEST');
+                
+                // Attempt to extract details from the current message
+                const serviceName = findServiceNameInMessage(normalizedMessage, businessData?.services);
+                const timePreference = TIME_PREFERENCE_KEYWORDS.find(kw => normalizedMessage.includes(kw)); // Find first match
 
-                console.log('[generateAIResponse] APPOINTMENT_REQUEST detected. Proceeding directly to request contact info for callback.');
+                console.log(`[generateAIResponse] Extracted details for appointment request - Service: ${serviceName}, Time: ${timePreference}`);
+
                 responsePayload = {
-                    type: 'APPOINTMENT_REQUEST', // Keep type as APPOINTMENT_REQUEST for overrides if needed
-                    // Use the template that asks for details for a callback
-                    response: RESPONSE_TEMPLATES.appointment_request_acknowledge 
+                    type: 'APPOINTMENT_REQUEST_DETAILED', // Use a more specific type if needed for overrides
+                    response: RESPONSE_TEMPLATES.APPOINTMENT_REQUEST_ACKNOWLEDGE_DETAIL(serviceName, timePreference) 
                 };
                 
+                break;
+
+            case 'OPERATING_HOURS_INQUIRY':
+                console.log('[generateAIResponse] Matched case: OPERATING_HOURS_INQUIRY');
+                if (businessData?.operatingHours) {
+                    responsePayload = {
+                        type: 'OPERATING_HOURS_INFO',
+                        response: RESPONSE_TEMPLATES.OPERATING_HOURS_RESPONSE(businessData.operatingHours)
+                    };
+                } else {
+                    responsePayload = {
+                        type: 'OPERATING_HOURS_UNAVAILABLE',
+                        response: RESPONSE_TEMPLATES.HOURS_UNAVAILABLE_FALLBACK
+                    };
+                }
+                break;
+
+            case 'SERVICE_FAQ':
+                console.log('[generateAIResponse] Matched case: SERVICE_FAQ');
+                // ... existing code ...
                 break;
 
             case 'UNKNOWN':

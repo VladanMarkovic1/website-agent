@@ -42,7 +42,7 @@ export const RESPONSE_TEMPLATES = {
     understanding: "I understand you're interested in learning more about this. As a dental assistant, I want to ensure you get the most accurate information.\n\n👩‍⚕️ Would you like me to connect you with our specialist who can provide detailed information about this procedure?",
     contact_request: "Perfect! To connect you with our specialist, could you please provide your full name, phone number, and email address? 😊",
     emergency: "I understand this is an emergency that needs immediate attention! Let me help you get an urgent appointment.\n\n📞 Please provide your full name, phone number, and email address, and our emergency team will contact you immediately. We prioritize these cases!",
-    dental_problem: (problem) => `I understand your concern about ${problem}. This should be evaluated by our dental team.\n\n📞 To help schedule a consultation, could you please provide your full name, phone number, and email address?`,
+    dental_problem: (problem) => `I understand you're asking about ${problem}. Concerns about potential pain or the duration of procedures like oral surgery are very common. While each case is unique, we use modern techniques and anesthesia to ensure patient comfort during procedures. The time required can also vary depending on the specifics.\n\nOur dental team can give you the most accurate information based on your individual situation. Would you like to schedule a consultation? 🦷 I can help arrange that if you provide your full name, phone number, and email address. 😊`,
     visual_concern: (concern) => `Okay, I understand you've noticed a ${concern} on your tooth. It's best to have our dental team evaluate that.\n\n📞 To help schedule a consultation, could you please provide your full name, phone number, and email address?`,
     service_inquiry: (service) => `Our specialist can provide detailed information about ${service}. To arrange this, could you please provide your full name, phone number, and email address?`,
     // Note: contact_confirmation logic was moved directly into generateAIResponse, 
@@ -62,8 +62,57 @@ export const RESPONSE_TEMPLATES = {
     api_error_fallback: "I apologize, but I'm having trouble accessing our service information right now. Would you like to share your name, phone number, and email so our team can reach out to you directly?",
     appointment_confirmation: (details) => `Thanks, ${details.name}! We'll call you back at ${details.phone} soon to finalize your appointment for ${details.service || 'a consultation'}.`,
     reschedule_prompt: "Sure, I can help with rescheduling. Please provide your name and the original appointment date.",
-    cancel_prompt: "Okay, I can assist with cancellation. Please provide your name and appointment date."
+    cancel_prompt: "Okay, I can assist with cancellation. Please provide your name and appointment date.",
+    SERVICE_FAQ: (serviceName, questionType) => {
+        let responseIntro = `I understand you're asking about the ${questionType || 'details'} for ${serviceName}.`;
+        let reassurance = '';
+        if (questionType === 'pain') {
+            reassurance = `We always prioritize patient comfort and use modern techniques and anesthesia to ensure procedures are as comfortable as possible.`;
+        } else if (questionType === 'duration') {
+            reassurance = `The time required can vary depending on the individual case and the specifics of the treatment.`;
+        } else if (questionType === 'cost') {
+             reassurance = `The cost can depend on the specific details of your treatment plan.`;
+        } else {
+             reassurance = `Specific details often depend on the individual case.`;
+        }
+        let closing = `\n\nOur dental team can provide the most accurate, personalized information during a consultation. Would you like to schedule one? 🦷 I can help arrange that if you provide your full name, phone number, and email address. 😊`;
+        return `${responseIntro} ${reassurance}${closing}`;
+    },
+    OPERATING_HOURS_RESPONSE: (hours) => `Our operating hours are: ${hours}. Can I help with anything else, like scheduling a visit? 😊`,
+    HOURS_UNAVAILABLE_FALLBACK: "I don't have the specific operating hours available at the moment. However, our team can provide them when they call you back. To arrange that, could you please provide your full name, phone number, and email address? 📞",
+    APPOINTMENT_REQUEST_ACKNOWLEDGE_DETAIL: (serviceName, timePreference) => {
+        let response = "Okay, I understand you'd like to schedule";
+        if (serviceName) {
+            response += ` an appointment for ${serviceName}`;
+        } else {
+            response += ` an appointment`;
+        }
+        if (timePreference) {
+            response += ` around ${timePreference}`;
+        }
+        response += `. \n\nPlease note that while I can start the process, I don't have access to the live scheduling calendar to check real-time availability or confirm specific slots myself. \n\nHowever, I can connect you with our scheduling team! They have the latest availability information and will work with you to find the perfect time. To arrange their callback, could you please provide your full name, phone number, and email address? 📞`;
+        return response;
+    },
 };
+
+// Keywords for Service FAQs
+export const SERVICE_FAQ_KEYWORDS = {
+    pain: ['pain', 'painful', 'hurt', 'hurts', 'comfort', 'discomfort', 'comfortable'],
+    duration: ['how long', 'duration', 'time', 'length', 'fast', 'quick'],
+    cost: ['cost', 'price', 'much', 'fee', 'charge', 'insurance']
+};
+
+// Keywords for Operating Hours Inquiry
+export const OPERATING_HOURS_KEYWORDS = [
+    'hours', 'open', 'operating hours', 'business hours', 'when are you open', 'what time',
+    'close'
+];
+
+// Keywords for Time Preferences (in Appointment Requests)
+export const TIME_PREFERENCE_KEYWORDS = [
+    'today', 'tomorrow', 'morning', 'afternoon', 'evening', 'weekend',
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'
+];
 
 // --- Keywords --- 
 
