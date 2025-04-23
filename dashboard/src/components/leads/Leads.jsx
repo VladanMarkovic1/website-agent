@@ -278,117 +278,136 @@ const Leads = () => {
         {/* Leads Display Area (Render if not loading and no critical errors handled above) */}
         {shouldShowLeadsContainer && (
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-             {showEmptyState ? (
-                <div className="text-center p-6 text-gray-500">
-                   {noLeadsFoundError ? noLeadsFoundError : 'No leads match the current filters.'}
-                </div>
-             ) : (
-                <React.Fragment>
-                   {/* Mobile View - Card Layout */}
-                   <div className="md:hidden divide-y divide-gray-100">
-                     {filteredLeads.map((lead) => (
-                       <LeadCard
-                         key={lead._id}
-                         lead={lead}
-                         onStatusChange={handleListStatusChange}
-                         onSelectLead={setSelectedLead}
-                       />
-                     ))}
-                   </div>
+            {/* Table for larger screens */} 
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {/* Name/Service Column */}
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('name')}>
+                      Name / Service
+                      {sortConfig.key === 'name' && (
+                        <span className="ml-1">{sortConfig.direction === 'asc' ? <HiOutlineChevronUp className="inline w-3 h-3"/> : <HiOutlineChevronDown className="inline w-3 h-3"/>}</span>
+                      )}
+                    </th>
+                    {/* Contact Column */}
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                    {/* Status Column */}
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('status')}>
+                       Status
+                       {sortConfig.key === 'status' && (
+                         <span className="ml-1">{sortConfig.direction === 'asc' ? <HiOutlineChevronUp className="inline w-3 h-3"/> : <HiOutlineChevronDown className="inline w-3 h-3"/>}</span>
+                       )}
+                    </th>
+                    {/* Last Contacted Column */}
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('lastContactedAt')}>
+                      Last Contacted
+                      {sortConfig.key === 'lastContactedAt' && (
+                        <span className="ml-1">{sortConfig.direction === 'asc' ? <HiOutlineChevronUp className="inline w-3 h-3"/> : <HiOutlineChevronDown className="inline w-3 h-3"/>}</span>
+                      )}
+                    </th>
+                    {/* Created Column */}
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('createdAt')}>
+                      Created
+                       {sortConfig.key === 'createdAt' && (
+                         <span className="ml-1">{sortConfig.direction === 'asc' ? <HiOutlineChevronUp className="inline w-3 h-3"/> : <HiOutlineChevronDown className="inline w-3 h-3"/>}</span>
+                       )}
+                    </th>
+                     {/* Action Column */}
+                     <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(filteredLeads && filteredLeads.length > 0) ? (
+                    filteredLeads.map((lead) => (
+                      <tr key={lead._id} className="hover:bg-gray-50">
+                        {/* Name/Service */}
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">{lead.name || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{lead.service || 'N/A'}</div>
+                        </td>
+                        {/* Contact */}
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{lead.phone || '-'}</div>
+                          <div className="text-xs text-gray-500">{lead.email || '-'}</div>
+                        </td>
+                        {/* Status Dropdown */}
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <select 
+                            value={lead.status}
+                            onChange={(e) => handleListStatusChange(lead._id, e.target.value)}
+                            className={`text-xs p-1 rounded border ${ STATUS_OPTIONS.find(o => o.value === lead.status)?.bgColor || 'bg-gray-200' } ${ STATUS_OPTIONS.find(o => o.value === lead.status)?.textColor || 'text-gray-800' } border-transparent focus:ring-blue-500 focus:border-blue-500 min-w-[120px]`}
+                            disabled={isOffline} // Disable when offline
+                          >
+                            {STATUS_OPTIONS.map(option => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        {/* Last Contacted */}
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {lead.lastContactedAt ? new Date(lead.lastContactedAt).toLocaleDateString() : '-'}
+                        </td>
+                        {/* Created */}
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                           {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '-'}
+                        </td>
+                         {/* Action Button */}
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                          <button 
+                            onClick={() => setSelectedLead(lead)} 
+                            className="text-blue-600 hover:text-blue-800 hover:underline"
+                            disabled={isOffline} // Disable when offline
+                          >
+                             View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    // No Leads Row
+                    <tr>
+                      <td colSpan="6" className="px-6 py-10 text-center text-gray-500">
+                        {noLeadsFoundError || "No leads match your current filters."} 
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-                   {/* Desktop View - Table Layout */}
-                   <div className="hidden md:block">
-                     <table className="min-w-full divide-y divide-gray-200">
-                       <thead className="bg-gray-50">
-                         <tr>
-                           {/* Add onClick handlers for sorting */}
-                           <th scope="col" onClick={() => handleSort('name')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
-                              Name/Service {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
-                           </th>
-                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Contact
-                           </th>
-                           <th scope="col" onClick={() => handleSort('status')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
-                              Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
-                           </th>
-                           <th scope="col" onClick={() => handleSort('lastContactedAt')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
-                              Last Contacted {sortConfig.key === 'lastContactedAt' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
-                           </th>
-                           <th scope="col" onClick={() => handleSort('createdAt')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
-                              Created {sortConfig.key === 'createdAt' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
-                           </th>
-                           <th scope="col" className="relative px-6 py-3">
-                             <span className="sr-only">Actions</span>
-                           </th>
-                         </tr>
-                       </thead>
-                       <tbody className="bg-white divide-y divide-gray-200">
-                         {filteredLeads.map((lead) => (
-                           <tr key={lead._id}>
-                             <td className="px-6 py-4">
-                               <div>
-                                 <div className="text-sm font-medium text-gray-900">{lead.name}</div>
-                                 <div className="text-sm text-gray-500">{lead.service}</div>
-                               </div>
-                             </td>
-                             <td className="px-6 py-4">
-                               <div>
-                                 <div className="text-sm text-gray-900">{lead.phone}</div>
-                                 <div className="text-sm text-gray-500 break-all">{lead.email || 'N/A'}</div>
-                               </div>
-                             </td>
-                             <td className="px-6 py-4">
-                               <select
-                                 value={lead.status}
-                                 onChange={(e) => handleListStatusChange(lead._id, e.target.value)}
-                                  onClick={(e) => e.stopPropagation()} // Prevent row click when changing status
-                                  className={`text-sm rounded-full px-3 py-1 border border-transparent ${ 
-                                    lead.status === 'new' ? 'bg-green-100 text-green-800' : 
-                                    lead.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
-                                    lead.status === 'attempted-contact' ? 'bg-yellow-100 text-yellow-800' :
-                                    lead.status === 'scheduled' ? 'bg-purple-100 text-purple-800' :
-                                    lead.status === 'completed' ? 'bg-indigo-100 text-indigo-800' :
-                                    'bg-red-100 text-red-800'
-                                  }`}
-                               >
-                                 {STATUS_OPTIONS.map(option => (
-                                   <option key={option.value} value={option.value}>{option.label}</option>
-                                 ))}
-                               </select>
-                             </td>
-                             <td className="px-6 py-4 text-sm text-gray-500">
-                               {lead.lastContactedAt ? new Date(lead.lastContactedAt).toLocaleDateString() : 'N/A'}
-                             </td>
-                             <td className="px-6 py-4 text-sm text-gray-500">
-                               {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : 'N/A'}
-                             </td>
-                             <td className="px-6 py-4 text-right text-sm font-medium">
-                               <button
-                                 onClick={() => setSelectedLead(lead)}
-                                 className="text-blue-600 hover:text-blue-800"
-                               >
-                                 View Details
-                               </button>
-                             </td>
-                           </tr>
-                         ))}
-                       </tbody>
-                     </table>
-                   </div>
-                </React.Fragment>
-             )}
+            {/* Cards for smaller screens */}
+            <div className="md:hidden grid grid-cols-1 gap-4 p-4">
+              {(filteredLeads && filteredLeads.length > 0) ? (
+                 filteredLeads.map((lead) => (
+                   <LeadCard 
+                     key={lead._id} 
+                     lead={lead} 
+                     onStatusChange={handleListStatusChange}
+                     onSelectLead={() => setSelectedLead(lead)}
+                     isOffline={isOffline}
+                   />
+                 ))
+              ) : (
+                 <div className="text-center text-gray-500 py-10">
+                    {noLeadsFoundError || "No leads found."} 
+                 </div>
+              )}
+            </div>
           </div>
         )}
-
-        {/* Modal */}
+        
+        {/* Modal */} 
         {selectedLead && (
-          <LeadDetailsModal
-            lead={selectedLead}
-            businessId={businessId}
-            onClose={() => setSelectedLead(null)}
-            onLeadUpdate={handleLeadUpdateFromModal}
+          <LeadDetailsModal 
+            lead={selectedLead} 
+            onClose={() => setSelectedLead(null)} 
+            businessId={businessId} // Pass businessId
+            onLeadUpdate={handleLeadUpdateFromModal} // CORRECTED: Pass callback with the expected prop name
+            isOffline={isOffline} // Pass offline status
           />
         )}
+
       </div>
     </div>
   );
