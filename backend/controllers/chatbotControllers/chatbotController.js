@@ -254,6 +254,17 @@ async function _trackConversationCompletionIfNeeded(finalResponse, session) {
     }
 }
 
+// Utility to escape HTML characters for preventing XSS
+function escapeHtml(unsafe) {
+    if (typeof unsafe !== 'string') return unsafe;
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
 // --- Main Orchestrator Function --- 
 
 const processChatMessage = async (message, sessionId, businessId) => {
@@ -336,7 +347,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
 
         // Return only the string response object expected by caller
         return {
-             response: finalResponse.response,
+             response: escapeHtml(finalResponse.response),
              type: finalResponse.type,
              sessionId // Include sessionId if needed by caller (e.g. WebSocket handler)
         };
@@ -344,7 +355,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
         console.error("Error processing message:", error);
          // Return error structure expected by caller
          return {
-             response: RESPONSE_TEMPLATES.ERROR(), 
+             response: escapeHtml(RESPONSE_TEMPLATES.ERROR()),
              type: 'ERROR',
              sessionId: sessionId || 'unknown' // Include sessionId if possible
          };
