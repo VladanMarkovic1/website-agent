@@ -1,19 +1,18 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth, getAuthToken } from '../../context/AuthContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const { user } = useAuth();
-  const currentToken = getAuthToken();
+  const { user, token } = useAuth();
 
   console.log('[ProtectedRoute] Check:', { 
-      currentToken: !!currentToken,
+      hasToken: !!token,
       userRole: user?.role, 
       requiredRole 
   });
 
-  if (!currentToken) {
-    console.log('[ProtectedRoute] No token found, redirecting to /login');
+  if (!token) {
+    console.log('[ProtectedRoute] No token found in context, redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 

@@ -13,8 +13,8 @@ import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter future={{ v7_startTransition: true }}>
+    <BrowserRouter future={{ v7_startTransition: true }}>
+      <AuthProvider>
         <Routes future={{ v7_relativeSplatPath: true }}>
           {/* Public Routes */}
           <Route path="/register" element={<Register />} />
@@ -53,8 +53,8 @@ function App() {
           {/* Redirect any unknown routes to login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

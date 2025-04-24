@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAuthToken } from '../context/AuthContext.jsx'; // Import the getter
+// import { getAuthToken } from '../context/AuthContext.jsx'; // REMOVE this import
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
@@ -20,7 +20,8 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 api.interceptors.request.use(
   (config) => {
     // Get token using the exported getter function
-    const token = getAuthToken(); 
+    // const token = getAuthToken(); // REMOVE this line
+    const token = sessionStorage.getItem('token'); // Get token directly from sessionStorage
     console.log('API Interceptor - Attaching token:', token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

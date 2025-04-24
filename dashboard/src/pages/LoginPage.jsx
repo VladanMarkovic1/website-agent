@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import apiClient from '../utils/api';
 import InputField from '../components/layout/InputField';
 import Button from '../components/layout/SubmitButton';
 import { HiOutlineShieldExclamation } from 'react-icons/hi';
@@ -9,42 +7,22 @@ import { useAuth } from '../context/AuthContext.jsx';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isSecurityBlocked, setIsSecurityBlocked] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { login, error, isLoading } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('Please fill in both fields.');
+      alert('Please fill in both fields.');
       return;
     }
     try {
-      const response = await apiClient.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-      
-      console.log('User object received from login API:', user);
-      
-      login(token, user);
-      
-      if (user.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
+      await login({ email, password });
     } catch (err) {
-      console.error('Login error:', err);
-      if (err.response?.data?.error?.includes('security software') || 
-          err.response?.data?.error?.includes('Kaspersky')) {
-        setIsSecurityBlocked(true);
-        setError(err.response.data.error);
-      } else {
-        setIsSecurityBlocked(false);
-        setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
-      }
+      console.error('Login page submit error (should be handled by AuthContext):', err);
     }
   };
+
+  const isSecurityBlocked = error?.includes('security software') || error?.includes('Kaspersky');
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -84,6 +62,7 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isLoading}
             />
             <InputField
               label="Password:"
@@ -92,9 +71,12 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
-          <Button type="submit">Login</Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login'}
+          </Button>
         </form>
       </div>
     </div>
