@@ -2,9 +2,10 @@
 // Very basic email regex
 const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/; 
 
-// Basic North American phone number regex (adapt for other regions if needed)
-// Matches formats like (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890 etc.
-const phoneRegex = /(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/;
+// Updated phone regex to be more flexible (7-14 digits, optional +, common separators)
+// Matches formats like +1 (123) 456-7890, 123-456-7890, 1234567890, +971 4 276 4269 etc.
+// It captures sequences containing 7 to 14 digits, allowing optional +, (, ), -, ., and spaces.
+const phoneRegex = /(?:\+?\d[\d\s\-().]{5,16}\d)/;
 
 // Keywords often associated with contact info requests/provision
 const contactKeywords = [
@@ -31,16 +32,27 @@ export function containsPotentialPII(text) {
         return true;
     }
 
-    // Check for phone number
+    // Check for phone number using the updated regex
     if (phoneRegex.test(text)) {
-        // Add a simple check to reduce false positives like "model 345-6789"
-        // If it contains a likely keyword nearby, it's more likely PII
-        if (contactKeywords.some(keyword => lowerText.includes(keyword))) {
-             return true;
-        }
-        // Also consider it PII if it's a relatively short message consisting mostly of the number
-        if (text.replace(/[^0-9]/g, '').length >= 7 && text.length < 30) {
-             return true;
+        // Extract potential number matches
+        const potentialNumbers = text.match(new RegExp(phoneRegex, 'g'));
+        if (!potentialNumbers) return false;
+
+        for (const match of potentialNumbers) {
+            // Count digits in the specific match
+            const digitCount = (match.match(/\d/g) || []).length;
+
+            // Check 1: Does it have a reasonable number of digits (e.g., 7 to 14)?
+            if (digitCount >= 7 && digitCount <= 14) {
+                // Check 2: Does it have contact keywords nearby?
+                if (contactKeywords.some(keyword => lowerText.includes(keyword))) {
+                    return true;
+                }
+                // Check 3: Is it a significant part of a short message?
+                if (text.length < 35) { // Adjusted length threshold slightly
+                    return true;
+                }
+            }
         }
     }
     
@@ -61,9 +73,10 @@ export function redactPII(text, placeholder = '[REDACTED]') {
     // Basic redaction - replace potential emails and phones
     // Note: This is very simple and might redact non-PII or miss complex cases.
     let redactedText = text.replace(emailRegex, placeholder);
-    redactedText = redactedText.replace(phoneRegex, (match) => {
+    // Use a global flag with the updated regex for redaction
+    redactedText = redactedText.replace(new RegExp(phoneRegex, 'g'), (match) => {
         // Only redact if it looks like a plausible phone number based on our contains check logic
-        if (containsPotentialPII(match)) { 
+        if (containsPotentialPII(match)) {
             return placeholder;
         }
         return match; // Don't redact if it doesn't pass the PII check

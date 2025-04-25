@@ -221,6 +221,7 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
 
 async function _logInteractionMessages(sessionId, userMessageContent, userMessageType, finalResponse) {
     const redactedUserMessageContent = redactPII(userMessageContent);
+    const redactedBotMessageContent = redactPII(finalResponse.response);
     
      const userMessageLog = {
         role: 'user',
@@ -230,7 +231,7 @@ async function _logInteractionMessages(sessionId, userMessageContent, userMessag
     };
     const botMessageLog = {
         role: 'assistant',
-        content: finalResponse.response,
+        content: redactedBotMessageContent,
         timestamp: Date.now(),
         type: finalResponse.type,
         problemCategory: finalResponse.problemCategory || null
