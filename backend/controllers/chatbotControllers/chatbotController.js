@@ -9,6 +9,7 @@ import { getOrCreateSession, updateSessionData, addMessagesToSession } from "./s
 import { detectRequestTypes } from "./requestTypeDetector.js";
 import { applyResponseOverrides } from "./overrideService.js";
 import { DENTAL_KEYWORDS_FOR_TRACKING, RESPONSE_TEMPLATES } from "./chatbotConstants.js"; // Import RESPONSE_TEMPLATES too
+import { redactPII } from '../../utils/piiFilter.js';
 
 // Removed session map, timeout, cleanup (moved to sessionService)
 
@@ -219,9 +220,11 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
 }
 
 async function _logInteractionMessages(sessionId, userMessageContent, userMessageType, finalResponse) {
+    const redactedUserMessageContent = redactPII(userMessageContent);
+    
      const userMessageLog = {
         role: 'user',
-        content: userMessageContent,
+        content: redactedUserMessageContent,
         timestamp: Date.now(),
         type: userMessageType,
     };
