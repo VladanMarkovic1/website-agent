@@ -57,17 +57,17 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
             finalResponse.serviceContext = 'Pediatric Dentistry'; 
             console.log('[OverrideService] Overriding with: PEDIATRIC_ADVICE_REQUEST');
         } 
-        else if (matchedQuestion && isSpecificServiceQuestion) {
+        else if (matchedQuestion && isSpecificServiceQuestion && initialResponse.type !== 'AI_FALLBACK') {
             finalResponse.response = `As a dental receptionist, I'd be happy to connect you with our specialist who can explain all the options available for ${matchedQuestion.topic} and help determine the best treatment plan for your specific needs.\n\nCould you please share your full name, phone number, and email address? Once you do, I'll have our dental team reach out to schedule a consultation where they can provide detailed information about ${matchedQuestion.topic} and answer all your questions.`;
             finalResponse.type = 'SPECIFIC_SERVICE_REQUEST';
             finalResponse.serviceContext = matchedQuestion.topic;
-            console.log('[OverrideService] Overriding with: SPECIFIC_SERVICE_REQUEST');
+            console.log('[OverrideService] Overriding with: SPECIFIC_SERVICE_REQUEST (and initial type was not AI_FALLBACK)');
         } 
-        else if (matchedQuestion || isAdviceRequest) { 
+        else if ((matchedQuestion || isAdviceRequest) && initialResponse.type !== 'AI_FALLBACK') { 
             const topic = matchedQuestion ? matchedQuestion.topic : 'dental health';
             finalResponse.response = ` 🦷 As a dental receptionist, I cannot provide specific advice about ${topic}, as this requires a professional evaluation from our dental team.\n\nHowever, I'd be happy to connect you with our specialist who can provide personalized recommendations. 📞 Could you please share your full name, phone number, and email address? Once you do, I'll make sure our dental team reaches out to schedule a consultation where they can address all your questions about ${topic}.`;
             finalResponse.type = 'SPECIFIC_ADVICE_REQUEST';
-            console.log('[OverrideService] Overriding with: SPECIFIC_ADVICE_REQUEST');
+            console.log('[OverrideService] Overriding with: SPECIFIC_ADVICE_REQUEST (and initial type was not AI_FALLBACK)');
         } 
         else if (isUrgentRequest) {
             const businessPhone = businessData?.businessPhoneNumber;

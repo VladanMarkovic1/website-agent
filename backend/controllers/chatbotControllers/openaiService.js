@@ -174,10 +174,11 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                  console.log('[generateAIResponse] Matched case: DENTAL_PROBLEM'); // Log case match
                  // This logic depends on constants and context, reasonable to keep here
                 let responseTemplate;
-                let concernDetail = intent.category;
+                let concernDetail = intent.category; // e.g., 'pain', 'appearance'
                 if (intent.severity === 'high') {
                     responseTemplate = RESPONSE_TEMPLATES.emergency;
                 } else if (intent.category === 'appearance') {
+                    // Keep specific handling for visual concerns
                     responseTemplate = RESPONSE_TEMPLATES.visual_concern;
                     const appearanceKeywords = DENTAL_PROBLEMS.appearance;
                     const mentionedKeyword = appearanceKeywords.find(k => normalizedMessage.includes(k));
@@ -189,10 +190,12 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                         concernDetail = 'visual change'; 
                     }
                 } else {
-                    responseTemplate = RESPONSE_TEMPLATES.dental_problem;
+                    // Use the new template for other non-high severity symptoms (like pain)
+                    responseTemplate = RESPONSE_TEMPLATES.acknowledge_symptom; 
                 }
                 responsePayload = {
                     type: 'DENTAL_PROBLEM',
+                    // Pass the category (e.g., 'pain') to the template function
                     response: typeof responseTemplate === 'function' ? responseTemplate(concernDetail) : responseTemplate,
                     problemCategory: intent.category,
                     severity: intent.severity
