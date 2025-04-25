@@ -6,67 +6,63 @@
  * @param {Object} context - Context object containing business data, specifically `context.services` array.
  * @returns {Object|null} The matched service object or null if no strong match found.
  */
-export const handleServiceInquiry = async (message, context) => {
-    const normalizedMessage = message; // Assuming already lowercased by caller
-    const services = context.services || [];
-    
-    console.log('[Service Match] Handling service inquiry for message:', normalizedMessage);
-    console.log('[Service Match] Available services:', services.map(s => s.name).join(', '));
+export const handleServiceInquiry = async (normalizedMessage, services) => {
+    // console.log('[Service Match] Handling service inquiry for message:', normalizedMessage);
+    // console.log('[Service Match] Available services:', services.map(s => s.name).join(', '));
 
-    let matchingService = null;
-    let highestMatchScore = 0; // Use a score to find the best match
+    if (!services || services.length === 0) return null;
+
+    let bestMatch = null;
+    let highestMatchScore = 0; // Score: 3=Exact Phrase, 2=All Words, 1=Significant Word
 
     for (const service of services) {
         if (!service || !service.name) continue;
 
-        const serviceNameLower = service.name.toLowerCase().trim();
-        const serviceWords = serviceNameLower.split(/\s+/); // Split by space
-        let currentScore = 0;
+        // console.log(`[Service Match] Checking service: "${service.name}"`);
+        const serviceNameLower = service.name.toLowerCase();
+        const serviceWords = serviceNameLower.split(' ').filter(w => w.length > 2); // Ignore short words
 
-        console.log(`[Service Match] Checking service: "${service.name}"`);
-
-        // 1. Exact Match (Highest Score)
+        // 1. Exact Phrase Match (Highest Priority)
         if (normalizedMessage.includes(serviceNameLower)) {
-            console.log(`[Service Match] Found exact phrase match for "${service.name}"`);
-            currentScore = 3;
+            // console.log(`[Service Match] Found exact phrase match for "${service.name}"`);
+            if (3 > highestMatchScore) {
+                 highestMatchScore = 3;
+                 bestMatch = service;
+            }
+            continue; // Found best possible match for this service
         }
 
-        // 2. All Words Match (High Score)
-        if (currentScore < 3) { 
-            const allWordsPresent = serviceWords.every(word => normalizedMessage.includes(word));
-            if (allWordsPresent) {
-                console.log(`[Service Match] Found all words match for "${service.name}"`);
-                currentScore = Math.max(currentScore, 2); // Don't override exact match
-            }
+        // 2. All Words Match (Medium Priority)
+        if (serviceWords.length > 1 && serviceWords.every(word => normalizedMessage.includes(word))) {
+            // console.log(`[Service Match] Found all words match for "${service.name}"`);
+             if (2 > highestMatchScore) {
+                 highestMatchScore = 2;
+                 bestMatch = service;
+             }
+             continue;
         }
-        
-        // 3. Significant Word Match (Medium Score) - Keep or remove based on strictness?
-        if (currentScore < 2) {
-            const significantWords = serviceWords.filter(word => word.length > 3); 
-            const significantMatch = significantWords.length > 0 && significantWords.some(word => normalizedMessage.includes(word));
 
-            if (significantMatch) {
-                 console.log(`[Service Match] Found significant word match for "${service.name}"`);
-                 currentScore = Math.max(currentScore, 1);
-            }
+        // 3. Significant Word Match (Lowest Priority)
+        const messageWords = new Set(normalizedMessage.split(' '));
+        const matchedWords = serviceWords.filter(word => messageWords.has(word));
+        if (matchedWords.length > 0 && matchedWords.length >= Math.ceil(serviceWords.length / 2)) { // Match at least half the significant words
+            // console.log(`[Service Match] Found significant word match for "${service.name}"`);
+             if (1 > highestMatchScore) {
+                 highestMatchScore = 1;
+                 bestMatch = service;
+             }
         }
-        
-        if (currentScore > highestMatchScore) {
-            highestMatchScore = currentScore;
-            matchingService = service; // Store the actual service object
-            console.log(`[Service Match] New best match: "${service.name}" with score ${highestMatchScore}`);
-        }
+        // console.log(`[Service Match] New best match: "${bestMatch?.name}" with score ${highestMatchScore}`); // Check intermediate best
+
+    } // End loop through services
+
+    // console.log(`[Service Match] Final check: Best match "${bestMatch?.name}" with score ${highestMatchScore}`);
+
+    // Return the best match only if the score indicates a reasonable match (e.g., score > 0)
+    if (highestMatchScore > 0) {
+        // console.log('[Service Match] Final matched service (Score > 0):', bestMatch.name);
+        return bestMatch;
     }
 
-    console.log(`[Service Match] Final check: Best match "${matchingService?.name}" with score ${highestMatchScore}`);
-
-    // Require score > 1 (All Words or Exact Match)
-    if (matchingService && highestMatchScore > 1) { 
-        console.log('[Service Match] Final matched service (Score > 1):', matchingService.name);
-        
-        // Return the matched service object itself, let the caller build the response
-        return matchingService; 
-    }
-
-    return null; // No sufficiently strong match
+    return null;
 }; 

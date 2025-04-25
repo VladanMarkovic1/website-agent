@@ -1,21 +1,22 @@
-import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES, SERVICE_FAQ_KEYWORDS, OPERATING_HOURS_KEYWORDS, RESCHEDULE_KEYWORDS, CANCEL_KEYWORDS } from './chatbotConstants.js';
+import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES, SERVICE_FAQ_KEYWORDS, OPERATING_HOURS_KEYWORDS, RESCHEDULE_KEYWORDS, CANCEL_KEYWORDS, CONFIRMATION_KEYWORDS } from './chatbotConstants.js';
 import { extractContactInfo } from './extractContactInfo.js';
 
 const isGreeting = (normalizedMsg) => {
     return GREETINGS.some(greeting => normalizedMsg.includes(greeting)) && normalizedMsg.length < 20;
 };
 
-const isDentalProblem = (normalizedMsg) => {
+// Renamed from isDentalProblem to checkDentalProblem for clarity
+const checkDentalProblem = (normalizedMsg) => {
     for (const [category, keywords] of Object.entries(DENTAL_PROBLEMS)) {
         if (keywords.some(keyword => normalizedMsg.includes(keyword))) {
             return {
-                isIssue: true,
+                isProblem: true, // Changed from isIssue
                 category,
                 severity: category === 'emergency' ? 'high' : 'normal'
             };
         }
     }
-    return { isIssue: false };
+    return { isProblem: false }; // Changed from isIssue
 };
 
 // Keywords for Appointment Requests
@@ -62,6 +63,29 @@ const getQuestionType = (normalizedMsg) => {
     return 'details'; // Default if specific keywords not found but pattern matches
 };
 
+// Helper function to check if the message is a Service FAQ
+const checkServiceFAQ = (normalizedMsg, services) => {
+    const mentionedServiceName = findServiceNameInMessage(normalizedMsg, services);
+    if (!mentionedServiceName) return null; // No service mentioned
+
+    // Combine all FAQ keywords
+    const questionKeywords = [
+        ...SERVICE_FAQ_KEYWORDS.pain, 
+        ...SERVICE_FAQ_KEYWORDS.duration, 
+        ...SERVICE_FAQ_KEYWORDS.cost
+    ];
+
+    // Check if the message contains any of the FAQ keywords
+    const isFAQ = questionKeywords.some(kw => normalizedMsg.includes(kw));
+
+    if (isFAQ) {
+        const questionType = getQuestionType(normalizedMsg); // Determine specific type
+        return { serviceName: mentionedServiceName, questionType: questionType };
+    }
+    
+    return null; // Not an FAQ
+};
+
 // Helper to check if a bot message requests contact info
 const didBotRequestContactInfo = (botMessageContent) => {
     if (!botMessageContent) return false;
@@ -97,218 +121,145 @@ const didBotRequestContactInfo = (botMessageContent) => {
  * @param {Object} previousPartialInfo - Optional previously collected partial info { name, phone, email }.
  * @returns {Object} An object with 'type' and optional context (e.g., category, contactInfo, missingFields).
  */
-export const classifyUserIntent = (message, messageHistory = [], services = [], isNewSession = false, previousPartialInfo = { name: null, phone: null, email: null }) => {
+export const classifyUserIntent = (message, messageHistory, services = [], isNewSession = false, previousPartialInfo = null) => {
     const normalizedMessage = message.toLowerCase().trim();
-    const lastBotMessage = messageHistory.filter(msg => msg.role === 'assistant').pop();
+    const lastBotMessage = messageHistory.slice().reverse().find(msg => msg.role === 'assistant');
 
-    // --- NEW: Contact Info Accumulation Logic ---
-    if (lastBotMessage && didBotRequestContactInfo(lastBotMessage.content)) {
-        console.log('[Classifier] Bot requested contact info. Checking history with previous info:', previousPartialInfo);
+    // Check if the bot just asked for contact info
+    const botRequestedContact = lastBotMessage && 
+                              (lastBotMessage.type === 'CONTACT_REQUEST' || 
+                               lastBotMessage.type === 'PARTIAL_CONTACT_REQUEST' ||
+                               lastBotMessage.type === 'PEDIATRIC_ADVICE_REQUEST' || // Added this type
+                               lastBotMessage.type === 'SPECIFIC_ADVICE_REQUEST' ||
+                               lastBotMessage.type === 'SPECIFIC_SERVICE_REQUEST' ||
+                               lastBotMessage.type === 'BOOKING_SPECIFIC_SERVICE' || // Added this type
+                               lastBotMessage.type === 'BOOKING_REQUEST');
+
+    if (botRequestedContact) {
+        // Accumulate contact info from history AFTER the bot's request
+        let finalAccumulatedInfo = { ...(previousPartialInfo || {}) };
+        let extractedSomethingThisTurn = false;
         
-        // Initialize with the state passed from the controller
-        let finalAccumulatedInfo = { 
-            name: previousPartialInfo.name, 
-            phone: previousPartialInfo.phone, 
-            email: previousPartialInfo.email 
-        };
-        let historyToCheck = [];
-
-        // Find the index of the last bot request that asked for info
-        let lastBotRequestIndex = -1;
+        // Look back only a few messages or until the bot request
+        const historyToCheck = [];
         for (let i = messageHistory.length - 1; i >= 0; i--) {
-            if (messageHistory[i].role === 'assistant' && didBotRequestContactInfo(messageHistory[i].content)) {
-                lastBotRequestIndex = i;
-                break;
+            if (messageHistory[i].role === 'assistant' && 
+                (messageHistory[i].type === 'CONTACT_REQUEST' || messageHistory[i].type === 'PARTIAL_CONTACT_REQUEST' || messageHistory[i].type === 'PEDIATRIC_ADVICE_REQUEST' || messageHistory[i].type === 'SPECIFIC_ADVICE_REQUEST' || messageHistory[i].type === 'SPECIFIC_SERVICE_REQUEST' || messageHistory[i].type === 'BOOKING_SPECIFIC_SERVICE' || messageHistory[i].type === 'BOOKING_REQUEST')) {
+                break; // Stop when we hit the relevant bot request
+            }
+            if (messageHistory[i].role === 'user') {
+                 historyToCheck.unshift(messageHistory[i]); // Add user messages in order
             }
         }
+        // Add the current message to check as well
+        historyToCheck.push({ role: 'user', content: message });
 
-        if (lastBotRequestIndex !== -1) {
-            historyToCheck = messageHistory.slice(lastBotRequestIndex + 1).filter(msg => msg.role === 'user');
-        }
-        historyToCheck.push({ role: 'user', content: message }); // Add current message
-
-        // Process messages to accumulate info
-        console.log('[Classifier] Messages being checked for accumulation:', historyToCheck.map(m=>m.content));
-        let extractedSomethingThisTurn = false; // Flag if any info was extracted from the messages checked
-        for (const userMsg of historyToCheck) {
-            const extractedFromMsg = extractContactInfo(userMsg.content); 
-            console.log(`[Classifier Loop] Processing msg: "${userMsg.content}"`); // Log message being processed
-            console.log(`[Classifier Loop] Result of extractContactInfo:`, extractedFromMsg); // Log extraction result
-            
+        historyToCheck.forEach(userMsg => {
+            const extractedFromMsg = extractContactInfo(userMsg.content);
             if (extractedFromMsg) {
-                 // Combine with existing accumulated info, prioritizing already filled fields
-                 const previousName = finalAccumulatedInfo.name;
-                 const previousPhone = finalAccumulatedInfo.phone;
-                 const previousEmail = finalAccumulatedInfo.email;
-                 
-                 finalAccumulatedInfo.name = finalAccumulatedInfo.name || extractedFromMsg.name;
-                 finalAccumulatedInfo.phone = finalAccumulatedInfo.phone || extractedFromMsg.phone;
-                 finalAccumulatedInfo.email = finalAccumulatedInfo.email || extractedFromMsg.email;
-                 
-                 console.log(`[Classifier Loop] Accumulated info after merge:`, finalAccumulatedInfo); // Log merged info
-                 
-                 // Check if the extraction actually yielded *new* data compared to before merge for THIS message
-                 if ((extractedFromMsg.name && !previousName) || 
-                     (extractedFromMsg.phone && !previousPhone) || 
-                     (extractedFromMsg.email && !previousEmail)) {
-                     extractedSomethingThisTurn = true;
-                     console.log(`[Classifier Loop] Set extractedSomethingThisTurn = true`); // Log flag set
-                 }
+                // Merge ONLY IF new info is found in this message
+                let merged = false;
+                if (extractedFromMsg.name && !finalAccumulatedInfo.name) { finalAccumulatedInfo.name = extractedFromMsg.name; merged = true; }
+                if (extractedFromMsg.phone && !finalAccumulatedInfo.phone) { finalAccumulatedInfo.phone = extractedFromMsg.phone; merged = true; }
+                if (extractedFromMsg.email && !finalAccumulatedInfo.email) { finalAccumulatedInfo.email = extractedFromMsg.email; merged = true; }
+                
+                if(merged) {
+                     extractedSomethingThisTurn = true; // Mark that we found something new
+                }
             }
-        }
-        console.log(`[Classifier Loop] Finished processing messages. Final accumulated:`, finalAccumulatedInfo); // Log after loop
-        console.log(`[Classifier Loop] Final extractedSomethingThisTurn:`, extractedSomethingThisTurn); // Log flag after loop
+        });
 
-        // Check if complete (based on combined info)
-        const isComplete = finalAccumulatedInfo.name && finalAccumulatedInfo.phone && finalAccumulatedInfo.email;
-        const foundAny = finalAccumulatedInfo.name || finalAccumulatedInfo.phone || finalAccumulatedInfo.email;
-
-        if (isComplete) {
-            console.log('[Classifier] Accumulated complete contact info:', finalAccumulatedInfo);
+        // Check if accumulated info is now complete
+        if (finalAccumulatedInfo.name && finalAccumulatedInfo.phone && finalAccumulatedInfo.email) {
             return {
                 type: 'CONTACT_INFO_PROVIDED',
-                contactInfo: finalAccumulatedInfo
-            };
-        } else if (foundAny && extractedSomethingThisTurn) { 
-            // Return PARTIAL if: 
-            // 1. Bot asked for info (we are in this block)
-            // 2. We have at least one piece of info (foundAny)
-            // 3. We actually extracted *some* info from the message(s) processed this turn (extractedSomethingThisTurn)
-            const missingFields = ['name', 'phone', 'email'].filter(field => !finalAccumulatedInfo[field]);
-            console.log('[Classifier] Accumulated partial contact info after check:', finalAccumulatedInfo, 'Missing:', missingFields);
-            return {
-                type: 'PARTIAL_CONTACT_INFO_PROVIDED',
-                contactInfo: finalAccumulatedInfo, 
-                missingFields: missingFields
+                contactInfo: finalAccumulatedInfo,
+                service: findServiceNameInMessage(message, services) // Check current message for service
             };
         } 
-        // If bot asked, but processing messages resulted in no useful info OR didn't complete the set, fall through.
-        console.log('[Classifier] Bot asked, but processing did not result in complete info or no relevant info extracted this turn. Falling through.');
+        // If we extracted *something* relevant in this turn (or had previous partial), and it's still not complete
+        else if (extractedSomethingThisTurn || (previousPartialInfo && (previousPartialInfo.name || previousPartialInfo.phone || previousPartialInfo.email))) { 
+             const missingFields = [];
+             if (!finalAccumulatedInfo.name) missingFields.push('name');
+             if (!finalAccumulatedInfo.phone) missingFields.push('phone');
+             if (!finalAccumulatedInfo.email) missingFields.push('email');
+             return {
+                 type: 'PARTIAL_CONTACT_INFO_PROVIDED',
+                 contactInfo: finalAccumulatedInfo, // Pass back the latest accumulated info
+                 missingFields: missingFields 
+             };
+        }
     }
-    // --- END NEW Logic ---
 
-
-    // 1. Check for Contact Info Provided (NOW ONLY A FALLBACK for single message input)
-    // This might still be useful if the accumulation logic fails or if the user provides all at once unexpectedly.
+    // Check for complete contact info in the current message ONLY if bot didn't just ask
     const singleMessageContactInfo = extractContactInfo(message);
-     if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone && singleMessageContactInfo.email) {
-        console.log('[Classifier] Found complete contact info in SINGLE message. Classifying as CONTACT_INFO_PROVIDED.');
+    if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone && singleMessageContactInfo.email) {
         return {
             type: 'CONTACT_INFO_PROVIDED',
-            contactInfo: singleMessageContactInfo // Use info from the single message
+            contactInfo: singleMessageContactInfo,
+            service: findServiceNameInMessage(message, services)
         };
     }
 
-    // 2. Check for Urgency (High priority)
+    // --- Other Intent Checks (Prioritize more specific intents) ---
     if (URGENT_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
-        console.log('[Classifier] Found urgency keyword. Classifying as URGENT_APPOINTMENT_REQUEST.');
         return { type: 'URGENT_APPOINTMENT_REQUEST' };
     }
 
-    // --- NEW CHECK 4: Operating Hours Inquiry ---
     if (OPERATING_HOURS_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
-        console.log('[Classifier] Found operating hours keyword. Classifying as OPERATING_HOURS_INQUIRY.');
         return { type: 'OPERATING_HOURS_INQUIRY' };
     }
-    // --- END NEW CHECK 4 ---
 
-    // --- NEW CHECK 5: Reschedule Request ---
-    if (RESCHEDULE_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
-        console.log('[Classifier] Found reschedule keyword. Classifying as RESCHEDULE_REQUEST.');
+     if (RESCHEDULE_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
         return { type: 'RESCHEDULE_REQUEST' };
     }
-    // --- END NEW CHECK 5 ---
-    
-    // --- NEW CHECK 6: Cancel Request ---
-    if (CANCEL_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
-        console.log('[Classifier] Found cancel keyword. Classifying as CANCEL_REQUEST.');
+
+     if (CANCEL_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
         return { type: 'CANCEL_REQUEST' };
     }
-    // --- END NEW CHECK 6 ---
-
-    // 7. Check for Availability Keywords (Appointment) 
-    if (availabilityKeywords.some(keyword => normalizedMessage.includes(keyword))) {
-        console.log('[Classifier] Found availability keyword. Classifying as APPOINTMENT_REQUEST.');
-        return { type: 'APPOINTMENT_REQUEST' };
-    }
-
-    // 8. Check for General Appointment Keywords
-    if (appointmentKeywords.some(keyword => normalizedMessage.includes(keyword))) {
-        console.log('[Classifier] Found general appointment keyword. Classifying as APPOINTMENT_REQUEST.');
-        return { type: 'APPOINTMENT_REQUEST' };
-    }
     
-    // 9. Check for Request to List Services
+    if (availabilityKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+        return { type: 'APPOINTMENT_REQUEST' }; 
+    }
+
+    if (appointmentKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+        return { type: 'APPOINTMENT_REQUEST' };
+    }
+
     if (listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
-        console.log('[Classifier] Found list service keyword. Classifying as REQUEST_SERVICE_LIST.');
         return { type: 'REQUEST_SERVICE_LIST' };
     }
 
-    // --- NEW CHECK 7: Service FAQ ---
-    const mentionedServiceName = findServiceNameInMessage(normalizedMessage, services);
-    const questionKeywords = [...SERVICE_FAQ_KEYWORDS.pain, ...SERVICE_FAQ_KEYWORDS.duration, ...SERVICE_FAQ_KEYWORDS.cost];
-    const isServiceFAQ = mentionedServiceName && questionKeywords.some(kw => normalizedMessage.includes(kw));
-
-    if (isServiceFAQ) {
-        const questionType = getQuestionType(normalizedMessage);
-        console.log(`[Classifier] Found service FAQ. Service: ${mentionedServiceName}, Type: ${questionType}. Classifying as SERVICE_FAQ.`);
-        return {
-            type: 'SERVICE_FAQ',
-            serviceName: mentionedServiceName,
-            questionType: questionType
-        };
-    }
-    // --- END NEW CHECK 7 ---
-
-    // 10. Check for Simple Confirmations (after specific prompts)
-    if (lastBotMessage && ('yes' === normalizedMessage || 'sure' === normalizedMessage || 'okay' === normalizedMessage || 'ok' === normalizedMessage)) {
-        // Avoid triggering confirmation if the bot just asked for contact info (handled above)
-        if (!didBotRequestContactInfo(lastBotMessage.content)) {
-             const askedConfirmation = lastBotMessage.content.includes('Would you like') || 
-                                       lastBotMessage.content.includes('shall I help') || 
-                                       lastBotMessage.content.includes('arrange that');
-            if (askedConfirmation) {
-                console.log('[Classifier] Found confirmation (not after contact request). Classifying as CONFIRMATION_YES.');
-                return { type: 'CONFIRMATION_YES' };
-            }
-        }
+    const faqMatch = checkServiceFAQ(normalizedMessage, services);
+    if (faqMatch) {
+        return { type: 'SERVICE_FAQ', serviceName: faqMatch.serviceName, questionType: faqMatch.questionType };
     }
 
-    // 11. Check for Explicit Service Inquiry Keywords
-    if (serviceInquiryKeywords.some(kw => normalizedMessage.includes(kw))) {
-        console.log('[Classifier] Found explicit service keyword. Classifying as SERVICE_INQUIRY_EXPLICIT.');
+    // Check for confirmation keywords ONLY if the bot didn't just ask for contact
+    if (!botRequestedContact && CONFIRMATION_KEYWORDS.some(keyword => normalizedMessage.startsWith(keyword) || normalizedMessage.endsWith(keyword))) {
+        return { type: 'CONFIRMATION_YES' };
+    }
+
+    // Check for explicit service keywords
+    if (serviceInquiryKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         return { type: 'SERVICE_INQUIRY_EXPLICIT' };
     }
 
-    // 12. Check for Follow-up after Dental Problem
-    if (lastBotMessage?.type === 'DENTAL_PROBLEM' && 
-        (normalizedMessage.includes('which service') || normalizedMessage.includes('what service') || 
-         normalizedMessage.includes('can help') || normalizedMessage.includes('what should i do'))) {
-        console.log('[Classifier] Found problem followup. Classifying as PROBLEM_FOLLOWUP.');
-        return {
-            type: 'PROBLEM_FOLLOWUP',
-            problemCategory: lastBotMessage.problemCategory 
-        };
-    }
-
-    // 13. Check for Initial Dental Problem Report
-    const dentalProblem = isDentalProblem(normalizedMessage);
-    if (dentalProblem.isIssue) {
-        console.log('[Classifier] Found dental problem. Classifying as DENTAL_PROBLEM.');
+    // Check for Dental Problems
+    const problemCheck = checkDentalProblem(normalizedMessage);
+    if (problemCheck.isProblem) {
         return {
             type: 'DENTAL_PROBLEM',
-            category: dentalProblem.category,
-            severity: dentalProblem.severity
+            category: problemCheck.category,
+            severity: problemCheck.severity
         };
     }
 
-    // 14. Check for Greetings (Only based on content, not isNewSession)
-    if (isGreeting(normalizedMessage)) {
-        console.log('[Classifier] Found greeting content. Classifying as GREETING.');
+    // Check for Greeting
+    if (GREETINGS.some(greeting => normalizedMessage.startsWith(greeting))) {
         return { type: 'GREETING' };
     }
 
-    // 15. If none of the above, classify as Unknown
-    console.log('[Classifier] No specific intent matched. Classifying as UNKNOWN.');
+    // Fallback
     return { type: 'UNKNOWN' };
 }; 

@@ -17,35 +17,28 @@ const MAX_MESSAGES = 20; // Limit the number of messages stored per session
  */
 export const getOrCreateSession = async (sessionId, businessId) => {
     try {
-        const now = new Date();
-        let isNew = false;
-
-        // Find and update the lastActivity in one go
-        let session = await ChatSession.findOneAndUpdate(
-            { sessionId },
-            { $set: { lastActivity: now } }, 
-            { new: true } // Return the updated document
-        );
+        let session = await ChatSession.findOne({ sessionId });
 
         if (!session) {
-            console.log(`[SessionService-DB] Creating new session for ID: ${sessionId}`);
-            isNew = true;
-            session = await ChatSession.create({
-                sessionId,
-                businessId,
-                lastActivity: now, // Set initial activity time
-                messages: [],
-                // Default fields are set by the schema
+            // console.log(`[SessionService-DB] Creating new session for ID: ${sessionId}`); // Debug only
+            session = new ChatSession({ 
+                sessionId, 
+                businessId, 
+                lastInteractionTime: Date.now(),
+                messages: [], // Initialize messages array
+                isFirstMessage: true
             });
+            await session.save();
         } else {
-            console.log(`[SessionService-DB] Retrieved existing session for ID: ${sessionId}`);
+            // console.log(`[SessionService-DB] Retrieved existing session for ID: ${sessionId}`); // Debug only
+            // Update last interaction time on retrieval
+            session.lastInteractionTime = Date.now();
+            await session.save(); 
         }
-        
-        // Return a plain object if needed, or the Mongoose doc
-        return { session: session.toObject ? session.toObject() : session, isNew }; 
+        return { session, isNew: !session }; // Simplified return
     } catch (error) {
-        console.error(`[SessionService-DB] Error in getOrCreateSession for ID ${sessionId}:`, error);
-        throw new Error('Failed to get or create chat session.'); // Re-throw a generic error
+        console.error(`[SessionService-DB] Error in getOrCreateSession for ID ${sessionId}:`, error); // Keep error log
+        throw error; // Re-throw error to be handled by caller
     }
 };
 
@@ -58,23 +51,16 @@ export const getOrCreateSession = async (sessionId, businessId) => {
  */
 export const updateSessionData = async (sessionId, dataToUpdate) => {
     try {
-        const updatePayload = { 
-            $set: { 
-                ...dataToUpdate,
-                lastActivity: new Date() // Always update activity timestamp
-            }
-        };
-        
-        const result = await ChatSession.updateOne({ sessionId }, updatePayload);
-        
+        // Always update lastInteractionTime when updating data
+        const updatePayload = { ...dataToUpdate, lastInteractionTime: Date.now() };
+        const result = await ChatSession.updateOne({ sessionId }, { $set: updatePayload });
+        // console.log(`[SessionService-DB] Updated session data for ID: ${sessionId}`, dataToUpdate); // Debug only
         if (result.matchedCount === 0) {
-            console.warn(`[SessionService-DB] Attempted to update non-existent session ID: ${sessionId}`);
-        } else {
-             console.log(`[SessionService-DB] Updated session data for ID: ${sessionId}`, dataToUpdate);
+            throw new Error(`Session not found for update: ${sessionId}`);
         }
     } catch (error) {
-        console.error(`[SessionService-DB] Error updating session data for ID ${sessionId}:`, error);
-        // Decide if you need to throw here or just log
+        console.error(`[SessionService-DB] Error updating session data for ID ${sessionId}:`, error); // Keep error log
+        throw error;
     }
 };
 
@@ -88,24 +74,22 @@ export const updateSessionData = async (sessionId, dataToUpdate) => {
  */
 export const addMessagesToSession = async (sessionId, userMessage, botMessage) => {
     try {
-        const updatePayload = {
-            $push: {
-                messages: {
-                    $each: [userMessage, botMessage],
-                    $slice: -MAX_MESSAGES // Keep only the last MAX_MESSAGES
-                }
-            },
-            $set: { lastActivity: new Date() } // Update activity timestamp
-        };
-
-        const result = await ChatSession.updateOne({ sessionId }, updatePayload);
-        
+        // Ensure messages are pushed in the correct order
+        const result = await ChatSession.updateOne(
+            { sessionId }, 
+            {
+                $push: {
+                    messages: { $each: [userMessage, botMessage] } 
+                },
+                $set: { lastInteractionTime: Date.now() } // Also update interaction time here
+            }
+        );
         if (result.matchedCount === 0) {
-             console.warn(`[SessionService-DB] Attempted to add messages to non-existent session ID: ${sessionId}`);
+            throw new Error(`Session not found for adding messages: ${sessionId}`);
         }
     } catch (error) {
-         console.error(`[SessionService-DB] Error adding messages to session ID ${sessionId}:`, error);
-         // Decide if you need to throw here or just log
+        console.error(`[SessionService-DB] Error adding messages to session ID ${sessionId}:`, error); // Keep error log
+        throw error;
     }
 };
 
@@ -128,10 +112,9 @@ export const addMessagesToSession = async (sessionId, userMessage, botMessage) =
 // Might be useful for debugging or specific checks
 export const getSession = async (sessionId) => {
     try {
-        const session = await ChatSession.findOne({ sessionId });
-        return session ? (session.toObject ? session.toObject() : session) : null;
+        return await ChatSession.findOne({ sessionId });
     } catch (error) {
-        console.error(`[SessionService-DB] Error fetching session ID ${sessionId}:`, error);
-        return null;
+        console.error(`[SessionService-DB] Error fetching session ID ${sessionId}:`, error); // Keep error log
+        throw error;
     }
 }; 

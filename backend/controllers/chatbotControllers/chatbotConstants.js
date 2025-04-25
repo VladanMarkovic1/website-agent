@@ -190,4 +190,9 @@ export const SPECIFIC_SERVICE_QUESTION_KEYWORDS = [
 // Keywords indicating a pediatric context
 export const PEDIATRIC_KEYWORDS = [
     'child', 'children', 'kid', 'kids', 'baby', 'toddler', 'pediatric', 'grow'
+];
+
+// --- NEW: Keywords for Simple Confirmation ---
+export const CONFIRMATION_KEYWORDS = [
+    'yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'confirm', 'affirmative', 'please do', 'do it'
 ]; 
