@@ -9,6 +9,8 @@ import {
     DENTAL_PROBLEMS,
     TIME_PREFERENCE_KEYWORDS // Added TIME_PREFERENCE_KEYWORDS
 } from "./chatbotConstants.js";
+import { extractContactInfo } from "./extractContactInfo.js"; // Only import extractContactInfo
+import { redactPII } from '../../utils/piiFilter.js'; // Added this import
 
 dotenv.config();
 
@@ -17,7 +19,7 @@ dotenv.config();
 // Removed handleServiceInquiry (moved to serviceMatcher.js)
 // Removed _generateOpenAIFallback (moved to aiFallbackService.js)
 
-// Helper function to create prompt for missing info
+// Restore local definition of createMissingInfoPrompt
 const createMissingInfoPrompt = (missingFields, providedInfo) => {
     let prompt = "";
     if (providedInfo.name && providedInfo.phone && !providedInfo.email) {
@@ -85,10 +87,10 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 const businessPhoneNumber = businessData?.businessPhoneNumber;
                 
                 // Updated confirmation message emphasizing the call back for scheduling
-                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! Your information has been received. We've noted your interest in ${determinedServiceContext}.\n\n`; // Use determined context
-                // Revised suffix to mention booking ideal time
-                const scheduleSuffix = `🧑‍⚕️ Our team will call you back at ${contactInfo.phone} as soon as possible during business hours to discuss your needs and book your ideal appointment time.\n\n`; 
-                const callUsSuffix = businessPhoneNumber 
+                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! Your information has been received. We\'ve noted your interest in ${determinedServiceContext}.\n\n`; // Use determined context
+                // Revised suffix to mention booking ideal time - REMOVED REDACTION
+                const scheduleSuffix = `🧑‍⚕️ Our team will call you back at ${contactInfo.phone} as soon as possible during business hours to discuss your needs and book your ideal appointment time.\n\n`;
+                const callUsSuffix = businessPhoneNumber
                     ? `📞 If your situation requires immediate attention or you prefer to speak with us sooner, please feel free to call us directly at ${businessPhoneNumber}.`
                     : ''; // Omit if no phone number
                 
