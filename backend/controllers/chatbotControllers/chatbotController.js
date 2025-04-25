@@ -41,7 +41,7 @@ async function _getBusinessData(businessId) {
         operatingHours: extraInfoData?.operatingHours || null
     };
 
-    console.log("[Business Data Check] Fetched business data:", JSON.stringify(fullBusinessData, null, 2)); // Log fetched data
+    // console.log("[Business Data Check] Fetched business data:", JSON.stringify(fullBusinessData, null, 2)); // Debug only - Removed
     return fullBusinessData;
 }
 
@@ -54,7 +54,7 @@ async function _initializeSessionAndTrackStart(sessionId, businessId) {
             await trackChatEvent(businessId, 'NEW_CONVERSATION');
             await updateSessionData(sessionId, { isFirstMessage: false }); 
         } catch (error) {
-            console.error("Error tracking new conversation:", error);
+            console.error("Error tracking new conversation:", error); // Keep essential error logs
         }
     }
     return { session, isNewSession };
@@ -73,16 +73,16 @@ async function _detectAndSetInitialServiceInterest(session, businessData, messag
 
     if (mentionedService) {
         await updateSessionData(session.sessionId, { serviceInterest: mentionedService.name });
-        console.log('[Controller] Detected service interest:', mentionedService.name);
+        // console.log('[Controller] Detected service interest:', mentionedService.name); // Debug only - Removed
         session.serviceInterest = mentionedService.name; // Update local session object too
     }
 }
 
 async function _generateAndRefineResponse(message, businessData, sessionMessages, isNewSession, session, previousPartialInfo) {
-    console.log(`[AI Call Prep] Calling generateAIResponse. isNewSession=${isNewSession}. Message: "${message}". History length: ${sessionMessages?.length || 0}`);
-    if (sessionMessages && sessionMessages.length > 0) {
-        console.log(`[AI Call Prep] Last ${Math.min(3, sessionMessages.length)} messages:`, JSON.stringify(sessionMessages.slice(-3), null, 2));
-    }
+    // console.log(`[AI Call Prep] Calling generateAIResponse. isNewSession=${isNewSession}. Message: "${redactPII(message)}". History length: ${sessionMessages?.length || 0}`); // Redacted message
+    // if (sessionMessages && sessionMessages.length > 0) { // Avoid logging message history in prod
+        // console.log(`[AI Call Prep] Last ${Math.min(3, sessionMessages.length)} messages:`, JSON.stringify(sessionMessages.slice(-3), null, 2)); // Requires deep redaction - Removed for prod
+    // }
     
     // Pass session.serviceInterest as an argument
     const aiResult = await generateAIResponse(
@@ -96,17 +96,17 @@ async function _generateAndRefineResponse(message, businessData, sessionMessages
     const classifiedIntent = aiResult.classifiedIntent; // Original classification
     const initialResponsePayload = aiResult.responsePayload; // Payload after internal logic/switch in generateAIResponse
     
-    console.log(`[AI Response Log] Original Classified Intent:`, JSON.stringify(classifiedIntent, null, 2)); 
-    console.log(`[AI Response Log] Initial Response Payload from generateAIResponse:`, JSON.stringify(initialResponsePayload, null, 2)); 
+    // console.log(`[AI Response Log] Original Classified Intent:`, JSON.stringify(classifiedIntent, null, 2)); // Debug - Removed
+    // console.log(`[AI Response Log] Initial Response Payload from generateAIResponse:`, JSON.stringify(initialResponsePayload, null, 2)); // Debug - Removed
 
     // --- First Override Pass (Based on the response payload type from generateAIResponse) ---
-    console.log("[Override Check 1] Applying overrides based on initial response payload type.");
+    // console.log("[Override Check 1] Applying overrides based on initial response payload type."); // Debug - Removed
     let responseAfterOverride1 = applyResponseOverrides(initialResponsePayload, [], session, businessData);
-    console.log("[Override Check 1] Response after first override pass:", JSON.stringify(responseAfterOverride1, null, 2));
+    // console.log("[Override Check 1] Response after first override pass:", JSON.stringify(responseAfterOverride1, null, 2)); // Debug - Removed
 
     // Update session interest if override specified it
     if (responseAfterOverride1.serviceContext && responseAfterOverride1.serviceContext !== session.serviceInterest) {
-        console.log(`[Override Check 1] Updating session service interest from ${session.serviceInterest} to ${responseAfterOverride1.serviceContext}`);
+        // console.log(`[Override Check 1] Updating session service interest from ${session.serviceInterest} to ${responseAfterOverride1.serviceContext}`); // Debug - Removed
         await updateSessionData(session.sessionId, { serviceInterest: responseAfterOverride1.serviceContext });
         session.serviceInterest = responseAfterOverride1.serviceContext; // Update local session object
     }
@@ -124,25 +124,26 @@ async function _trackProblemDescriptionIfNeeded(session, message, finalResponseT
             (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => message.toLowerCase().includes(keyword)) || message.split(' ').length > 3); // Use a threshold like > 3 words
 
         if (isPotentiallyRelevant) {
-            await updateSessionData(session.sessionId, { problemDescription: message }); 
-            session.problemDescription = message; // Update local session object
-            console.log(`[Session Update] Stored relevant problemDescription: "${message}"`);
+            const redactedMessage = redactPII(message); // Redact before saving
+            await updateSessionData(session.sessionId, { problemDescription: redactedMessage }); 
+            session.problemDescription = redactedMessage; // Update local session object with redacted
+            // console.log(`[Session Update] Stored relevant problemDescription: "${redactedMessage}"`); // Debug - Removed
         } else {
-            // console.log(`[Session Update] Message "${message}" (type: ${finalResponseType}) not deemed relevant for initial problemDescription.`);
+            // console.log(`[Session Update] Message "${redactPII(message)}" (type: ${finalResponseType}) not deemed relevant for initial problemDescription.`); // Debug - Removed
         }
     } else {
-        // console.log(`[Session Update] problemDescription already set to: "${session.problemDescription}"`);
+        // console.log(`[Session Update] problemDescription already set to: "${session.problemDescription}"`); // Already redacted - Removed
     }
 }
 
 function _determineLeadProblemContext(session) {
     // 1. Prioritize explicitly set problemDescription (captured by _trackProblemDescriptionIfNeeded)
-    let leadProblemContext = session.problemDescription || null;
-    console.log("[Context Check] Starting... Trying session.problemDescription first:", leadProblemContext);
+    let leadProblemContext = session.problemDescription || null; // Already redacted if set by _trackProblemDescriptionIfNeeded
+    // console.log("[Context Check] Starting... Trying session.problemDescription first:", leadProblemContext); // Debug - Removed
 
     // 2. Fallback: Search backwards for first non-trivial message if description wasn't captured
     if (!leadProblemContext) {
-        console.log("[Context Check] session.problemDescription not set. Searching message history backwards.");
+        // console.log("[Context Check] session.problemDescription not set. Searching message history backwards."); // Debug - Removed
         const messages = session.messages || [];
         const irrelevantTypes = ['CONTACT_INFO', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES']; // Types to ignore
         // Find the index of the *last* message before contact info was likely provided
@@ -157,9 +158,10 @@ function _determineLeadProblemContext(session) {
             if (messages[i].role === 'user') {
                 // Check if message content is non-trivial (e.g., more than one word?)
                 // and type is not irrelevant
+                // NOTE: messages[i].content should already be redacted from _logInteractionMessages
                 if (messages[i].content && messages[i].content.includes(' ') && !irrelevantTypes.includes(messages[i].type)) { 
-                    leadProblemContext = messages[i].content;
-                    console.log(`[Context Check] Found relevant preceding user message via history search: "${leadProblemContext}"`);
+                    leadProblemContext = messages[i].content; // Use already redacted content
+                    // console.log(`[Context Check] Found relevant preceding user message via history search: "${leadProblemContext}"`); // Debug - Removed
                     break; // Found the most recent relevant context
                 }
             }
@@ -169,59 +171,62 @@ function _determineLeadProblemContext(session) {
     // 3. Final fallback: Generic message
     if (!leadProblemContext) {
         leadProblemContext = "User provided contact details after chatbot interaction.";
-        console.log("[Context Check] No specific concern context found, using generic text.");
+        // console.log("[Context Check] No specific concern context found, using generic text."); // Debug - Removed
     }
     
-    console.log("[Context Check] Final determined context:", leadProblemContext);
+    // console.log("[Context Check] Final determined context:", leadProblemContext); // Debug - Removed
     return leadProblemContext;
 }
 
 async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedIntent) {
     // Check the original classified intent type
     if (!(classifiedIntent && classifiedIntent.type === 'CONTACT_INFO_PROVIDED' && classifiedIntent.contactInfo)) {
-        if (finalResponse.type !== 'ERROR') {
-            console.log(`[Controller] Original classified type (${classifiedIntent?.type}) is not CONTACT_INFO_PROVIDED or contactInfo missing. Not saving lead.`);
-        }
+        // if (finalResponse.type !== 'ERROR') { // Reduce noise
+            // console.log(`[Controller] Original classified type (${classifiedIntent?.type}) is not CONTACT_INFO_PROVIDED or contactInfo missing. Not saving lead.`);
+        // }
         return; // Only proceed if original classification was complete contact info
     }
 
-    console.log('[Controller] Original classification CONTACT_INFO_PROVIDED detected. Attempting to save lead...');
+    // console.log('[Controller] Original classification CONTACT_INFO_PROVIDED detected. Attempting to save lead...'); // Debug - Removed
     try {
         // Determine context using the revised function
-        const leadProblemContext = _determineLeadProblemContext(session);
+        const leadProblemContext = _determineLeadProblemContext(session); // Context is already redacted
+
+        // Extract PII to be sent to saveLead (which handles encryption)
+        const leadPii = classifiedIntent.contactInfo; 
 
         const leadContext = {
             businessId: session.businessId,
-            name: classifiedIntent.contactInfo.name, 
-            phone: classifiedIntent.contactInfo.phone,
-            email: classifiedIntent.contactInfo.email,
+            name: leadPii.name, 
+            phone: leadPii.phone,
+            email: leadPii.email,
             // Prioritize specific session.serviceInterest 
             serviceInterest: session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation',
-            problemDescription: leadProblemContext,
-            messageHistory: session.messages
+            problemDescription: leadProblemContext, // Already redacted
+            messageHistory: session.messages // Already redacted from _logInteractionMessages
         };
-        console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2));
+        // console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2)); // Logs raw PII before encryption - REMOVED
         
         await saveLead(leadContext);
-        console.log('[Controller] saveLead function executed successfully for sessionId:', session.sessionId);
+        console.log(`[Controller] Lead saved successfully for session: ${session.sessionId}`); // Keep success log
         
-        await updateSessionData(session.sessionId, { contactInfo: classifiedIntent.contactInfo }); 
-        session.contactInfo = classifiedIntent.contactInfo; 
+        await updateSessionData(session.sessionId, { contactInfo: leadPii }); // Store raw PII temporarily in session (consider if needed)
+        session.contactInfo = leadPii; 
 
-        console.log('[Controller] Clearing partialContactInfo from session after successful lead save.');
+        // console.log('[Controller] Clearing partialContactInfo from session after successful lead save.'); // Debug - Removed
         await updateSessionData(session.sessionId, { partialContactInfo: null });
         session.partialContactInfo = null; 
         
         await trackChatEvent(session.businessId, 'LEAD_GENERATED', { service: leadContext.serviceInterest });
 
     } catch (error) {
-         console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack);
+         console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack); // Keep essential error log
     }
 }
 
 async function _logInteractionMessages(sessionId, userMessageContent, userMessageType, finalResponse) {
     const redactedUserMessageContent = redactPII(userMessageContent);
-    const redactedBotMessageContent = redactPII(finalResponse.response);
+    const redactedBotMessageContent = redactPII(finalResponse.response); // Redact bot response too
     
      const userMessageLog = {
         role: 'user',
@@ -231,20 +236,20 @@ async function _logInteractionMessages(sessionId, userMessageContent, userMessag
     };
     const botMessageLog = {
         role: 'assistant',
-        content: redactedBotMessageContent,
+        content: redactedBotMessageContent, // Use redacted content for logging
         timestamp: Date.now(),
         type: finalResponse.type,
         problemCategory: finalResponse.problemCategory || null
     };
-    console.log('[Controller] Logging user message:', userMessageLog);
-    console.log('[Controller] Logging bot message:', botMessageLog);
+    // console.log('[Controller] Logging user message:', userMessageLog); // Redundant / Debug - Removed
+    // console.log('[Controller] Logging bot message:', botMessageLog); // Redundant / Debug - Removed
     await addMessagesToSession(sessionId, userMessageLog, botMessageLog);
     // Also store the last bot response type in the session for context checking
     try {
         await updateSessionData(sessionId, { lastBotResponseType: finalResponse.type });
-        console.log(`[Session Update] Stored lastBotResponseType: ${finalResponse.type}`);
+        // console.log(`[Session Update] Stored lastBotResponseType: ${finalResponse.type}`); // Debug - Removed
     } catch(err) {
-        console.error("[Session Update] Error storing lastBotResponseType:", err);
+        console.error("[Session Update] Error storing lastBotResponseType:", err); // Keep essential error log
     }
 }
 
@@ -253,7 +258,7 @@ async function _trackConversationCompletionIfNeeded(finalResponse, session) {
         try {
             await trackChatEvent(session.businessId, 'CONVERSATION_COMPLETED');
         } catch (error) {
-            console.error("Error tracking conversation completion:", error);
+            console.error("Error tracking conversation completion:", error); // Keep essential error log
         }
     }
 }
@@ -280,11 +285,11 @@ const processChatMessage = async (message, sessionId, businessId) => {
         await _detectAndSetInitialServiceInterest(session, businessData, message);
 
         // Prepare message history (use session.messages)
-        const sessionMessages = session.messages || [];
+        const sessionMessages = session.messages || []; // Should be redacted already if fetched from DB
 
         // Get previous partial info
         const previousPartialInfo = session.partialContactInfo || { name: null, phone: null, email: null };
-        console.log("[Controller] Retrieved previous partial contact info from session:", previousPartialInfo);
+        // console.log("[Controller] Retrieved previous partial contact info from session:", previousPartialInfo); // Potential PII - Removed
 
         // Generate response (AI + Overrides)
         const { classifiedIntent, responsePayload: responseAfterOverride1 } = await _generateAndRefineResponse(
@@ -296,15 +301,15 @@ const processChatMessage = async (message, sessionId, businessId) => {
             previousPartialInfo
         );
 
-        console.log("[Controller Flow] Response payload after _generateAndRefineResponse (inc. AI type overrides):", JSON.stringify(responseAfterOverride1, null, 2));
+        // console.log("[Controller Flow] Response payload after _generateAndRefineResponse (inc. AI type overrides):", JSON.stringify(responseAfterOverride1, null, 2)); // Debug - Removed
 
         // --- Second Override Pass (Based on user message type) --- 
-        console.log("[Override Check 2 Prep] Original Classified Type:", classifiedIntent?.type);
-        console.log("[Override Check 2 Prep] Type before user message override:", responseAfterOverride1.type);
+        // console.log("[Override Check 2 Prep] Original Classified Type:", classifiedIntent?.type); // Debug - Removed
+        // console.log("[Override Check 2 Prep] Type before user message override:", responseAfterOverride1.type); // Debug - Removed
         const userMessageTypes = detectRequestTypes(message);
-        console.log("[Override Check 2] Applying overrides based on detected user message types:", userMessageTypes);
+        // console.log("[Override Check 2] Applying overrides based on detected user message types:", userMessageTypes); // Debug - Removed
         const finalResponse = applyResponseOverrides(responseAfterOverride1, userMessageTypes, session, businessData); 
-        console.log(`[Controller Flow] Final response payload after user type overrides (type: ${finalResponse.type}):`, finalResponse.response); 
+        // console.log(`[Controller Flow] Final response payload after user type overrides (type: ${finalResponse.type}):`, redactPII(finalResponse.response)); // Log redacted final response? - Removed for prod
 
         // --- Store/Update Partial Contact Info in Session ---
         // Use the contactInfo from the original classification attempt
@@ -313,19 +318,19 @@ const processChatMessage = async (message, sessionId, businessId) => {
              // Only update session if the accumulated info differs from what was already there
              // (or if there was no previous partial info)
              if (!session.partialContactInfo || JSON.stringify(session.partialContactInfo) !== JSON.stringify(accumulatedPartialInfo)) {
-                  await updateSessionData(sessionId, { partialContactInfo: accumulatedPartialInfo });
+                  await updateSessionData(sessionId, { partialContactInfo: accumulatedPartialInfo }); // Storing raw PII in session - review if needed
                   session.partialContactInfo = accumulatedPartialInfo; // Update local state
-                  console.log('[Controller] Updated partialContactInfo in session:', accumulatedPartialInfo);
+                  // console.log('[Controller] Updated partialContactInfo in session:', accumulatedPartialInfo); // Potential PII - Removed
              } else {
-                  console.log('[Controller] Partial info detected, but session already has the same accumulated data.');
+                  // console.log('[Controller] Partial info detected, but session already has the same accumulated data.'); // Debug - Removed
              }
         } else if (classifiedIntent?.type === 'CONTACT_INFO_PROVIDED'){
              // If complete info was provided, ensure partial info is cleared later during lead saving 
              // (which already happens in _handleLeadSavingIfNeeded)
-             console.log('[Controller] Complete contact info provided.');
+             // console.log('[Controller] Complete contact info provided.'); // Debug - Removed
         } else if (session.partialContactInfo) {
              // If we have partial info in session, but classifier didn't detect partial/complete this turn
-             console.log(`[Controller] Classifier did not detect partial/complete info this turn (type: ${classifiedIntent?.type}). Keeping existing partial info in session:`, session.partialContactInfo);
+             // console.log(`[Controller] Classifier did not detect partial/complete info this turn (type: ${classifiedIntent?.type}). Keeping existing partial info in session:`, session.partialContactInfo); // Potential PII - Removed
         }
         // --- END Store/Update Partial Contact Info --- 
 
@@ -341,22 +346,22 @@ const processChatMessage = async (message, sessionId, businessId) => {
         
         // Log messages (use detected user type)
         const userMessageType = userMessageTypes.length > 0 ? userMessageTypes.join('/') : 'UNKNOWN'; // Or use classifiedIntent?.type if preferred
-        await _logInteractionMessages(sessionId, message, userMessageType, finalResponse);
+        await _logInteractionMessages(sessionId, message, userMessageType, finalResponse); // This handles redaction for DB logs
 
         // Update session last bot response type
         if (finalResponse.type) {
             await updateSessionData(sessionId, { lastBotResponseType: finalResponse.type });
-            console.log("[Session Update] Stored lastBotResponseType:", finalResponse.type);
+            // console.log("[Session Update] Stored lastBotResponseType:", finalResponse.type); // Debug - Removed
         }
 
         // Return only the string response object expected by caller
         return {
-             response: escapeHtml(finalResponse.response),
+             response: escapeHtml(finalResponse.response), // Return unredacted response for UI
              type: finalResponse.type,
              sessionId // Include sessionId if needed by caller (e.g. WebSocket handler)
         };
     } catch (error) {
-        console.error("Error processing message:", error);
+        console.error("Error processing message:", error); // Keep essential error log
          // Return error structure expected by caller
          return {
              response: escapeHtml(RESPONSE_TEMPLATES.ERROR()),
@@ -378,7 +383,7 @@ export const handleChatMessage = async (req, res) => {
         const response = await processChatMessage(message, sessionId, businessId);
         res.json(response);
     } catch (error) {
-        console.error("Error handling chat message:", error);
+        console.error("Error handling chat message:", error); // Keep essential error log
         res.status(error.message === "Business not found" ? 404 : 500).json({ 
             error: error.message || "An error occurred while processing your message" 
         });
@@ -390,7 +395,7 @@ export const processWebSocketMessage = async (message, sessionId, businessId) =>
     try {
         return await processChatMessage(message, sessionId, businessId);
     } catch (error) {
-        console.error("Error processing WebSocket message:", error);
+        console.error("Error processing WebSocket message:", error); // Keep essential error log
         return {
             type: "error",
             response: error.message || "An error occurred while processing your message"

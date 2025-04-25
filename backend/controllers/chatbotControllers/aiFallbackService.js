@@ -17,7 +17,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  * @returns {Promise<Object>} An object containing the type ('AI_FALLBACK' or 'ERROR_FALLBACK') and the response string.
  */
 export const generateAIFallbackResponse = async (message, messageHistory) => {
-    console.log('Falling back to OpenAI generation.');
+    // console.log('Falling back to OpenAI generation.');
     // Enhanced System Prompt V4 (More empathetic general response)
     const systemPrompt = `You are a friendly and helpful dental office AI assistant.
 Persona Traits: ${CHATBOT_PERSONALITY.traits.join(', ')}.
@@ -61,7 +61,7 @@ Keep responses concise, friendly, and always use appropriate emojis like ðŸ¦·, â
         });
 
         const aiResponseContent = completion.choices[0]?.message?.content?.trim() || RESPONSE_TEMPLATES.understanding;
-        console.log('OpenAI generated response:', aiResponseContent);
+        // console.log('OpenAI generated response:', aiResponseContent);
 
         return {
             type: 'AI_FALLBACK',

@@ -135,78 +135,78 @@ const leadSchema = new mongoose.Schema({
 
 // --- Encryption Hook ---
 leadSchema.pre('save', function(next) {
-    console.log(`[Pre-Save Hook] Running for Lead ID: ${this._id || 'NEW'}`);
+    // console.log(`[Pre-Save Hook] Running for Lead ID: ${this._id || 'NEW'}`); // Debug Only
     try {
         // Encrypt Name if modified
         if (this.isModified('name')) {
-            console.log(`[Pre-Save Hook] Name modified. Original value:`, this.name); // Log original value
+            // console.log(`[Pre-Save Hook] Name modified. Original value:`, this.name); // PII - REMOVED
             if (this.name != null) {
                 const encryptedName = encrypt(this.name);
-                console.log(`[Pre-Save Hook] encrypt(name) result:`, encryptedName); // Log encryption result
+                // console.log(`[Pre-Save Hook] encrypt(name) result:`, encryptedName); // Debug Only
                 if (encryptedName) {
                     this.set('name', encryptedName.encryptedData); // Use .set() to ensure change is tracked
                     this.set('nameIv', encryptedName.iv);
-                    console.log(`[Pre-Save Hook] Name set to encrypted. IV set.`);
+                    // console.log(`[Pre-Save Hook] Name set to encrypted. IV set.`); // Debug Only
                 } else {
-                    if (this.name === '') { this.set('nameIv', ''); console.log(`[Pre-Save Hook] Name is empty string, IV set to empty.`); } 
+                    if (this.name === '') { this.set('nameIv', ''); /* console.log(`[Pre-Save Hook] Name is empty string, IV set to empty.`); */ } // Debug Only
                     else { console.error('[Pre-Save Hook] Name encryption failed!'); this.invalidate('name', 'Encryption failed'); }
                 }
             } else {
-                 console.log(`[Pre-Save Hook] Name is null/undefined, clearing IV.`);
+                 // console.log(`[Pre-Save Hook] Name is null/undefined, clearing IV.`); // Debug Only
                  this.set('nameIv', undefined);
             }
         } else {
-             console.log(`[Pre-Save Hook] Name not modified.`);
+             // console.log(`[Pre-Save Hook] Name not modified.`); // Debug Only
         }
         
         // Encrypt Email if modified
         if (this.isModified('email')) {
-            console.log(`[Pre-Save Hook] Email modified. Original value:`, this.email);
+            // console.log(`[Pre-Save Hook] Email modified. Original value:`, this.email); // PII - REMOVED
             if (this.email != null) {
                 const encryptedEmail = encrypt(this.email);
-                console.log(`[Pre-Save Hook] encrypt(email) result:`, encryptedEmail);
+                // console.log(`[Pre-Save Hook] encrypt(email) result:`, encryptedEmail); // Debug Only
                 if (encryptedEmail) {
                     this.set('email', encryptedEmail.encryptedData);
                     this.set('emailIv', encryptedEmail.iv);
-                    console.log(`[Pre-Save Hook] Email set to encrypted. IV set.`);
+                    // console.log(`[Pre-Save Hook] Email set to encrypted. IV set.`); // Debug Only
                 } else {
-                     if (this.email === '') { this.set('emailIv', ''); console.log(`[Pre-Save Hook] Email is empty string, IV set to empty.`); }
+                     if (this.email === '') { this.set('emailIv', ''); /* console.log(`[Pre-Save Hook] Email is empty string, IV set to empty.`); */ } // Debug Only
                      else { console.error('[Pre-Save Hook] Email encryption failed!'); this.invalidate('email', 'Encryption failed'); }
                 }
             } else {
-                 console.log(`[Pre-Save Hook] Email is null/undefined, clearing IV.`);
+                 // console.log(`[Pre-Save Hook] Email is null/undefined, clearing IV.`); // Debug Only
                  this.set('emailIv', undefined);
             }
         } else {
-             console.log(`[Pre-Save Hook] Email not modified.`);
+             // console.log(`[Pre-Save Hook] Email not modified.`); // Debug Only
         }
 
         // Encrypt Phone if modified
         if (this.isModified('phone')) {
-             console.log(`[Pre-Save Hook] Phone modified. Original value:`, this.phone);
+             // console.log(`[Pre-Save Hook] Phone modified. Original value:`, this.phone); // PII - REMOVED
              if (this.phone != null) {
                  const encryptedPhone = encrypt(this.phone);
-                 console.log(`[Pre-Save Hook] encrypt(phone) result:`, encryptedPhone);
+                 // console.log(`[Pre-Save Hook] encrypt(phone) result:`, encryptedPhone); // Debug Only
                  if (encryptedPhone) {
                      this.set('phone', encryptedPhone.encryptedData);
                      this.set('phoneIv', encryptedPhone.iv);
-                     console.log(`[Pre-Save Hook] Phone set to encrypted. IV set.`);
+                     // console.log(`[Pre-Save Hook] Phone set to encrypted. IV set.`); // Debug Only
                  } else {
-                     if (this.phone === '') { this.set('phoneIv', ''); console.log(`[Pre-Save Hook] Phone is empty string, IV set to empty.`); } 
+                     if (this.phone === '') { this.set('phoneIv', ''); /* console.log(`[Pre-Save Hook] Phone is empty string, IV set to empty.`); */ } // Debug Only
                      else { console.error('[Pre-Save Hook] Phone encryption failed!'); this.invalidate('phone', 'Encryption failed'); }
                  }
              } else {
-                  console.log(`[Pre-Save Hook] Phone is null/undefined, clearing IV.`);
+                  // console.log(`[Pre-Save Hook] Phone is null/undefined, clearing IV.`); // Debug Only
                   this.set('phoneIv', undefined);
              }
         } else {
-              console.log(`[Pre-Save Hook] Phone not modified.`);
+              // console.log(`[Pre-Save Hook] Phone not modified.`); // Debug Only
         }
         
-        console.log('[Pre-Save Hook] Hook finished. Calling next().');
+        // console.log('[Pre-Save Hook] Hook finished. Calling next().'); // Debug Only
         next();
     } catch (error) {
-        console.error("Error during pre-save encryption hook:", error);
+        console.error("Error during pre-save encryption hook:", error); // Keep error log
         next(error); 
     }
 });
