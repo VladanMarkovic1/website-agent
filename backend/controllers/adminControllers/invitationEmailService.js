@@ -9,7 +9,7 @@ async function createTransporter() {
     if (!transporter) {
         // Create Ethereal test account
         const testAccount = await nodemailer.createTestAccount();
-        console.log('Test Account:', testAccount);
+        // console.log('Test Account:', testAccount); // REMOVED - Exposes credentials
 
         // Create reusable transporter
         transporter = nodemailer.createTransport({
@@ -27,7 +27,7 @@ async function createTransporter() {
 
 export const sendInvitationEmail = async (email, invitationLink) => {
     try {
-        console.log('Sending invitation email to:', email);
+        // console.log('Sending invitation email to:', email); // REMOVED - PII
         
         const transport = await createTransporter();
         
@@ -54,10 +54,10 @@ export const sendInvitationEmail = async (email, invitationLink) => {
 
         const info = await transport.sendMail(mailOptions);
         const previewUrl = nodemailer.getTestMessageUrl(info);
-        console.log('Preview URL:', previewUrl);
+        // console.log('Preview URL:', previewUrl); // REMOVED - For testing only
         return { info, previewUrl };
     } catch (error) {
-        console.error('Error sending invitation email:', error);
+        console.error('Error sending invitation email:', error); // KEEP Error
         throw error;
     }
 };
