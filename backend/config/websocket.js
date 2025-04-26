@@ -8,7 +8,7 @@ const initWebSocket = (io) => {
         const apiKey = socket.handshake.query.apiKey;
         const businessId = socket.handshake.query.businessId;
 
-        console.log(`[WebSocket Auth] Attempting connection for business: ${businessId}`);
+        // console.log(`[WebSocket Auth] Attempting connection for business: ${businessId}`);
 
         if (!apiKey || !businessId) {
             console.warn(`[WebSocket Auth] Failed: Missing apiKey or businessId in query for business: ${businessId || 'Unknown'}`);
@@ -35,7 +35,7 @@ const initWebSocket = (io) => {
                 return next(new Error('Authentication error: Invalid API Key'));
             }
 
-            console.log(`[WebSocket Auth] Success: Valid API Key for business: ${businessId}`);
+            // console.log(`[WebSocket Auth] Success: Valid API Key for business: ${businessId}`);
             // Attach validated info to socket for potential later use?
             socket.businessId = businessId;
             socket.sessionId = socket.handshake.query.sessionId;
@@ -50,7 +50,7 @@ const initWebSocket = (io) => {
 
     io.on("connection", (socket) => {
         // Now connection is only established if auth passed
-        console.log(`✅ User connected (Authenticated): Business ID: ${socket.businessId}, Session ID: ${socket.sessionId}`);
+        // console.log(`✅ User connected (Authenticated): Business ID: ${socket.businessId}, Session ID: ${socket.sessionId}`);
         
         // Send initial greeting message upon connection
         socket.emit("message", {
@@ -60,7 +60,7 @@ const initWebSocket = (io) => {
         
         socket.on("message", async (data) => {
             // Use businessId/sessionId attached to the authenticated socket
-            console.log(`🔹 Received message: "${data.message}" for business ${socket.businessId}`); 
+            // console.log(`🔹 Received message: "${data.message}" for business ${socket.businessId}`);
 
             try {
                 const response = await processWebSocketMessage(
@@ -80,7 +80,7 @@ const initWebSocket = (io) => {
         });
 
         socket.on("disconnect", () => {
-            console.log("❌ A user disconnected");
+            // console.log("❌ A user disconnected");
         });
     });
 };
