@@ -9,13 +9,7 @@ export const addNoteForLeadController = async (req, res) => {
         const { note } = req.body;
         // const business = req.business; // Keep if needed for other checks, but use businessId from params for query
     
-        console.log('Adding note:', {
-          leadId,
-          // businessId: business._id, // Use businessId from params now
-          businessId: businessId,
-          note,
-          body: req.body
-        });
+        // console.log('Adding note:', { /* ... */ }); // REMOVED
 
         if (!businessId || !leadId) {
             return res.status(400).json({ error: 'Business ID and Lead ID are required in URL' });
@@ -40,7 +34,7 @@ export const addNoteForLeadController = async (req, res) => {
           throw err; // Re-throw other errors
         }
     
-        console.log('Found lead:', lead ? 'yes' : 'no');
+        // console.log('Found lead:', lead ? 'yes' : 'no'); // REMOVED
         
         if (!lead) {
           return res.status(404).json({ error: "Lead not found" });
@@ -53,7 +47,7 @@ export const addNoteForLeadController = async (req, res) => {
         });
     
         await lead.save();
-        console.log('Note added successfully');
+        // console.log('Note added successfully'); // REMOVED
 
         // Manually decrypt fields before sending the response
         const leadToSend = { ...lead.toObject() }; // Convert to plain object

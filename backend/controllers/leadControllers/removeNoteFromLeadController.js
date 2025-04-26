@@ -8,12 +8,7 @@ export const removeNoteFromLeadController = async (req, res) => {
         const { businessId, leadId, noteId } = req.params;
         // const business = req.business; // Keep if needed, use businessId from params for query
 
-        console.log('Removing note:', {
-            leadId,
-            noteId,
-            // businessId: business._id
-            businessId: businessId
-        });
+        // console.log('Removing note:', { /* ... */ }); // REMOVED
 
         if (!businessId || !leadId || !noteId) {
             return res.status(400).json({ error: 'Business ID, Lead ID, and Note ID are required in URL' });
@@ -49,7 +44,7 @@ export const removeNoteFromLeadController = async (req, res) => {
         lead.callHistory.splice(noteIndex, 1);
         await lead.save();
         
-        console.log('Note removed successfully');
+        // console.log('Note removed successfully'); // REMOVED
 
         // Manually decrypt fields before sending the response
         const leadToSend = { ...lead.toObject() }; // Convert to plain object

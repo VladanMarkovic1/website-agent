@@ -20,15 +20,15 @@ export const getLeads = async (req, res) => {
                               .lean(); // Use lean for performance
         const count = leads.length;
 
-        console.log(`✅ Found ${count} leads for business ${businessId}`);
+        // console.log(`✅ Found ${count} leads for business ${businessId}`); // REMOVED
 
-        // --- Log the top sorted leads for verification ---
-        if (leads && leads.length > 0) {
-            console.log("Top 3 sorted leads (ID, LastContacted):");
-            leads.slice(0, 3).forEach(lead => {
-                console.log(`  - ID: ${lead._id}, LastContactedAt: ${lead.lastContactedAt}`);
-            });
-        }
+        // --- Log the top sorted leads for verification --- // REMOVED Block
+        // if (leads && leads.length > 0) {
+        //     console.log("Top 3 sorted leads (ID, LastContacted):");
+        //     leads.slice(0, 3).forEach(lead => {
+        //         console.log(`  - ID: ${lead._id}, LastContactedAt: ${lead.lastContactedAt}`);
+        //     });
+        // }
         // --- End logging ---
 
         // Decrypt sensitive fields before sending to frontend
