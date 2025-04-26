@@ -65,7 +65,7 @@ export function extractContactInfo(message) {
 
     // Handle natural format
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i;
-    const phoneRegex = /(\d[\d\s-]{7,})/;
+    const phoneRegex = /(\+?\d[\d\s-]{7,})/;
     const nameRegex = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/;
 
     const email = message.match(emailRegex)?.[1];

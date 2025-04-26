@@ -116,50 +116,66 @@ async function _generateAndRefineResponse(message, businessData, sessionMessages
 }
 
 async function _trackProblemDescriptionIfNeeded(session, message, finalResponseType) {
-    // Only try to set problemDescription if it's NOT ALREADY SET
-    if (!session.problemDescription) {
-        // Check if the current message seems relevant (keywords, length, not simple types)
-        const isPotentiallyRelevant = 
-            !['CONTACT_INFO', 'CONTACT_INFO_PROVIDED', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES'].includes(finalResponseType) &&
-            (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => message.toLowerCase().includes(keyword)) || message.split(' ').length > 3); // Use a threshold like > 3 words
+    // Check if the current message seems relevant (keywords, length, not simple types)
+    const isPotentiallyRelevant = 
+        !['CONTACT_INFO', 'CONTACT_INFO_PROVIDED', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES'].includes(finalResponseType) &&
+        (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => message.toLowerCase().includes(keyword)) || message.split(' ').length > 3); // Use a threshold like > 3 words
 
-        if (isPotentiallyRelevant) {
-            const redactedMessage = redactPII(message); // Redact before saving
+    if (isPotentiallyRelevant) {
+        const redactedMessage = redactPII(message); // Redact before saving
+        // Always update if relevant, capturing the latest concern before lead save
+        if (session.problemDescription !== redactedMessage) { // Avoid redundant updates
             await updateSessionData(session.sessionId, { problemDescription: redactedMessage }); 
             session.problemDescription = redactedMessage; // Update local session object with redacted
-            // console.log(`[Session Update] Stored relevant problemDescription: "${redactedMessage}"`); // Debug - Removed
-        } else {
-            // console.log(`[Session Update] Message "${redactPII(message)}" (type: ${finalResponseType}) not deemed relevant for initial problemDescription.`); // Debug - Removed
+            // console.log(`[Session Update] Updated relevant problemDescription to: "${redactedMessage}"`); // Debug - Removed
         }
     } else {
-        // console.log(`[Session Update] problemDescription already set to: "${session.problemDescription}"`); // Already redacted - Removed
+        // Optional: Log if message wasn't relevant (can be noisy)
+        // console.log(`[Session Update] Message "${redactPII(message)}" (type: ${finalResponseType}) not deemed relevant for updating problemDescription.`); // Debug - Removed
     }
 }
 
-function _determineLeadProblemContext(session) {
-    // 1. Prioritize explicitly set problemDescription (captured by _trackProblemDescriptionIfNeeded)
-    let leadProblemContext = session.problemDescription || null; // Already redacted if set by _trackProblemDescriptionIfNeeded
-    // console.log("[Context Check] Starting... Trying session.problemDescription first:", leadProblemContext); // Debug - Removed
+// Helper function to determine the lead problem context/concern
+async function _determineLeadProblemContext(session, businessData) { // Added businessData parameter
+    // 1. Prioritize specific service interest if available
+    if (session.serviceInterest) {
+        // Check if the service interest is specific (not a generic placeholder)
+        const genericPlaceholders = ['your dental needs', 'dental consultation', 'general inquiry']; // Add others if used
+        if (!genericPlaceholders.includes(session.serviceInterest.toLowerCase())) {
+            // console.log(`[Context Check] Using specific session.serviceInterest: "${session.serviceInterest}"`); // Debug - Removed
+            // Optional: You could fetch the service description here if needed
+            // const service = businessData.services.find(s => s.name === session.serviceInterest);
+            // return service ? `${service.name}: ${service.description}` : `Interest in: ${session.serviceInterest}`;
+            return `Interest in: ${session.serviceInterest}`; // Keep it concise
+        }
+    }
 
-    // 2. Fallback: Search backwards for first non-trivial message if description wasn't captured
+    // 2. Next, prioritize explicitly set problemDescription (captured by _trackProblemDescriptionIfNeeded)
+    let leadProblemContext = session.problemDescription || null; // Already redacted if set by _trackProblemDescriptionIfNeeded
+    // console.log("[Context Check] Starting/Continuing... Trying session.problemDescription:", leadProblemContext); // Debug - Removed
+
+    // 3. Fallback: Search backwards for first non-trivial message if description wasn't captured
     if (!leadProblemContext) {
-        // console.log("[Context Check] session.problemDescription not set. Searching message history backwards."); // Debug - Removed
+        // console.log("[Context Check] Neither specific serviceInterest nor problemDescription found. Searching message history backwards."); // Debug - Removed
         const messages = session.messages || [];
         const irrelevantTypes = ['CONTACT_INFO', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES']; // Types to ignore
-        // Find the index of the *last* message before contact info was likely provided
+        
+        // Find the index of the *last* message where contact info was likely provided or requested
         let contactMsgIndex = messages.length; // Default to end
         for (let i = messages.length - 1; i >= 0; i--) {
-             if (messages[i].role === 'user' && messages[i].type === 'CONTACT_INFO') { contactMsgIndex = i; break; }
-             if (i > 0 && messages[i].role === 'user' && messages[i-1].role === 'assistant' && messages[i-1].type === 'CONTACT_REQUEST') { contactMsgIndex = i; break; }
+             const msg = messages[i];
+             const prevMsg = i > 0 ? messages[i-1] : null;
+             if (msg.role === 'user' && msg.type === 'CONTACT_INFO') { contactMsgIndex = i; break; }
+             if (prevMsg && msg.role === 'user' && prevMsg.role === 'assistant' && (prevMsg.type === 'CONTACT_REQUEST' || prevMsg.type === 'PARTIAL_CONTACT_REQUEST')) { contactMsgIndex = i; break; }
         }
         
-        // Search backwards from before the contact info message
+        // Search backwards from before the contact info message/request
         for (let i = contactMsgIndex - 1; i >= 0; i--) {
             if (messages[i].role === 'user') {
                 // Check if message content is non-trivial (e.g., more than one word?)
                 // and type is not irrelevant
                 // NOTE: messages[i].content should already be redacted from _logInteractionMessages
-                if (messages[i].content && messages[i].content.includes(' ') && !irrelevantTypes.includes(messages[i].type)) { 
+                if (messages[i].content && messages[i].content.trim().includes(' ') && !irrelevantTypes.includes(messages[i].type)) { 
                     leadProblemContext = messages[i].content; // Use already redacted content
                     // console.log(`[Context Check] Found relevant preceding user message via history search: "${leadProblemContext}"`); // Debug - Removed
                     break; // Found the most recent relevant context
@@ -168,7 +184,7 @@ function _determineLeadProblemContext(session) {
         }
     }
 
-    // 3. Final fallback: Generic message
+    // 4. Final fallback: Generic message
     if (!leadProblemContext) {
         leadProblemContext = "User provided contact details after chatbot interaction.";
         // console.log("[Context Check] No specific concern context found, using generic text."); // Debug - Removed
@@ -189,8 +205,12 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
 
     // console.log('[Controller] Original classification CONTACT_INFO_PROVIDED detected. Attempting to save lead...'); // Debug - Removed
     try {
-        // Determine context using the revised function
-        const leadProblemContext = _determineLeadProblemContext(session); // Context is already redacted
+        // --- Get Business Data (Needed for context determination) --- 
+        const businessData = await _getBusinessData(session.businessId);
+        // ----------------------------------------------------------
+
+        // Determine context using the revised function, passing businessData
+        const leadProblemContext = await _determineLeadProblemContext(session, businessData); // Context is already redacted
 
         // Extract PII to be sent to saveLead (which handles encryption)
         const leadPii = classifiedIntent.contactInfo; 
@@ -202,16 +222,18 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
             email: leadPii.email,
             // Prioritize specific session.serviceInterest 
             serviceInterest: session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation',
-            problemDescription: leadProblemContext, // Already redacted
+            problemDescription: leadProblemContext, // Use the improved context
             messageHistory: session.messages // Already redacted from _logInteractionMessages
         };
         // console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2)); // Logs raw PII before encryption - REMOVED
         
+        console.log(`[Controller] Attempting to call saveLead for session: ${session.sessionId}`); // ADDED LOG
         await saveLead(leadContext);
+        console.log(`[Controller] Successfully returned from saveLead for session: ${session.sessionId}`); // ADDED LOG
         console.log(`[Controller] Lead saved successfully for session: ${session.sessionId}`); // Keep success log
         
-        await updateSessionData(session.sessionId, { contactInfo: leadPii }); // Store raw PII temporarily in session (consider if needed)
-        session.contactInfo = leadPii; 
+        await updateSessionData(session.sessionId, { contactInfo: leadPii });
+        session.contactInfo = leadPii;
 
         // console.log('[Controller] Clearing partialContactInfo from session after successful lead save.'); // Debug - Removed
         await updateSessionData(session.sessionId, { partialContactInfo: null });

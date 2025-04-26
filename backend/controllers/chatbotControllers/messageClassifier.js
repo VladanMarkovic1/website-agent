@@ -124,38 +124,71 @@ const didBotRequestContactInfo = (botMessageContent) => {
 export const classifyUserIntent = (message, messageHistory, services = [], isNewSession = false, previousPartialInfo = null) => {
     const normalizedMessage = message.toLowerCase().trim();
     const lastBotMessage = messageHistory.slice().reverse().find(msg => msg.role === 'assistant');
+    const sessionId = messageHistory[0]?.sessionId || 'unknown'; // Helper to get session ID for logging
+
+    console.log(`[Classifier ${sessionId}] --- Intent Check Start ---`);
+    console.log(`[Classifier ${sessionId}] User Message: "${normalizedMessage}"`); // Log normalized message
+    console.log(`[Classifier ${sessionId}] Prev Partial Info:`, previousPartialInfo); // Log previous partial
 
     // Check if the bot just asked for contact info
     const botRequestedContact = lastBotMessage && 
                               (lastBotMessage.type === 'CONTACT_REQUEST' || 
                                lastBotMessage.type === 'PARTIAL_CONTACT_REQUEST' ||
-                               lastBotMessage.type === 'PEDIATRIC_ADVICE_REQUEST' || // Added this type
+                               lastBotMessage.type === 'PEDIATRIC_ADVICE_REQUEST' || 
                                lastBotMessage.type === 'SPECIFIC_ADVICE_REQUEST' ||
                                lastBotMessage.type === 'SPECIFIC_SERVICE_REQUEST' ||
-                               lastBotMessage.type === 'BOOKING_SPECIFIC_SERVICE' || // Added this type
-                               lastBotMessage.type === 'BOOKING_REQUEST');
+                               lastBotMessage.type === 'BOOKING_SPECIFIC_SERVICE' || 
+                               lastBotMessage.type === 'BOOKING_REQUEST' || // Added BOOKING_REQUEST
+                               lastBotMessage.type === 'APPOINTMENT_REQUEST_DETAILED'); // Added APPOINTMENT_REQUEST_DETAILED
+
+    console.log(`[Classifier ${sessionId}] Last Bot Msg Type: ${lastBotMessage?.type}, Bot Requested Contact Flag: ${botRequestedContact}`); // Log flag check
 
     if (botRequestedContact) {
+        console.log(`[Classifier ${sessionId}] Entering contact accumulation block.`);
         // Accumulate contact info from history AFTER the bot's request
         let finalAccumulatedInfo = { ...(previousPartialInfo || {}) };
         let extractedSomethingThisTurn = false;
         
         // Look back only a few messages or until the bot request
         const historyToCheck = [];
+        let foundBotRequestMarker = false; // Flag to ensure we only check messages after the request
         for (let i = messageHistory.length - 1; i >= 0; i--) {
-            if (messageHistory[i].role === 'assistant' && 
-                (messageHistory[i].type === 'CONTACT_REQUEST' || messageHistory[i].type === 'PARTIAL_CONTACT_REQUEST' || messageHistory[i].type === 'PEDIATRIC_ADVICE_REQUEST' || messageHistory[i].type === 'SPECIFIC_ADVICE_REQUEST' || messageHistory[i].type === 'SPECIFIC_SERVICE_REQUEST' || messageHistory[i].type === 'BOOKING_SPECIFIC_SERVICE' || messageHistory[i].type === 'BOOKING_REQUEST')) {
+            const msg = messageHistory[i];
+            if (msg.role === 'assistant' && 
+                (msg.type === 'CONTACT_REQUEST' || msg.type === 'PARTIAL_CONTACT_REQUEST' || msg.type === 'PEDIATRIC_ADVICE_REQUEST' || msg.type === 'SPECIFIC_ADVICE_REQUEST' || msg.type === 'SPECIFIC_SERVICE_REQUEST' || msg.type === 'BOOKING_SPECIFIC_SERVICE' || msg.type === 'BOOKING_REQUEST' || msg.type === 'APPOINTMENT_REQUEST_DETAILED')) {
+                foundBotRequestMarker = true; 
                 break; // Stop when we hit the relevant bot request
             }
-            if (messageHistory[i].role === 'user') {
-                 historyToCheck.unshift(messageHistory[i]); // Add user messages in order
-            }
+            // Only add user messages encountered *before* finding the bot request marker when searching backwards
+            // This seems counter-intuitive, let's rebuild historyToCheck going forward *after* the request
         }
+
+        // --- Revised historyToCheck logic ---
+        historyToCheck.length = 0; // Clear the array
+        let startAddingIndex = -1;
+         for (let i = 0; i < messageHistory.length; i++) {
+             const msg = messageHistory[i];
+             if (msg.role === 'assistant' && 
+                 (msg.type === 'CONTACT_REQUEST' || msg.type === 'PARTIAL_CONTACT_REQUEST' || msg.type === 'PEDIATRIC_ADVICE_REQUEST' || msg.type === 'SPECIFIC_ADVICE_REQUEST' || msg.type === 'SPECIFIC_SERVICE_REQUEST' || msg.type === 'BOOKING_SPECIFIC_SERVICE' || msg.type === 'BOOKING_REQUEST' || msg.type === 'APPOINTMENT_REQUEST_DETAILED')) {
+                 startAddingIndex = i + 1; // Start adding user messages *after* this bot request
+             }
+         }
+         if (startAddingIndex !== -1) {
+             for (let i = startAddingIndex; i < messageHistory.length; i++) {
+                 if (messageHistory[i].role === 'user') {
+                     historyToCheck.push(messageHistory[i]);
+                 }
+             }
+         }
+        // --- End Revised historyToCheck logic ---
+
         // Add the current message to check as well
-        historyToCheck.push({ role: 'user', content: message });
+        historyToCheck.push({ role: 'user', content: message }); 
+        console.log(`[Classifier ${sessionId}] History slice to check for accumulation (length ${historyToCheck.length}):`, historyToCheck.map(m=>m.content)); // Log messages being checked
 
         historyToCheck.forEach(userMsg => {
             const extractedFromMsg = extractContactInfo(userMsg.content);
+            console.log(`[Classifier ${sessionId}] Extracted from "${userMsg.content}":`, extractedFromMsg); // Log extraction result
             if (extractedFromMsg) {
                 // Merge ONLY IF new info is found in this message
                 let merged = false;
@@ -163,14 +196,21 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
                 if (extractedFromMsg.phone && !finalAccumulatedInfo.phone) { finalAccumulatedInfo.phone = extractedFromMsg.phone; merged = true; }
                 if (extractedFromMsg.email && !finalAccumulatedInfo.email) { finalAccumulatedInfo.email = extractedFromMsg.email; merged = true; }
                 
-                if(merged) {
-                     extractedSomethingThisTurn = true; // Mark that we found something new
+                if(merged && userMsg.content === message) { // Check if merge happened for the *current* user message
+                     extractedSomethingThisTurn = true; // Mark that we found something new *this turn*
                 }
             }
         });
 
+        console.log(`[Classifier ${sessionId}] Final Accumulated Info before check:`, finalAccumulatedInfo); // Log final accumulated info
+        console.log(`[Classifier ${sessionId}] Extracted something this turn: ${extractedSomethingThisTurn}`); // Log flag
+
         // Check if accumulated info is now complete
-        if (finalAccumulatedInfo.name && finalAccumulatedInfo.phone && finalAccumulatedInfo.email) {
+        const isComplete = finalAccumulatedInfo.name && finalAccumulatedInfo.phone && finalAccumulatedInfo.email;
+        console.log(`[Classifier ${sessionId}] Is Complete Check: ${isComplete}`); // Log completeness check
+
+        if (isComplete) {
+             console.log(`[Classifier ${sessionId}] ---> Returning type: CONTACT_INFO_PROVIDED`); // Log return type
             return {
                 type: 'CONTACT_INFO_PROVIDED',
                 contactInfo: finalAccumulatedInfo,
@@ -183,17 +223,23 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
              if (!finalAccumulatedInfo.name) missingFields.push('name');
              if (!finalAccumulatedInfo.phone) missingFields.push('phone');
              if (!finalAccumulatedInfo.email) missingFields.push('email');
+             console.log(`[Classifier ${sessionId}] ---> Returning type: PARTIAL_CONTACT_INFO_PROVIDED (Missing: ${missingFields.join(', ')})`); // Log return type
              return {
                  type: 'PARTIAL_CONTACT_INFO_PROVIDED',
                  contactInfo: finalAccumulatedInfo, // Pass back the latest accumulated info
                  missingFields: missingFields 
              };
+        } else {
+             console.log(`[Classifier ${sessionId}] Bot requested contact, but accumulation conditions not met for PARTIAL/COMPLETE.`); // Log edge case
         }
-    }
+    } // End if (botRequestedContact)
+
+    console.log(`[Classifier ${sessionId}] Proceeding to check other intents.`);
 
     // Check for complete contact info in the current message ONLY if bot didn't just ask
     const singleMessageContactInfo = extractContactInfo(message);
     if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone && singleMessageContactInfo.email) {
+         console.log(`[Classifier ${sessionId}] ---> Returning type: CONTACT_INFO_PROVIDED (Single Message)`); // Log return type
         return {
             type: 'CONTACT_INFO_PROVIDED',
             contactInfo: singleMessageContactInfo,
@@ -203,6 +249,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
 
     // --- Other Intent Checks (Prioritize more specific intents) ---
     if (URGENT_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
+         console.log(`[Classifier ${sessionId}] ---> Returning type: URGENT_APPOINTMENT_REQUEST`); // Log return type
         return { type: 'URGENT_APPOINTMENT_REQUEST' };
     }
 
@@ -248,6 +295,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     // Check for Dental Problems
     const problemCheck = checkDentalProblem(normalizedMessage);
     if (problemCheck.isProblem) {
+        console.log(`[Classifier ${sessionId}] ---> Returning type: DENTAL_PROBLEM (Category: ${problemCheck.category})`);
         return {
             type: 'DENTAL_PROBLEM',
             category: problemCheck.category,
@@ -261,5 +309,6 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     }
 
     // Fallback
+    console.log(`[Classifier ${sessionId}] ---> Returning type: UNKNOWN`); // Log return type
     return { type: 'UNKNOWN' };
 }; 
