@@ -16,7 +16,7 @@ BusinessOwnerSchema.pre("save", async function (next) {
   try {
     const salt = await bcryptjs.genSalt(10);
     this.password = await bcryptjs.hash(this.password, salt);
-    console.log("Password hashed successfully for:", this.email);
+    // console.log("Password hashed successfully for:", this.email); // REMOVED
     next();
   } catch (error) {
     next(error);
@@ -34,7 +34,7 @@ BusinessOwnerSchema.methods.comparePassword = async function (candidatePassword)
     // console.log("Password comparison result:", isMatch); // Optional: Keep for detailed debugging
     return isMatch;
   } catch (error) {
-    console.error("Error comparing passwords:", error);
+    console.error("Error comparing passwords:", error); // KEEP
     throw error;
   }
 };
