@@ -23,7 +23,8 @@ export const addNoteForLeadController = async (req, res) => {
         try {
           // Use businessId from params in the query
           lead = await Lead.findOne({ 
-            _id: new mongoose.Types.ObjectId(leadId), 
+            // _id: new mongoose.Types.ObjectId(leadId), 
+            _id: leadId, // Mongoose automatically casts string to ObjectId here
             businessId: businessId 
           });
         } catch (err) {
