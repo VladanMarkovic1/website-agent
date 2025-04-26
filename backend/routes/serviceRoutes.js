@@ -45,7 +45,7 @@ const generalApiLimiter = rateLimit({
 // Apply the general limiter to all routes in this file
 router.use(generalApiLimiter);
 
-console.log("✅ Service Routes Initialized");
+// console.log("✅ Service Routes Initialized"); // REMOVED
 
 // GET business services
 router.get(
@@ -55,7 +55,7 @@ router.get(
     handleValidationErrors,
     checkBusinessOwner,        // Check ownership after validation
     (req, res) => {
-        console.log(`🔹 GET Request Received for businessId: ${req.params.businessId}`);
+        // console.log(`🔹 GET Request Received for businessId: ${req.params.businessId}`); // REMOVED
         getBusinessServices(req, res);
     }
 );
@@ -69,7 +69,7 @@ router.put(
     handleValidationErrors,
     checkBusinessOwner,           // Check ownership after validation
     (req, res) => {
-        console.log(`🔹 PUT Request Received for businessId: ${req.params.businessId}`);
+        // console.log(`🔹 PUT Request Received for businessId: ${req.params.businessId}`); // REMOVED
         updateBusinessServices(req, res);
     }
 );
