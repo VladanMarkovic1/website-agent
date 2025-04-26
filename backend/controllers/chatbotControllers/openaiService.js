@@ -41,6 +41,30 @@ const createMissingInfoPrompt = (missingFields, providedInfo) => {
     return prompt;
 };
 
+// --- REVISED Helper function to decode HTML entities --- 
+const decodeHtmlEntities = (text) => {
+    if (!text) return text;
+    let decoded = text;
+    
+    // 1. Repeatedly decode &amp; first
+    while (decoded.includes('&amp;')) {
+        decoded = decoded.replace(/&amp;/g, '&');
+    }
+    
+    // 2. Decode other common named entities
+    decoded = decoded.replace(/&lt;/g, '<');
+    decoded = decoded.replace(/&gt;/g, '>');
+    decoded = decoded.replace(/&quot;/g, '"');
+    decoded = decoded.replace(/&apos;/g, "'"); // Note: &apos; is less common but good to include
+    
+    // 3. Decode numeric entities (decimal and hex)
+    // Ensure this runs *after* &amp; has been fully resolved
+    decoded = decoded.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+    decoded = decoded.replace(/&#x([0-9A-Fa-f]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+    
+    return decoded;
+};
+
 // --- Main Exported Function (Orchestrator) --- 
 
 export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false, previousPartialInfo = { name: null, phone: null, email: null }, sessionServiceInterest = null) => {
@@ -125,13 +149,14 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 const matchedService = await handleServiceInquiry(normalizedMessage, businessData.services);
                 if (matchedService) {
                     // Construct response using matched service data
-                     const serviceDescription = matchedService.description || 
-                        `${matchedService.name} is one of our specialized dental services`;
+                     // Apply decoding to the description
+                     const serviceDescription = decodeHtmlEntities(matchedService.description) || // USE NEW FUNCTION
+                        `${decodeHtmlEntities(matchedService.name)} is one of our specialized dental services`; // USE NEW FUNCTION & Decode name too for consistency
                     responsePayload = {
                         type: 'SERVICE_INQUIRY',
-                        detectedService: matchedService.name,
-                        serviceContext: matchedService.name,
-                        response: `${serviceDescription}\n\nWould you like to schedule a consultation with our ${matchedService.name} specialist? I can help arrange that. 😊`
+                        detectedService: decodeHtmlEntities(matchedService.name), // USE NEW FUNCTION & Decode name here too
+                        serviceContext: decodeHtmlEntities(matchedService.name), // USE NEW FUNCTION & Decode name here too
+                        response: `${serviceDescription}\n\nWould you like to schedule a consultation with our ${decodeHtmlEntities(matchedService.name)} specialist? I can help arrange that. 😊` // USE NEW FUNCTION & Decode name here too
                     };
                 } else {
                     // Fallback to AI if explicit inquiry but no match
@@ -214,18 +239,8 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                  // console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST');
                  // This logic depends on context, reasonable to keep here
                 if (businessData.services && businessData.services.length > 0) {
-                    // Helper function to decode &amp; repeatedly
-                    const decodeAmps = (text) => {
-                        if (!text) return text;
-                        let decoded = text;
-                        // Keep replacing &amp; until none are left
-                        while (decoded.includes('&amp;')) {
-                            decoded = decoded.replace(/&amp;/g, '&');
-                        }
-                        return decoded;
-                    };
-                    // Map and decode service names
-                    const serviceNames = businessData.services.map(s => `• ${decodeAmps(s.name)}`).join('\n');
+                    // Map and decode service names using the NEW helper
+                    const serviceNames = businessData.services.map(s => `• ${decodeHtmlEntities(s.name)}`).join('\n'); // USE NEW FUNCTION
                     responsePayload = {
                         type: 'SERVICE_LIST',
                         response: RESPONSE_TEMPLATES.service_list_prefix + serviceNames + RESPONSE_TEMPLATES.service_list_suffix
