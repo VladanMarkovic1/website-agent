@@ -41,7 +41,6 @@ async function withRetry(operation, name, maxAttempts = CONFIG.RETRY_ATTEMPTS) {
 }
 
 const scrapeBusinessData = async (business) => {
-    console.log(`🚀 Starting scrape for ${business.businessName} (${business.businessId})`);
     const startTime = Date.now();
     
     const browser = await puppeteer.launch({ 
@@ -61,7 +60,6 @@ const scrapeBusinessData = async (business) => {
         await page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
         
         // 1. Scrape Main Page
-        console.log(`🌍 Visiting main page: ${business.websiteUrl}`);
         try {
             await page.goto(business.websiteUrl, { 
                 waitUntil: 'domcontentloaded',
@@ -72,7 +70,6 @@ const scrapeBusinessData = async (business) => {
             await delay(3000);
 
             // 2. Scrape Services
-            console.log('🔍 Scraping Services...');
             const rawServices = await page.evaluate((serviceSelector) => {
                 return Array.from(document.querySelectorAll(serviceSelector))
                     .map(el => el.textContent.trim())
@@ -85,10 +82,7 @@ const scrapeBusinessData = async (business) => {
                 !text.match(/Doctor|Meet|Our Team|Reviews|Testimonials|News|About|Specialist|Physician|Surgeon|Contact/i)
             );
 
-            console.log("✅ Services Found:", services);
-
             // 3. Scrape Contact Details
-            console.log('📞 Scraping Contact Details...');
             const contactDetails = await page.evaluate((selectors) => {
                 return {
                     phone: document.querySelector(selectors.phone)?.textContent.trim() || "Not found",
@@ -96,12 +90,9 @@ const scrapeBusinessData = async (business) => {
                 };
             }, business.selectors.contactSelector);
 
-            console.log(`✅ Contact Details Found:`, contactDetails);
-
             // 4. Scrape FAQs
             let faqs = [];
             try {
-                console.log("❓ Attempting to scrape FAQs...");
                 await page.goto(`${business.websiteUrl}/faq`, { 
                     waitUntil: 'domcontentloaded',
                     timeout: CONFIG.PAGE_TIMEOUT 
@@ -135,7 +126,6 @@ const scrapeBusinessData = async (business) => {
             await saveScrapedData(business.businessId, scrapedData);
 
             const duration = (Date.now() - startTime) / 1000;
-            console.log(`✅ Scraping completed in ${duration.toFixed(2)}s for ${business.businessName}`);
 
         } catch (navigationError) {
             console.error('Navigation error:', navigationError.message);

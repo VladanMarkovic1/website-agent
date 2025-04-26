@@ -6,14 +6,14 @@ export const scrapeBusiness = async (req, res) => {
     const { businessId } = req.params;
 
     try {
-        console.log(`🔍 Looking for business: ${businessId}`);
+        // console.log(`🔍 Looking for business: ${businessId}`);
         const business = await Business.findOne({ businessId }).lean();
 
         if (!business) {
             return res.status(404).json({ message: `Business ${businessId} not found` });
         }
 
-        console.log(`✅ Business Found: ${business.businessName}`);
+        // console.log(`✅ Business Found: ${business.businessName}`);
 
         // Fetch selectors separately (do NOT use populate)
         const selectors = await Selectors.findOne({ businessId }).lean();
@@ -22,7 +22,7 @@ export const scrapeBusiness = async (req, res) => {
             return res.status(404).json({ message: `Selectors for ${businessId} not found` });
         }
 
-        console.log(`📌 Selectors Loaded:`, selectors);
+        // console.log(`📌 Selectors Loaded:`, selectors);
 
         // Attach selectors to business
         business.selectors = selectors;

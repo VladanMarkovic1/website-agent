@@ -33,7 +33,7 @@ const saveScrapedData = async (businessId, scrapedData) => {
             { new: true, upsert: true }
         );
 
-        console.log("✅ Data successfully stored in MongoDB");
+        // console.log("✅ Data successfully stored in MongoDB");
 
     } catch (error) {
         console.error("❌ Error saving data to MongoDB:", error);
