@@ -270,6 +270,8 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             case 'SERVICE_FAQ':
                 // console.log('[generateAIResponse] Matched case: SERVICE_FAQ');
                 // ... existing code ...
+                console.warn('[generateAIResponse] SERVICE_FAQ case hit but no specific handler implemented yet. Falling back to AI.');
+                responsePayload = await generateAIFallbackResponse(message, messageHistory);
                 break;
 
             case 'UNKNOWN':

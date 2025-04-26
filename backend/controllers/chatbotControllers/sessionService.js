@@ -20,7 +20,7 @@ export const getOrCreateSession = async (sessionId, businessId) => {
         let session = await ChatSession.findOne({ sessionId });
 
         if (!session) {
-            // console.log(`[SessionService-DB] Creating new session for ID: ${sessionId}`); // Debug only
+            // console.log(`[SessionService-DB] Creating new session for ID: ${sessionId}`); // Keep commented
             session = new ChatSession({ 
                 sessionId, 
                 businessId, 
@@ -30,7 +30,7 @@ export const getOrCreateSession = async (sessionId, businessId) => {
             });
             await session.save();
         } else {
-            // console.log(`[SessionService-DB] Retrieved existing session for ID: ${sessionId}`); // Debug only
+            // console.log(`[SessionService-DB] Retrieved existing session for ID: ${sessionId}`); // Keep commented
             // Update last interaction time on retrieval
             session.lastInteractionTime = Date.now();
             await session.save(); 
@@ -54,7 +54,7 @@ export const updateSessionData = async (sessionId, dataToUpdate) => {
         // Always update lastInteractionTime when updating data
         const updatePayload = { ...dataToUpdate, lastInteractionTime: Date.now() };
         const result = await ChatSession.updateOne({ sessionId }, { $set: updatePayload });
-        // console.log(`[SessionService-DB] Updated session data for ID: ${sessionId}`, dataToUpdate); // Debug only
+        // console.log(`[SessionService-DB] Updated session data for ID: ${sessionId}`, dataToUpdate); // Keep commented
         if (result.matchedCount === 0) {
             throw new Error(`Session not found for update: ${sessionId}`);
         }

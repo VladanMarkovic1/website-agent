@@ -227,9 +227,9 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
         };
         // console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2)); // Logs raw PII before encryption - REMOVED
         
-        console.log(`[Controller] Attempting to call saveLead for session: ${session.sessionId}`); // ADDED LOG
+        // console.log(`[Controller] Attempting to call saveLead for session: ${session.sessionId}`); // REMOVED LOG
         await saveLead(leadContext);
-        console.log(`[Controller] Successfully returned from saveLead for session: ${session.sessionId}`); // ADDED LOG
+        // console.log(`[Controller] Successfully returned from saveLead for session: ${session.sessionId}`); // REMOVED LOG
         console.log(`[Controller] Lead saved successfully for session: ${session.sessionId}`); // Keep success log
         
         await updateSessionData(session.sessionId, { contactInfo: leadPii });
