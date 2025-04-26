@@ -5,7 +5,7 @@ export const checkBusinessOwner = async (req, res, next) => {
     try {
         // If the user is an admin, bypass this middleware entirely
         if (req.user && req.user.role === 'admin') {
-            console.log('[checkBusinessOwner] Skipping check for admin user.');
+            // console.log('[checkBusinessOwner] Skipping check for admin user.');
             return next(); 
         }
 
@@ -24,7 +24,7 @@ export const checkBusinessOwner = async (req, res, next) => {
         
         // Compare the requested ID with user's businessId from token
         if (requestedId !== userBusinessId) {
-            console.log('Business ID mismatch:', { requested: requestedId, user: userBusinessId });
+            // console.log('Business ID mismatch:', { requested: requestedId, user: userBusinessId });
             return res.status(403).json({ error: 'Forbidden: You are not authorized to access this business data.' });
         }
 

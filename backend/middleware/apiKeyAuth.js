@@ -43,7 +43,7 @@ export const apiKeyAuth = async (req, res, next) => { // Make async
     }
 
     // API Key is valid for this business
-    console.log(`[apiKeyAuth] Valid API Key received for business: ${businessId}`);
+    // console.log(`[apiKeyAuth] Valid API Key received for business: ${businessId}`);
     next();
   } catch (error) {
     console.error(`[apiKeyAuth] Error during API key validation for business ${businessId}:`, error);
