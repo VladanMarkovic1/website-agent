@@ -122,7 +122,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             case 'SERVICE_INQUIRY_EXPLICIT':
                 // console.log('[generateAIResponse] Matched case: SERVICE_INQUIRY_EXPLICIT'); 
                 // Call the dedicated service matcher
-                const matchedService = await handleServiceInquiry(normalizedMessage, businessData);
+                const matchedService = await handleServiceInquiry(normalizedMessage, businessData.services);
                 if (matchedService) {
                     // Construct response using matched service data
                      const serviceDescription = matchedService.description || 
