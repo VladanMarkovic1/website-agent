@@ -12,12 +12,12 @@ export const getBusinessServices = async (req, res) => {
 
         // Get services using businessId from params
         const serviceDoc = await Service.findOne({ businessId: businessId });
-        console.log(`Fetching services for business ${businessId}`);
+        // console.log(`Fetching services for business ${businessId}`); // REMOVED
         
         // Return empty array if no services exist yet
         return res.status(200).json(serviceDoc ? serviceDoc.services : []);
     } catch (error) {
-        console.error('Error fetching business services:', error);
+        console.error('Error fetching business services:', error); // KEEP
         return res.status(500).json({ error: 'Failed to fetch business services' });
     }
 };
@@ -33,8 +33,8 @@ export const updateBusinessServices = async (req, res) => {
             return res.status(400).json({ error: "Business ID is required in URL" });
         }
 
-        console.log(`🔹 Updating services for business: ${businessId}`);
-        console.log(`🔹 Services Data:`, services);
+        // console.log(`🔹 Updating services for business: ${businessId}`); // REMOVED
+        // console.log(`🔹 Services Data:`, services); // REMOVED
 
         // Find or create services document using businessId from params
         let serviceDoc = await Service.findOne({ businessId: businessId });
@@ -48,14 +48,14 @@ export const updateBusinessServices = async (req, res) => {
         // Save changes
         await serviceDoc.save();
 
-        console.log(`✅ Services Updated Successfully:`, serviceDoc);
+        // console.log(`✅ Services Updated Successfully:`, serviceDoc); // REMOVED
         res.status(200).json({
             message: "Services updated successfully!",
             services: serviceDoc.services,
         });
 
     } catch (error) {
-        console.error(`❌ Error updating services:`, error);
+        console.error(`❌ Error updating services:`, error); // KEEP
         res.status(500).json({ error: "Internal server error" });
     }
 };
