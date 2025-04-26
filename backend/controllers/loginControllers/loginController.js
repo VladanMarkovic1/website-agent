@@ -7,10 +7,10 @@ dotenv.config();
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
-  console.log("Login attempt with:", {
-    email,
-    passwordProvided: !!password
-  });
+  // console.log("Login attempt with:", {
+  //   email,
+  //   passwordProvided: !!password
+  // });
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required." });
