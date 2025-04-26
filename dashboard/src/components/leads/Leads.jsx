@@ -59,7 +59,6 @@ const Leads = () => {
     if (leads && leads.length > 0) {
       // If the sort is not already 'lastContactedAt' descending, set it.
       if (sortConfig.key !== 'lastContactedAt' || sortConfig.direction !== 'desc') {
-        console.log('[Leads.jsx] Initial leads loaded. Ensuring client sort is lastContactedAt (desc).');
         handleSort('lastContactedAt'); // Call once. Assumes it toggles or sets correctly.
       }
     }

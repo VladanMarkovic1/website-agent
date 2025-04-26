@@ -6,7 +6,7 @@ import { io } from 'socket.io-client';
 export const initializeSocket = (businessId, backendApiUrl) => {
   // Generate a new, unique session ID for *this specific* chat instance
   const sessionId = crypto.randomUUID(); 
-  console.log(`[Socket] Initializing with NEW Session ID: ${sessionId} for Business: ${businessId}`);
+  // console.log(`[Socket] Initializing with NEW Session ID: ${sessionId} for Business: ${businessId}`);
   
   // Use the provided backendApiUrl, remove fallback to window config or hardcoded localhost
   if (!backendApiUrl) {
@@ -20,7 +20,7 @@ export const initializeSocket = (businessId, backendApiUrl) => {
       io: { opts: {} }
     };
   }
-  console.log(`[Socket] Connecting to: ${backendApiUrl}`);
+  // console.log(`[Socket] Connecting to: ${backendApiUrl}`);
 
   const socket = io(backendApiUrl, {
     // Pass the unique sessionId and businessId in the query
@@ -34,7 +34,7 @@ export const initializeSocket = (businessId, backendApiUrl) => {
 
   // Connection event handlers
   socket.on('connect', () => {
-    console.log('Connected to chat server with businessId:', businessId);
+    // console.log('Connected to chat server with businessId:', businessId);
   });
 
   socket.on('connect_error', (error) => {
@@ -46,7 +46,7 @@ export const initializeSocket = (businessId, backendApiUrl) => {
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('Disconnected:', reason);
+    // console.log('Disconnected:', reason);
     if (reason === 'io server disconnect' || reason === 'transport close') {
       // Try to reconnect
       socket.connect();
@@ -60,7 +60,7 @@ export const initializeSocket = (businessId, backendApiUrl) => {
 
   // Add message event handler for debugging
   socket.on('message', (response) => {
-    console.log('Received response:', response);
+    // console.log('Received response:', response);
   });
 
   return socket;

@@ -57,13 +57,13 @@ function initializeChatbot(config) {
 const configFromWindow = window.DENTAL_CHATBOT_CONFIG || window.chatbotConfig || null;
 
 if (configFromWindow) {
-  console.log("[Widget Loader] Found config object on window:", configFromWindow);
+  // console.log("[Widget Loader] Found config object on window:", configFromWindow); // REMOVED
   initializeChatbot(configFromWindow);
 } else {
    // Fallback: Try reading from data attributes of the current script tag
    const currentScript = document.currentScript;
    if (currentScript && currentScript.dataset.businessId) {
-        console.log("[Widget Loader] Found config in data attributes.");
+        // console.log("[Widget Loader] Found config in data attributes."); // REMOVED
         const configFromAttributes = {
             businessId: currentScript.dataset.businessId,
             apiKey: currentScript.dataset.apiKey, // Will be undefined if not present
@@ -75,7 +75,7 @@ if (configFromWindow) {
         };
          initializeChatbot(configFromAttributes);
    } else {
-       console.error("[Widget Loader] Chatbot configuration not found on window object or script data attributes.");
+       console.error("[Widget Loader] Chatbot configuration not found on window object or script data attributes."); // KEEP
    }
 }
 

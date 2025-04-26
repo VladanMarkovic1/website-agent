@@ -17,7 +17,6 @@ const Register = () => {
     const queryToken = queryParams.get('token');
     if (queryToken) {
       setToken(queryToken);
-      console.log('Token received:', queryToken);
     } else {
       setError('No invitation token provided.');
     }
@@ -37,13 +36,7 @@ const Register = () => {
         password: password
       };
 
-      console.log('Attempting registration with:', {
-        ...registrationData,
-        password: '***'
-      });
-      
       const response = await apiClient.post('/auth/register', registrationData);
-      console.log('Registration response:', response.data);
       
       if (response.data && response.data.success) {
         if (response.data.token) {

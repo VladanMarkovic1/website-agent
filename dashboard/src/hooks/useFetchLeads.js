@@ -95,7 +95,6 @@ export const useFetchLeads = (businessId) => {
     // Set up polling only if online
     if (!isOffline) {
       pollIntervalRef.current = setInterval(() => {
-        console.log('Polling for new leads...');
         fetchLeadsInternal(false); // Don't show loading state for polls
       }, 30000); // Poll every 30 seconds
     }

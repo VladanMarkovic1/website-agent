@@ -22,19 +22,19 @@ api.interceptors.request.use(
     // Get token using the exported getter function
     // const token = getAuthToken(); // REMOVE this line
     const token = sessionStorage.getItem('token'); // Get token directly from sessionStorage
-    console.log('API Interceptor - Attaching token:', token);
+    // console.log('API Interceptor - Attaching token:', token); // REMOVED
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     // Add retry count to config
     config.retryCount = config.retryCount || 0;
     // Log the request for debugging
-    console.log('🚀 API Request:', {
-      url: config.url,
-      method: config.method,
-      headers: config.headers,
-      data: config.data
-    });
+    // console.log('🚀 API Request:', { // REMOVED
+    //   url: config.url, // REMOVED
+    //   method: config.method, // REMOVED
+    //   headers: config.headers, // REMOVED
+    //   data: config.data // REMOVED
+    // }); // REMOVED
     return config;
   },
   (error) => {
@@ -52,11 +52,11 @@ const isOnline = () => {
 api.interceptors.response.use(
   (response) => {
     // Log successful responses for debugging
-    console.log('✅ API Response:', {
-      url: response.config.url,
-      status: response.status,
-      data: response.data
-    });
+    // console.log('✅ API Response:', { // REMOVED
+    //   url: response.config.url, // REMOVED
+    //   status: response.status, // REMOVED
+    //   data: response.data // REMOVED
+    // }); // REMOVED
     return response;
   },
   async (error) => {
@@ -71,7 +71,7 @@ api.interceptors.response.use(
           error.message?.includes('ERR_BLOCKED') || 
           (error.response?.status === 0)) {
         
-        console.log(`🔄 Retry attempt ${config.retryCount} of ${MAX_RETRIES}...`);
+        // console.log(`🔄 Retry attempt ${config.retryCount} of ${MAX_RETRIES}...`); // REMOVED
         
         // Wait before retrying
         await sleep(RETRY_DELAY * config.retryCount);

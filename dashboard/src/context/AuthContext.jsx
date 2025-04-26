@@ -4,12 +4,12 @@ import { loginUser, registerUser } from '../services/authService'; // Ensure thi
 
 // Store the token outside React state for access by interceptors
 // let currentToken = null; // Remove this
-// console.log('[AuthContext] Initial load: currentToken =', currentToken); // Remove this
+// console.log('[AuthContext] Initial load: currentToken =', currentToken); // REMOVED
 
 // Export a function to get the current token
 /* // Remove this entire function
 export const getAuthToken = () => {
-  console.log('[AuthContext] getAuthToken() called, returning:', currentToken);
+  // console.log('[AuthContext] getAuthToken() called, returning:', currentToken); // REMOVED
   return currentToken;
 };
 */
@@ -25,14 +25,14 @@ export const AuthProvider = ({ children }) => {
 
   // Effect to load user data if token exists
   useEffect(() => {
-    // console.log('[AuthContext] Initial token check:', token);
+    // console.log('[AuthContext] Initial token check:', token); // REMOVED
     if (token) {
       const storedUser = sessionStorage.getItem('user');
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          // console.log('[AuthContext] User loaded from sessionStorage:', parsedUser);
+          // console.log('[AuthContext] User loaded from sessionStorage:', parsedUser); // REMOVED
         } catch (e) {
           console.error('[AuthContext] Failed to parse user from sessionStorage:', e);
           sessionStorage.removeItem('user');
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } else {
-      // console.log('[AuthContext] No token found initially.');
+      // console.log('[AuthContext] No token found initially.'); // REMOVED
       setUser(null); // Ensure user is null if no token
     }
   }, [token]); // Depend on token to re-run if it changes externally (though unlikely with sessionStorage)
@@ -51,10 +51,10 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (credentials) => {
     setIsLoading(true);
     setError(null);
-    // console.log('[AuthContext] Attempting login with credentials:', credentials);
+    // console.log('[AuthContext] Attempting login with credentials:', credentials); // REMOVED
     try {
       const response = await loginUser(credentials);
-      // console.log('[AuthContext] Login response:', response);
+      // console.log('[AuthContext] Login response:', response); // REMOVED
       if (response && response.token) {
         // Set token state first
         setToken(response.token); 
@@ -62,13 +62,13 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.setItem('token', response.token); // Persist token
         sessionStorage.setItem('user', JSON.stringify(response.user)); // Persist user data
         // currentToken = response.token; // No longer needed
-        // console.log('[AuthContext] Login successful. Token and user set.');
+        // console.log('[AuthContext] Login successful. Token and user set.'); // REMOVED
         // --- Role-based redirection ---
         if (response.user && response.user.role === 'admin') {
-          // console.log('[AuthContext] Admin user detected, redirecting to /admin');
+          // console.log('[AuthContext] Admin user detected, redirecting to /admin'); // REMOVED
           navigate('/admin');
         } else {
-          // console.log('[AuthContext] Non-admin user detected, redirecting to /dashboard');
+          // console.log('[AuthContext] Non-admin user detected, redirecting to /dashboard'); // REMOVED
           navigate('/dashboard'); // Redirect non-admins to dashboard
         }
         // --- End Role-based redirection ---
@@ -90,24 +90,24 @@ export const AuthProvider = ({ children }) => {
 
   // Logout function
   const logout = useCallback(() => {
-    // console.log('[AuthContext] Logging out.');
+    // console.log('[AuthContext] Logging out.'); // REMOVED
     setToken(null);
     setUser(null);
     sessionStorage.removeItem('token'); // Clear token from storage
     sessionStorage.removeItem('user'); // Clear user data from storage
     // currentToken = null; // No longer needed
     navigate('/login'); // Redirect to login page after logout
-    // console.log('[AuthContext] Logout complete. Token and user cleared.');
+    // console.log('[AuthContext] Logout complete. Token and user cleared.'); // REMOVED
   }, [navigate]);
 
   // Registration function
   const register = useCallback(async (userData) => {
     setIsLoading(true);
     setError(null);
-    // console.log('[AuthContext] Attempting registration with data:', userData);
+    // console.log('[AuthContext] Attempting registration with data:', userData); // REMOVED
     try {
       const response = await registerUser(userData);
-      // console.log('[AuthContext] Registration response:', response);
+      // console.log('[AuthContext] Registration response:', response); // REMOVED
       // Assuming registration automatically logs the user in or requires separate login:
       // If auto-login:
       if (response && response.token) {
@@ -116,11 +116,11 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.setItem('token', response.token);
         sessionStorage.setItem('user', JSON.stringify(response.user));
         // currentToken = response.token; // No longer needed
-        // console.log('[AuthContext] Registration successful and logged in.');
+        // console.log('[AuthContext] Registration successful and logged in.'); // REMOVED
         navigate('/dashboard'); // Redirect to dashboard
       } else {
         // If registration does NOT auto-login, maybe redirect to login page
-        // console.log('[AuthContext] Registration successful. Please log in.');
+        // console.log('[AuthContext] Registration successful. Please log in.'); // REMOVED
         navigate('/login'); 
         // Or display a success message
       }
@@ -151,7 +151,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     register,
   };
-  // console.log('[AuthContext] Provider rendering with value:', { isAuthenticated: value.isAuthenticated, isLoading, error });
+  // console.log('[AuthContext] Provider rendering with value:', { isAuthenticated: value.isAuthenticated, isLoading, error }); // REMOVED
 
   return (
     <AuthContext.Provider value={value}>
@@ -162,7 +162,7 @@ export const AuthProvider = ({ children }) => {
 
 // Custom hook to use the auth context
 export const useAuth = () => {
-  // console.log('[AuthContext] useAuth() hook called.');
+  // console.log('[AuthContext] useAuth() hook called.'); // REMOVED
   const context = useContext(AuthContext);
   if (context === undefined || context === null) { 
     throw new Error('useAuth must be used within an AuthProvider');
