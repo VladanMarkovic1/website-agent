@@ -4,35 +4,54 @@ dotenv.config();
 
 let transporter = null;
 
-// Initialize transporter with Ethereal account
-async function createTransporter() {
-    if (!transporter) {
-        // Create Ethereal test account
-        const testAccount = await nodemailer.createTestAccount();
-        // console.log('Test Account:', testAccount); // REMOVED - Exposes credentials
+// Initialize transporter using environment variables for Gmail
+function initializeTransporter() {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.error('Error: EMAIL_USER and EMAIL_PASS environment variables are required for sending emails.');
+        // Optionally, you could fall back to Ethereal here for testing if desired
+        // or throw an error to prevent the app from starting without email config.
+        return null; // Indicate failure to initialize
+    }
 
-        // Create reusable transporter
+    if (!transporter) {
         transporter = nodemailer.createTransport({
-            host: 'smtp.ethereal.email',
-            port: 587,
-            secure: false,
+            service: process.env.EMAIL_SERVICE || 'gmail', // Default to gmail if not specified
             auth: {
-                user: testAccount.user,
-                pass: testAccount.pass
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS // Remember to use App Password if 2FA is enabled
+            },
+            // Optional: Add connection timeout settings if needed
+            // connectionTimeout: 5 * 60 * 1000, // 5 min
+        });
+
+        // Verify connection configuration
+        transporter.verify(function(error, success) {
+            if (error) {
+                console.error('Nodemailer transporter verification failed:', error);
+                // Handle verification error - maybe the credentials are wrong or Gmail blocks the connection
+                transporter = null; // Reset transporter if verification fails
+            } else {
+                console.log('Nodemailer transporter is ready to send emails via', process.env.EMAIL_SERVICE || 'gmail');
             }
         });
     }
     return transporter;
 }
 
+// Initialize transporter when the module loads
+transporter = initializeTransporter(); 
+
 export const sendInvitationEmail = async (email, invitationLink) => {
+    if (!transporter) {
+        console.error('Email transporter is not initialized. Cannot send email.');
+        // It might be better to throw an error that the calling function can catch
+        throw new Error('Email service is not configured correctly.');
+    }
+
     try {
-        // console.log('Sending invitation email to:', email); // REMOVED - PII
-        
-        const transport = await createTransporter();
-        
         const mailOptions = {
-            from: '"Dental Website" <test@dental.com>',
+            // Consider using EMAIL_USER as the from address or a dedicated verified alias
+            from: `"Dental Website" <${process.env.EMAIL_USER}>`, 
             to: email,
             subject: "You're Invited to Register",
             text: `Please register your account using the following link: ${invitationLink}`,
@@ -52,12 +71,20 @@ export const sendInvitationEmail = async (email, invitationLink) => {
             `
         };
 
-        const info = await transport.sendMail(mailOptions);
-        const previewUrl = nodemailer.getTestMessageUrl(info);
-        // console.log('Preview URL:', previewUrl); // REMOVED - For testing only
-        return { info, previewUrl };
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Invitation email sent successfully:', info.messageId);
+        // Removed Ethereal preview URL
+        return { info }; // Return only the send info
     } catch (error) {
-        console.error('Error sending invitation email:', error); // KEEP Error
-        throw error;
+        console.error('Error sending invitation email via Nodemailer:', error);
+        // Check for specific Nodemailer errors
+        if (error.code === 'EAUTH' || error.responseCode === 535) {
+            console.error('Authentication error: Check EMAIL_USER and EMAIL_PASS (use App Password if 2FA enabled).');
+        } else if (error.code === 'EENVELOPE' || error.responseCode === 550) {
+             console.error('Recipient error: Check if the recipient email address is valid:', email);
+        } else if (error.code === 'ECONNECTION' || error.responseCode === 500) {
+             console.error('Connection error: Check network connection or Gmail service status.');
+        }
+        throw error; // Re-throw the error so the calling function knows it failed
     }
 };
