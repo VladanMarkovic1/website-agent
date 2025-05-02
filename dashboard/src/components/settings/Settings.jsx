@@ -14,7 +14,6 @@ const Settings = () => {
   // State for widget settings form
   const [primaryColor, setPrimaryColor] = useState('#3B82F6'); // Default blue
   const [position, setPosition] = useState('bottom-right');
-  const [welcomeMessage, setWelcomeMessage] = useState('');
   
   // State for loading and feedback
   const [loading, setLoading] = useState(true);
@@ -39,7 +38,6 @@ const Settings = () => {
         if (config) {
           setPrimaryColor(config.primaryColor || '#3B82F6');
           setPosition(config.position || 'bottom-right');
-          setWelcomeMessage(config.welcomeMessage || 'Hello! How can I help you today?');
         }
       } catch (err) {
         console.error("Error fetching settings:", err);
@@ -63,7 +61,6 @@ const Settings = () => {
         widgetConfig: {
             primaryColor,
             position,
-            welcomeMessage
         }
     };
 
@@ -171,23 +168,6 @@ const Settings = () => {
                         <option value="bottom-right">Bottom Right</option>
                         <option value="bottom-left">Bottom Left</option>
                     </select>
-                </div>
-
-                {/* Welcome Message Textarea */}
-                <div>
-                    <label htmlFor="welcomeMessage" className="block text-sm font-medium text-gray-700">Welcome Message</label>
-                    <div className="mt-1">
-                        <textarea 
-                            id="welcomeMessage" 
-                            name="welcomeMessage"
-                            rows={3} 
-                            value={welcomeMessage}
-                            onChange={(e) => setWelcomeMessage(e.target.value)}
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                            placeholder="Hello! How can we help you today?"
-                        />
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">The first message the user sees when opening the chatbot.</p>
                 </div>
 
                 {/* Save Button */}
