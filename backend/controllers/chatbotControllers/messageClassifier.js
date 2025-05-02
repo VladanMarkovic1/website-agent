@@ -47,12 +47,49 @@ const serviceInquiryKeywords = ['interested in', 'about', 'want'];
 // Helper function to find a matching service name in the message
 // (More robust matching might be needed depending on service name complexity)
 export const findServiceNameInMessage = (normalizedMsg, services = []) => {
+    // console.log(`[findServiceName] Searching for service in: "${normalizedMsg}"`);
+    // console.log(`[findServiceName] Available services:`, services.map(s => s?.name));
     if (!services || services.length === 0) return null;
-    // Find the first service whose name appears in the message
-    const foundService = services.find(service => 
-        service.name && normalizedMsg.includes(service.name.toLowerCase())
-    );
-    return foundService ? foundService.name : null;
+
+    const messageWords = new Set(normalizedMsg.split(/[\s,&]+/));
+
+    const foundService = services.find(service => {
+        const serviceName = service?.name;
+        if (!serviceName) return false;
+
+        // --- ADDED: Decode HTML entities REPEATEDLY --- 
+        let decodedServiceName = serviceName;
+        let loopCount = 0; // Debugging loop counter
+        // console.log(`[findServiceName Debug] Initial serviceName: "${decodedServiceName}"`);
+        while (decodedServiceName.includes('&amp;') && loopCount < 10) { // Add loop limit for safety
+             // console.log(`[findServiceName Debug] Before replace #${loopCount + 1}: "${decodedServiceName}"`);
+             decodedServiceName = decodedServiceName.replace(/&amp;/g, '&');
+             // console.log(`[findServiceName Debug] After replace #${loopCount + 1}: "${decodedServiceName}"`);
+             loopCount++;
+        }
+        // console.log(`[findServiceName Debug] Final decoded service name after loop: "${decodedServiceName}"`);
+        // --- END DECODING --- 
+
+        const serviceNameLower = decodedServiceName.toLowerCase();
+        // console.log(`[findServiceName] Checking against service: "${serviceNameLower}"`);
+
+        // Option 1: Simple substring check
+        if (normalizedMsg.includes(serviceNameLower)) {
+            return true;
+        }
+
+        // Option 2: Word-based check
+        const serviceNameWords = serviceNameLower.split(/[\s,&]+/).filter(Boolean);
+        if (serviceNameWords.length > 0 && serviceNameWords.every(word => messageWords.has(word))) {
+             return true;
+        }
+
+        return false; // No match
+    });
+
+    // console.log(`[findServiceName] Found service: ${foundService?.name || null}`);
+    // Return the ORIGINAL service name from the DB if found
+    return foundService ? foundService.name : null; 
 };
 
 // Helper function to determine the type of question asked
@@ -126,9 +163,13 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     const lastBotMessage = messageHistory.slice().reverse().find(msg => msg.role === 'assistant');
     const sessionId = messageHistory[0]?.sessionId || 'unknown'; // Helper to get session ID for logging
 
-    console.log(`[Classifier ${sessionId}] --- Intent Check Start ---`);
-    console.log(`[Classifier ${sessionId}] User Message: "${normalizedMessage}"`); // Log normalized message
-    console.log(`[Classifier ${sessionId}] Prev Partial Info:`, previousPartialInfo); // Log previous partial
+    // ---- START DEBUG LOGGING ----
+    console.log(`
+--- INTENT CHECK START (Session: ${sessionId}) ---`);
+    console.log(`User Message: "${normalizedMessage}"`);
+    console.log(`Services Available (Names):`, services.map(s => s?.name)); // Log service names
+    console.log(`Last Bot Msg Type: ${lastBotMessage?.type}`);
+    // ---- END DEBUG LOGGING ----
 
     // Check if the bot just asked for contact info
     const botRequestedContact = lastBotMessage && 
@@ -239,17 +280,31 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     // Check for complete contact info in the current message ONLY if bot didn't just ask
     const singleMessageContactInfo = extractContactInfo(message);
     if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone && singleMessageContactInfo.email) {
-         console.log(`[Classifier ${sessionId}] ---> Returning type: CONTACT_INFO_PROVIDED (Single Message)`); // Log return type
+         console.log(`[Classifier ${sessionId}] ---> Returning type: CONTACT_INFO_PROVIDED (Single Message)`);
         return {
             type: 'CONTACT_INFO_PROVIDED',
             contactInfo: singleMessageContactInfo,
             service: findServiceNameInMessage(message, services)
         };
     }
+    // NEW: Check for *partial* contact info in the current message, even if bot didn't just ask
+    else if (singleMessageContactInfo && (singleMessageContactInfo.name || singleMessageContactInfo.phone || singleMessageContactInfo.email)) {
+        // If we extracted *anything* from this single message, treat it as partial.
+        const missingFields = [];
+        if (!singleMessageContactInfo.name) missingFields.push('name');
+        if (!singleMessageContactInfo.phone) missingFields.push('phone');
+        if (!singleMessageContactInfo.email) missingFields.push('email');
+        console.log(`[Classifier ${sessionId}] ---> Returning type: PARTIAL_CONTACT_INFO_PROVIDED (Single Message, Missing: ${missingFields.join(', ')})`);
+        return {
+            type: 'PARTIAL_CONTACT_INFO_PROVIDED',
+            contactInfo: singleMessageContactInfo,
+            missingFields: missingFields
+        };
+    }
 
     // --- Other Intent Checks (Prioritize more specific intents) ---
     if (URGENT_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
-         console.log(`[Classifier ${sessionId}] ---> Returning type: URGENT_APPOINTMENT_REQUEST`); // Log return type
+         console.log(`[Classifier ${sessionId}] ---> Returning type: URGENT_APPOINTMENT_REQUEST`);
         return { type: 'URGENT_APPOINTMENT_REQUEST' };
     }
 
@@ -273,23 +328,42 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         return { type: 'APPOINTMENT_REQUEST' };
     }
 
-    if (listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
-        return { type: 'REQUEST_SERVICE_LIST' };
-    }
-
+    // --- NEW ORDER: Check for specific service inquiries FIRST ---
     const faqMatch = checkServiceFAQ(normalizedMessage, services);
     if (faqMatch) {
+        console.log(`[Classifier ${sessionId}] ---> Returning type: SERVICE_FAQ (Service: ${faqMatch.serviceName})`);
         return { type: 'SERVICE_FAQ', serviceName: faqMatch.serviceName, questionType: faqMatch.questionType };
     }
 
-    // Check for confirmation keywords ONLY if the bot didn't just ask for contact
-    if (!botRequestedContact && CONFIRMATION_KEYWORDS.some(keyword => normalizedMessage.startsWith(keyword) || normalizedMessage.endsWith(keyword))) {
-        return { type: 'CONFIRMATION_YES' };
+    // Check for explicit service inquiry keywords ("interested in", "about", "want")
+    const mentionedServiceNameExplicit = findServiceNameInMessage(normalizedMessage, services); // Call it once here
+    if (serviceInquiryKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+        if (mentionedServiceNameExplicit) { 
+            console.log(`[Classifier ${sessionId}] ---> Returning type: SERVICE_INQUIRY_EXPLICIT (Service: ${mentionedServiceNameExplicit})`);
+            return { type: 'SERVICE_INQUIRY_EXPLICIT', serviceName: mentionedServiceNameExplicit }; // Add service name
+        }
+    }
+    
+    // --- Check for general service list request only AFTER specific checks ---
+    const potentiallySpecific = faqMatch || mentionedServiceNameExplicit; // Reuse the result from above
+    console.log(`[Classifier ${sessionId}] --- DEBUG FOR LIST CHECK ---`);
+    console.log(`       faqMatch: ${JSON.stringify(faqMatch)}`);
+    console.log(`       mentionedServiceNameExplicit: "${mentionedServiceNameExplicit}"`);
+    console.log(`       potentiallySpecific is truthy?: ${!!potentiallySpecific}`);
+    console.log(`       Does message include list keyword?: ${listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))}`);
+    console.log(`       Combined condition (!potentiallySpecific && includesListKeyword): ${!potentiallySpecific && listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))}`);
+    console.log(`[Classifier ${sessionId}] --- END DEBUG FOR LIST CHECK ---`);
+    
+    if (!potentiallySpecific && listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+        console.log(`[Classifier ${sessionId}] ---> Returning type: REQUEST_SERVICE_LIST`);
+        return { type: 'REQUEST_SERVICE_LIST' };
     }
 
-    // Check for explicit service keywords
-    if (serviceInquiryKeywords.some(keyword => normalizedMessage.includes(keyword))) {
-        return { type: 'SERVICE_INQUIRY_EXPLICIT' };
+    // --- Continue with other checks ---
+    // Check for confirmation keywords ONLY if the bot didn't just ask for contact
+    if (!botRequestedContact && CONFIRMATION_KEYWORDS.some(keyword => normalizedMessage.startsWith(keyword) || normalizedMessage.endsWith(keyword))) {
+        console.log(`[Classifier ${sessionId}] ---> Returning type: CONFIRMATION_YES`);
+        return { type: 'CONFIRMATION_YES' };
     }
 
     // Check for Dental Problems

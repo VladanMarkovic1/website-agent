@@ -57,7 +57,7 @@ Keep responses concise, friendly, and always use appropriate emojis like ðŸ¦·, â
             model: "gpt-3.5-turbo",
             messages: messages,
             temperature: 0.7,
-            max_tokens: 100,
+            max_tokens: 200,
         });
 
         const aiResponseContent = completion.choices[0]?.message?.content?.trim() || RESPONSE_TEMPLATES.understanding;

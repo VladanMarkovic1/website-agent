@@ -64,23 +64,73 @@ export function extractContactInfo(message) {
     }
 
     // Handle natural format
-    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i;
-    const phoneRegex = /(\+?\d[\d\s-]{7,})/;
+    const emailRegex = /[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\\.[a-zA-Z0-9._-]+/i;
+    const phoneRegex = /(\+?1(?:[\s.-]?))?\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/g;
     const nameRegex = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/;
 
-    const email = message.match(emailRegex)?.[1];
-    const phone = message.match(phoneRegex)?.[1]?.replace(/\s+/g, '');
-    let name = message.match(nameRegex)?.[1];
+    // --- Reworked Natural Extraction (v5) ---
+    let extractedEmail = null;
+    let extractedPhone = null;
+    let extractedName = null;
 
-    // If we found at least ONE piece of information using the individual regex
-    if (email || phone || name) { 
-        return {
-            email: email || null,
-            phone: phone || null,
-            name: name || null
-        };
+    // 1. Try Email
+    // Re-define regex locally just in case
+    const localEmailRegex = /[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+/i;
+    console.log(`[Extractor Debug Email] Testing string "${message}" against regex: ${localEmailRegex}`);
+    const emailTestResult = localEmailRegex.test(message);
+    console.log(`[Extractor Debug Email] Regex test result: ${emailTestResult}`);
+    const emailMatchResult = message.match(localEmailRegex);
+    console.log(`[Extractor Debug Email] Raw email match result for "${message}":`, emailMatchResult);
+    if (emailMatchResult && emailMatchResult[0]) {
+        extractedEmail = emailMatchResult[0];
+        console.log(`[Extractor Debug Email] Assigned extractedEmail: "${extractedEmail}"`);
+    } else {
+        console.log(`[Extractor Debug Email] No valid email match found or match array empty.`);
     }
 
+    // 2. Try Phone
+    phoneRegex.lastIndex = 0; 
+    const phoneMatchResult = phoneRegex.exec(message);
+    if (phoneMatchResult) {
+        const potentialPrefix = phoneMatchResult[1] || '';
+        const areaCode = phoneMatchResult[2];
+        const middlePart = phoneMatchResult[3];
+        const lastPart = phoneMatchResult[4];
+        const prefix = potentialPrefix.includes('1') ? '+1' : ''; 
+        extractedPhone = prefix + areaCode + middlePart + lastPart;
+        // console.log('[Extractor Debug] Matched Phone:', extractedPhone);
+    }
+
+    // 3. Try Name *ONLY IF* email or phone was also found in this message
+    // console.log(`[Extractor Debug] Checking for Name (Email found: ${!!extractedEmail}, Phone found: ${!!extractedPhone})`);
+    if (extractedEmail || extractedPhone) {
+        let potentialNamePortion = message;
+        if (extractedEmail) potentialNamePortion = potentialNamePortion.replace(extractedEmail, '');
+        if (phoneMatchResult) potentialNamePortion = potentialNamePortion.replace(phoneMatchResult[0], '');
+        potentialNamePortion = potentialNamePortion.replace(/[,.:;!?&]/g, '').trim();
+        // console.log('[Extractor Debug] Potential Name Portion:', potentialNamePortion);
+
+        if (potentialNamePortion.length > 0) {
+            const nameMatch = potentialNamePortion.match(nameRegex);
+            if (nameMatch && nameMatch[1].trim().length > 1) { 
+                extractedName = nameMatch[1].trim();
+                // console.log('[Extractor Debug] Matched Name:', extractedName);
+            }
+        }
+    }
+    // --- End Reworked Natural Extraction (v5) ---
+
+    // Return if *any* piece was extracted
+    console.log(`[Extractor Debug Final] Values before return check: Email=${extractedEmail}, Phone=${extractedPhone}, Name=${extractedName}`);
+    if (extractedEmail || extractedPhone || extractedName) {
+        return {
+            email: extractedEmail,
+            phone: extractedPhone,
+            name: extractedName
+        };
+    }
+    
+    console.log(`[Extractor Debug Final] Condition failed, returning null for message: "${message}"`);
     return null;
 }
 

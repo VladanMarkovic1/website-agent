@@ -105,11 +105,23 @@ async function _generateAndRefineResponse(message, businessData, sessionMessages
     // console.log("[Override Check 1] Response after first override pass:", JSON.stringify(responseAfterOverride1, null, 2)); // Debug - Removed
 
     // Update session interest if override specified it
-    if (responseAfterOverride1.serviceContext && responseAfterOverride1.serviceContext !== session.serviceInterest) {
-        // console.log(`[Override Check 1] Updating session service interest from ${session.serviceInterest} to ${responseAfterOverride1.serviceContext}`); // Debug - Removed
-        await updateSessionData(session.sessionId, { serviceInterest: responseAfterOverride1.serviceContext });
-        session.serviceInterest = responseAfterOverride1.serviceContext; // Update local session object
+    // --- MODIFIED LOGIC: Be more careful about overwriting existing specific interest ---
+    const newServiceContext = responseAfterOverride1.serviceContext;
+    const currentServiceInterest = session.serviceInterest;
+    const genericPlaceholders = ['your dental needs', 'dental consultation', 'general inquiry', null]; // Include null
+    
+    // Update only if: 
+    // 1. We don't have a current specific interest OR
+    // 2. The new context is specific and different from the current one (less common case)
+    if (newServiceContext && 
+        (!currentServiceInterest || genericPlaceholders.includes(currentServiceInterest.toLowerCase())) && 
+        !genericPlaceholders.includes(newServiceContext.toLowerCase())) 
+    {
+        // console.log(`[Override Check 1] Updating session service interest from '${currentServiceInterest}' to '${newServiceContext}'`);
+        await updateSessionData(session.sessionId, { serviceInterest: newServiceContext });
+        session.serviceInterest = newServiceContext; // Update local session object
     }
+    // --- END MODIFIED LOGIC ---
     
     // Return both the potentially overridden payload and the original classified intent
     return { classifiedIntent, responsePayload: responseAfterOverride1 }; 
@@ -136,62 +148,40 @@ async function _trackProblemDescriptionIfNeeded(session, message, finalResponseT
 }
 
 // Helper function to determine the lead problem context/concern
-async function _determineLeadProblemContext(session, businessData) { // Added businessData parameter
-    // 1. Prioritize specific service interest if available
-    if (session.serviceInterest) {
-        // Check if the service interest is specific (not a generic placeholder)
-        const genericPlaceholders = ['your dental needs', 'dental consultation', 'general inquiry']; // Add others if used
-        if (!genericPlaceholders.includes(session.serviceInterest.toLowerCase())) {
-            // console.log(`[Context Check] Using specific session.serviceInterest: "${session.serviceInterest}"`); // Debug - Removed
-            // Optional: You could fetch the service description here if needed
-            // const service = businessData.services.find(s => s.name === session.serviceInterest);
-            // return service ? `${service.name}: ${service.description}` : `Interest in: ${session.serviceInterest}`;
-            return `Interest in: ${session.serviceInterest}`; // Keep it concise
-        }
+async function _determineLeadProblemContext(session, businessData) {
+    const genericPlaceholders = ['your dental needs', 'dental consultation', 'general inquiry', null];
+    const specificServiceInterest = session.serviceInterest && !genericPlaceholders.includes(session.serviceInterest.toLowerCase())
+                                    ? session.serviceInterest 
+                                    : null;
+
+    // 1. Prioritize specific service interest
+    if (specificServiceInterest) {
+        return `Interest in: ${specificServiceInterest}`;
     }
 
-    // 2. Next, prioritize explicitly set problemDescription (captured by _trackProblemDescriptionIfNeeded)
-    let leadProblemContext = session.problemDescription || null; // Already redacted if set by _trackProblemDescriptionIfNeeded
-    // console.log("[Context Check] Starting/Continuing... Trying session.problemDescription:", leadProblemContext); // Debug - Removed
+    // 2. Prioritize explicitly tracked problem description
+    // Ensure problemDescription is not null/empty AND doesn't look like just a name
+    const nameRegex = /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/; // Basic name pattern
+    if (session.problemDescription && session.problemDescription.trim().length > 0 && !nameRegex.test(session.problemDescription.trim())) {
+         return session.problemDescription; // Already redacted
+    }
 
+    // 3. Fallback: Simple generic message (Avoid complex history search for now)
+    return "User provided contact details after chatbot interaction.";
+
+    /* // --- REMOVED History Search Logic --- 
     // 3. Fallback: Search backwards for first non-trivial message if description wasn't captured
     if (!leadProblemContext) {
-        // console.log("[Context Check] Neither specific serviceInterest nor problemDescription found. Searching message history backwards."); // Debug - Removed
-        const messages = session.messages || [];
-        const irrelevantTypes = ['CONTACT_INFO', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES']; // Types to ignore
-        
-        // Find the index of the *last* message where contact info was likely provided or requested
-        let contactMsgIndex = messages.length; // Default to end
-        for (let i = messages.length - 1; i >= 0; i--) {
-             const msg = messages[i];
-             const prevMsg = i > 0 ? messages[i-1] : null;
-             if (msg.role === 'user' && msg.type === 'CONTACT_INFO') { contactMsgIndex = i; break; }
-             if (prevMsg && msg.role === 'user' && prevMsg.role === 'assistant' && (prevMsg.type === 'CONTACT_REQUEST' || prevMsg.type === 'PARTIAL_CONTACT_REQUEST')) { contactMsgIndex = i; break; }
-        }
-        
-        // Search backwards from before the contact info message/request
-        for (let i = contactMsgIndex - 1; i >= 0; i--) {
-            if (messages[i].role === 'user') {
-                // Check if message content is non-trivial (e.g., more than one word?)
-                // and type is not irrelevant
-                // NOTE: messages[i].content should already be redacted from _logInteractionMessages
-                if (messages[i].content && messages[i].content.trim().includes(' ') && !irrelevantTypes.includes(messages[i].type)) { 
-                    leadProblemContext = messages[i].content; // Use already redacted content
-                    // console.log(`[Context Check] Found relevant preceding user message via history search: "${leadProblemContext}"`); // Debug - Removed
-                    break; // Found the most recent relevant context
-                }
-            }
-        }
+        // ... existing history search code ...
     }
 
     // 4. Final fallback: Generic message
     if (!leadProblemContext) {
         leadProblemContext = "User provided contact details after chatbot interaction.";
-        // console.log("[Context Check] No specific concern context found, using generic text."); // Debug - Removed
     }
     
-    // console.log("[Context Check] Final determined context:", leadProblemContext); // Debug - Removed
     return leadProblemContext;
+    */ // --- END REMOVED History Search --- 
 }
 
 async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedIntent) {
@@ -209,8 +199,15 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
         const businessData = await _getBusinessData(session.businessId);
         // ----------------------------------------------------------
 
+        // --- DEBUG: Log session state BEFORE determining context ---
+        console.log(`[Lead Save Debug] Before context determination:`);
+        console.log(`       session.serviceInterest: "${session.serviceInterest}"`);
+        console.log(`       session.problemDescription: "${session.problemDescription}"`);
+        // --- END DEBUG ---
+
         // Determine context using the revised function, passing businessData
-        const leadProblemContext = await _determineLeadProblemContext(session, businessData); // Context is already redacted
+        const leadProblemContext = await _determineLeadProblemContext(session, businessData);
+        console.log(`[Lead Save Debug] Determined leadProblemContext: "${leadProblemContext}"`); // <-- ADDED DEBUG
 
         // Extract PII to be sent to saveLead (which handles encryption)
         const leadPii = classifiedIntent.contactInfo; 
