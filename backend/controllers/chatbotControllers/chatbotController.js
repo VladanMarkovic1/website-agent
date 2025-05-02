@@ -199,15 +199,8 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
         const businessData = await _getBusinessData(session.businessId);
         // ----------------------------------------------------------
 
-        // --- DEBUG: Log session state BEFORE determining context ---
-        console.log(`[Lead Save Debug] Before context determination:`);
-        console.log(`       session.serviceInterest: "${session.serviceInterest}"`);
-        console.log(`       session.problemDescription: "${session.problemDescription}"`);
-        // --- END DEBUG ---
-
         // Determine context using the revised function, passing businessData
         const leadProblemContext = await _determineLeadProblemContext(session, businessData);
-        console.log(`[Lead Save Debug] Determined leadProblemContext: "${leadProblemContext}"`); // <-- ADDED DEBUG
 
         // Extract PII to be sent to saveLead (which handles encryption)
         const leadPii = classifiedIntent.contactInfo; 

@@ -47,8 +47,6 @@ const serviceInquiryKeywords = ['interested in', 'about', 'want'];
 // Helper function to find a matching service name in the message
 // (More robust matching might be needed depending on service name complexity)
 export const findServiceNameInMessage = (normalizedMsg, services = []) => {
-    // console.log(`[findServiceName] Searching for service in: "${normalizedMsg}"`);
-    // console.log(`[findServiceName] Available services:`, services.map(s => s?.name));
     if (!services || services.length === 0) return null;
 
     const messageWords = new Set(normalizedMsg.split(/[\s,&]+/));
@@ -57,28 +55,18 @@ export const findServiceNameInMessage = (normalizedMsg, services = []) => {
         const serviceName = service?.name;
         if (!serviceName) return false;
 
-        // --- ADDED: Decode HTML entities REPEATEDLY --- 
         let decodedServiceName = serviceName;
-        let loopCount = 0; // Debugging loop counter
-        // console.log(`[findServiceName Debug] Initial serviceName: "${decodedServiceName}"`);
-        while (decodedServiceName.includes('&amp;') && loopCount < 10) { // Add loop limit for safety
-             // console.log(`[findServiceName Debug] Before replace #${loopCount + 1}: "${decodedServiceName}"`);
+        let loopCount = 0;
+        while (decodedServiceName.includes('&amp;') && loopCount < 10) {
              decodedServiceName = decodedServiceName.replace(/&amp;/g, '&');
-             // console.log(`[findServiceName Debug] After replace #${loopCount + 1}: "${decodedServiceName}"`);
              loopCount++;
         }
-        // console.log(`[findServiceName Debug] Final decoded service name after loop: "${decodedServiceName}"`);
-        // --- END DECODING --- 
+        let serviceNameLower = decodedServiceName.toLowerCase();
 
-        const serviceNameLower = decodedServiceName.toLowerCase();
-        // console.log(`[findServiceName] Checking against service: "${serviceNameLower}"`);
-
-        // Option 1: Simple substring check
         if (normalizedMsg.includes(serviceNameLower)) {
             return true;
         }
 
-        // Option 2: Word-based check
         const serviceNameWords = serviceNameLower.split(/[\s,&]+/).filter(Boolean);
         if (serviceNameWords.length > 0 && serviceNameWords.every(word => messageWords.has(word))) {
              return true;
@@ -87,8 +75,6 @@ export const findServiceNameInMessage = (normalizedMsg, services = []) => {
         return false; // No match
     });
 
-    // console.log(`[findServiceName] Found service: ${foundService?.name || null}`);
-    // Return the ORIGINAL service name from the DB if found
     return foundService ? foundService.name : null; 
 };
 
@@ -161,15 +147,7 @@ const didBotRequestContactInfo = (botMessageContent) => {
 export const classifyUserIntent = (message, messageHistory, services = [], isNewSession = false, previousPartialInfo = null) => {
     const normalizedMessage = message.toLowerCase().trim();
     const lastBotMessage = messageHistory.slice().reverse().find(msg => msg.role === 'assistant');
-    const sessionId = messageHistory[0]?.sessionId || 'unknown'; // Helper to get session ID for logging
-
-    // ---- START DEBUG LOGGING ----
-    console.log(`
---- INTENT CHECK START (Session: ${sessionId}) ---`);
-    console.log(`User Message: "${normalizedMessage}"`);
-    console.log(`Services Available (Names):`, services.map(s => s?.name)); // Log service names
-    console.log(`Last Bot Msg Type: ${lastBotMessage?.type}`);
-    // ---- END DEBUG LOGGING ----
+    const sessionId = messageHistory[0]?.sessionId || 'unknown';
 
     // Check if the bot just asked for contact info
     const botRequestedContact = lastBotMessage && 
@@ -182,11 +160,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
                                lastBotMessage.type === 'BOOKING_REQUEST' || // Added BOOKING_REQUEST
                                lastBotMessage.type === 'APPOINTMENT_REQUEST_DETAILED'); // Added APPOINTMENT_REQUEST_DETAILED
 
-    console.log(`[Classifier ${sessionId}] Last Bot Msg Type: ${lastBotMessage?.type}, Bot Requested Contact Flag: ${botRequestedContact}`); // Log flag check
-
     if (botRequestedContact) {
-        console.log(`[Classifier ${sessionId}] Entering contact accumulation block.`);
-        // Accumulate contact info from history AFTER the bot's request
         let finalAccumulatedInfo = { ...(previousPartialInfo || {}) };
         let extractedSomethingThisTurn = false;
         
@@ -225,11 +199,9 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
 
         // Add the current message to check as well
         historyToCheck.push({ role: 'user', content: message }); 
-        console.log(`[Classifier ${sessionId}] History slice to check for accumulation (length ${historyToCheck.length}):`, historyToCheck.map(m=>m.content)); // Log messages being checked
 
         historyToCheck.forEach(userMsg => {
             const extractedFromMsg = extractContactInfo(userMsg.content);
-            console.log(`[Classifier ${sessionId}] Extracted from "${userMsg.content}":`, extractedFromMsg); // Log extraction result
             if (extractedFromMsg) {
                 // Merge ONLY IF new info is found in this message
                 let merged = false;
@@ -243,15 +215,10 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
             }
         });
 
-        console.log(`[Classifier ${sessionId}] Final Accumulated Info before check:`, finalAccumulatedInfo); // Log final accumulated info
-        console.log(`[Classifier ${sessionId}] Extracted something this turn: ${extractedSomethingThisTurn}`); // Log flag
-
         // Check if accumulated info is now complete
         const isComplete = finalAccumulatedInfo.name && finalAccumulatedInfo.phone && finalAccumulatedInfo.email;
-        console.log(`[Classifier ${sessionId}] Is Complete Check: ${isComplete}`); // Log completeness check
 
         if (isComplete) {
-             console.log(`[Classifier ${sessionId}] ---> Returning type: CONTACT_INFO_PROVIDED`); // Log return type
             return {
                 type: 'CONTACT_INFO_PROVIDED',
                 contactInfo: finalAccumulatedInfo,
@@ -264,23 +231,19 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
              if (!finalAccumulatedInfo.name) missingFields.push('name');
              if (!finalAccumulatedInfo.phone) missingFields.push('phone');
              if (!finalAccumulatedInfo.email) missingFields.push('email');
-             console.log(`[Classifier ${sessionId}] ---> Returning type: PARTIAL_CONTACT_INFO_PROVIDED (Missing: ${missingFields.join(', ')})`); // Log return type
              return {
                  type: 'PARTIAL_CONTACT_INFO_PROVIDED',
                  contactInfo: finalAccumulatedInfo, // Pass back the latest accumulated info
                  missingFields: missingFields 
              };
-        } else {
-             console.log(`[Classifier ${sessionId}] Bot requested contact, but accumulation conditions not met for PARTIAL/COMPLETE.`); // Log edge case
         }
-    } // End if (botRequestedContact)
+    }
 
     console.log(`[Classifier ${sessionId}] Proceeding to check other intents.`);
 
     // Check for complete contact info in the current message ONLY if bot didn't just ask
     const singleMessageContactInfo = extractContactInfo(message);
     if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone && singleMessageContactInfo.email) {
-         console.log(`[Classifier ${sessionId}] ---> Returning type: CONTACT_INFO_PROVIDED (Single Message)`);
         return {
             type: 'CONTACT_INFO_PROVIDED',
             contactInfo: singleMessageContactInfo,
@@ -294,7 +257,6 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         if (!singleMessageContactInfo.name) missingFields.push('name');
         if (!singleMessageContactInfo.phone) missingFields.push('phone');
         if (!singleMessageContactInfo.email) missingFields.push('email');
-        console.log(`[Classifier ${sessionId}] ---> Returning type: PARTIAL_CONTACT_INFO_PROVIDED (Single Message, Missing: ${missingFields.join(', ')})`);
         return {
             type: 'PARTIAL_CONTACT_INFO_PROVIDED',
             contactInfo: singleMessageContactInfo,
@@ -304,7 +266,6 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
 
     // --- Other Intent Checks (Prioritize more specific intents) ---
     if (URGENT_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
-         console.log(`[Classifier ${sessionId}] ---> Returning type: URGENT_APPOINTMENT_REQUEST`);
         return { type: 'URGENT_APPOINTMENT_REQUEST' };
     }
 
@@ -331,7 +292,6 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     // --- NEW ORDER: Check for specific service inquiries FIRST ---
     const faqMatch = checkServiceFAQ(normalizedMessage, services);
     if (faqMatch) {
-        console.log(`[Classifier ${sessionId}] ---> Returning type: SERVICE_FAQ (Service: ${faqMatch.serviceName})`);
         return { type: 'SERVICE_FAQ', serviceName: faqMatch.serviceName, questionType: faqMatch.questionType };
     }
 
@@ -339,37 +299,26 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     const mentionedServiceNameExplicit = findServiceNameInMessage(normalizedMessage, services); // Call it once here
     if (serviceInquiryKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         if (mentionedServiceNameExplicit) { 
-            console.log(`[Classifier ${sessionId}] ---> Returning type: SERVICE_INQUIRY_EXPLICIT (Service: ${mentionedServiceNameExplicit})`);
             return { type: 'SERVICE_INQUIRY_EXPLICIT', serviceName: mentionedServiceNameExplicit }; // Add service name
         }
     }
     
     // --- Check for general service list request only AFTER specific checks ---
-    const potentiallySpecific = faqMatch || mentionedServiceNameExplicit; // Reuse the result from above
-    console.log(`[Classifier ${sessionId}] --- DEBUG FOR LIST CHECK ---`);
-    console.log(`       faqMatch: ${JSON.stringify(faqMatch)}`);
-    console.log(`       mentionedServiceNameExplicit: "${mentionedServiceNameExplicit}"`);
-    console.log(`       potentiallySpecific is truthy?: ${!!potentiallySpecific}`);
-    console.log(`       Does message include list keyword?: ${listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))}`);
-    console.log(`       Combined condition (!potentiallySpecific && includesListKeyword): ${!potentiallySpecific && listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))}`);
-    console.log(`[Classifier ${sessionId}] --- END DEBUG FOR LIST CHECK ---`);
+    const potentiallySpecific = faqMatch || mentionedServiceNameExplicit;
     
     if (!potentiallySpecific && listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
-        console.log(`[Classifier ${sessionId}] ---> Returning type: REQUEST_SERVICE_LIST`);
         return { type: 'REQUEST_SERVICE_LIST' };
     }
 
     // --- Continue with other checks ---
     // Check for confirmation keywords ONLY if the bot didn't just ask for contact
     if (!botRequestedContact && CONFIRMATION_KEYWORDS.some(keyword => normalizedMessage.startsWith(keyword) || normalizedMessage.endsWith(keyword))) {
-        console.log(`[Classifier ${sessionId}] ---> Returning type: CONFIRMATION_YES`);
         return { type: 'CONFIRMATION_YES' };
     }
 
     // Check for Dental Problems
     const problemCheck = checkDentalProblem(normalizedMessage);
     if (problemCheck.isProblem) {
-        console.log(`[Classifier ${sessionId}] ---> Returning type: DENTAL_PROBLEM (Category: ${problemCheck.category})`);
         return {
             type: 'DENTAL_PROBLEM',
             category: problemCheck.category,
@@ -383,6 +332,5 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     }
 
     // Fallback
-    console.log(`[Classifier ${sessionId}] ---> Returning type: UNKNOWN`); // Log return type
     return { type: 'UNKNOWN' };
 }; 

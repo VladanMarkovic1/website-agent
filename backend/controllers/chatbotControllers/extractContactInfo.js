@@ -74,18 +74,11 @@ export function extractContactInfo(message) {
     let extractedName = null;
 
     // 1. Try Email
-    // Re-define regex locally just in case
     const localEmailRegex = /[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+/i;
-    console.log(`[Extractor Debug Email] Testing string "${message}" against regex: ${localEmailRegex}`);
     const emailTestResult = localEmailRegex.test(message);
-    console.log(`[Extractor Debug Email] Regex test result: ${emailTestResult}`);
     const emailMatchResult = message.match(localEmailRegex);
-    console.log(`[Extractor Debug Email] Raw email match result for "${message}":`, emailMatchResult);
     if (emailMatchResult && emailMatchResult[0]) {
         extractedEmail = emailMatchResult[0];
-        console.log(`[Extractor Debug Email] Assigned extractedEmail: "${extractedEmail}"`);
-    } else {
-        console.log(`[Extractor Debug Email] No valid email match found or match array empty.`);
     }
 
     // 2. Try Phone
@@ -98,30 +91,25 @@ export function extractContactInfo(message) {
         const lastPart = phoneMatchResult[4];
         const prefix = potentialPrefix.includes('1') ? '+1' : ''; 
         extractedPhone = prefix + areaCode + middlePart + lastPart;
-        // console.log('[Extractor Debug] Matched Phone:', extractedPhone);
     }
 
     // 3. Try Name *ONLY IF* email or phone was also found in this message
-    // console.log(`[Extractor Debug] Checking for Name (Email found: ${!!extractedEmail}, Phone found: ${!!extractedPhone})`);
     if (extractedEmail || extractedPhone) {
         let potentialNamePortion = message;
         if (extractedEmail) potentialNamePortion = potentialNamePortion.replace(extractedEmail, '');
         if (phoneMatchResult) potentialNamePortion = potentialNamePortion.replace(phoneMatchResult[0], '');
         potentialNamePortion = potentialNamePortion.replace(/[,.:;!?&]/g, '').trim();
-        // console.log('[Extractor Debug] Potential Name Portion:', potentialNamePortion);
 
         if (potentialNamePortion.length > 0) {
             const nameMatch = potentialNamePortion.match(nameRegex);
             if (nameMatch && nameMatch[1].trim().length > 1) { 
                 extractedName = nameMatch[1].trim();
-                // console.log('[Extractor Debug] Matched Name:', extractedName);
             }
         }
     }
     // --- End Reworked Natural Extraction (v5) ---
 
     // Return if *any* piece was extracted
-    console.log(`[Extractor Debug Final] Values before return check: Email=${extractedEmail}, Phone=${extractedPhone}, Name=${extractedName}`);
     if (extractedEmail || extractedPhone || extractedName) {
         return {
             email: extractedEmail,
@@ -130,7 +118,6 @@ export function extractContactInfo(message) {
         };
     }
     
-    console.log(`[Extractor Debug Final] Condition failed, returning null for message: "${message}"`);
     return null;
 }
 
