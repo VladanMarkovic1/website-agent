@@ -72,7 +72,7 @@ export const sendInvitationEmail = async (email, invitationLink) => {
         };
 
         const info = await transporter.sendMail(mailOptions);
-        console.log('Invitation email sent successfully:', info.messageId);
+        console.log('Invitation email sent successfully:');
         // Removed Ethereal preview URL
         return { info }; // Return only the send info
     } catch (error) {
