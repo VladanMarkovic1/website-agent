@@ -122,7 +122,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
 
         <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
           <a
-            href="https://dental-website.vercel.app/privacy.html"
+            href="http://localhost:5173/privacy.html"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: "#888", textDecoration: "none" }}
