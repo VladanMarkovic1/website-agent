@@ -109,7 +109,6 @@ export const getBusinesses = async (req, res) => {
 
 export const deleteBusinessOwner = async (req, res) => {
   const { email } = req.params; // Get email from URL parameter
-  console.log(`Attempting to delete records for email: ${email}`);
 
   // Basic email validation (consider a more robust library like validator.js if needed)
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -122,32 +121,20 @@ export const deleteBusinessOwner = async (req, res) => {
     let invitationsDeleted = 0;
 
     // Attempt to delete the BusinessOwner account (if it exists)
-    console.log(`Searching for BusinessOwner with email: ${email}`);
     const deletedOwner = await BusinessOwner.findOneAndDelete({ email: email });
     if (deletedOwner) {
       ownerDeleted = true;
-      console.log(`Successfully deleted BusinessOwner account for: ${email}`, deletedOwner);
-    } else {
-      console.log(`No BusinessOwner account found for email: ${email}`);
     }
 
     // Attempt to delete any Invitation records associated with the email
-    console.log(`Searching for Invitations with email: ${email}`);
     const deleteResult = await Invitation.deleteMany({ email: email });
     invitationsDeleted = deleteResult.deletedCount || 0;
-    if (invitationsDeleted > 0) {
-        console.log(`Successfully deleted ${invitationsDeleted} invitation(s) for: ${email}`, deleteResult);
-    } else {
-        console.log(`No Invitations found for email: ${email}`);
-    }
 
     // Check if anything was actually deleted
     if (!ownerDeleted && invitationsDeleted === 0) {
-      console.log(`No records found to delete for email: ${email}`);
       return res.status(404).json({ error: 'No user account or invitation found for this email.' });
     }
 
-    console.log(`Deletion process completed for email: ${email}. Owner deleted: ${ownerDeleted}, Invitations deleted: ${invitationsDeleted}`);
     res.status(200).json({
       success: true,
       message: `Successfully deleted records for ${email}. Owner account deleted: ${ownerDeleted}. Invitations deleted: ${invitationsDeleted}.`
