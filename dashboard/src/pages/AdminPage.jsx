@@ -182,15 +182,15 @@ const AdminPage = () => {
       return;
     }
     
-    if (window.confirm(`Are you sure you want to delete the invitation for ${ownerEmail}? This action cannot be undone.`)) {
+    if (window.confirm(`Are you sure you want to delete the records for ${ownerEmail}? This includes any pending invitations and the registered account if it exists. This action cannot be undone.`)) {
       try {
         setMessage('');
         setError('');
-        await apiClient.delete(`/admin/business-owners/${ownerId}`);
-        setMessage(`Invitation for ${ownerEmail} deleted successfully.`);
-        setBusinessOwners(prev => prev.filter(owner => owner.id !== ownerId));
+        await apiClient.delete(`/admin/business-owners/${ownerEmail}`); 
+        setMessage(`Records for ${ownerEmail} deleted successfully.`);
+        setBusinessOwners(prev => prev.filter(owner => owner.email !== ownerEmail));
       } catch (err) {
-        setError(err.response?.data?.error || `Failed to delete invitation for ${ownerEmail}.`);
+        setError(err.response?.data?.error || `Failed to delete records for ${ownerEmail}.`);
       }
     }
   };

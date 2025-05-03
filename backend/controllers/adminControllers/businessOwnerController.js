@@ -3,6 +3,7 @@ import Business from '../../models/Business.js';
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import BusinessOwner from '../../models/BusinessOwner.js';
 
 export const getBusinessOwners = async (req, res) => {
   try {
@@ -107,26 +108,55 @@ export const getBusinesses = async (req, res) => {
 };
 
 export const deleteBusinessOwner = async (req, res) => {
-  const { ownerId } = req.params;
+  const { email } = req.params; // Get email from URL parameter
+  console.log(`Attempting to delete records for email: ${email}`);
 
-  if (!mongoose.Types.ObjectId.isValid(ownerId)) {
-    return res.status(400).json({ error: 'Invalid Owner ID format' });
+  // Basic email validation (consider a more robust library like validator.js if needed)
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    console.error(`Invalid email format received for deletion: ${email}`);
+    return res.status(400).json({ error: 'Invalid email format provided.' });
   }
 
   try {
-    // We delete the invitation record. If the user has registered, their account might remain.
-    // Depending on requirements, might need to delete the actual BusinessOwner account too.
-    const deletedInvitation = await Invitation.findByIdAndDelete(ownerId);
+    let ownerDeleted = false;
+    let invitationsDeleted = 0;
 
-    if (!deletedInvitation) {
-      return res.status(404).json({ error: 'Invitation record not found for this owner ID' });
+    // Attempt to delete the BusinessOwner account (if it exists)
+    console.log(`Searching for BusinessOwner with email: ${email}`);
+    const deletedOwner = await BusinessOwner.findOneAndDelete({ email: email });
+    if (deletedOwner) {
+      ownerDeleted = true;
+      console.log(`Successfully deleted BusinessOwner account for: ${email}`, deletedOwner);
+    } else {
+      console.log(`No BusinessOwner account found for email: ${email}`);
     }
 
-    res.status(200).json({ message: 'Business owner invitation deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting business owner invitation:', error);
-    res.status(500).json({ error: 'Failed to delete business owner invitation' });
-  }
+    // Attempt to delete any Invitation records associated with the email
+    console.log(`Searching for Invitations with email: ${email}`);
+    const deleteResult = await Invitation.deleteMany({ email: email });
+    invitationsDeleted = deleteResult.deletedCount || 0;
+    if (invitationsDeleted > 0) {
+        console.log(`Successfully deleted ${invitationsDeleted} invitation(s) for: ${email}`, deleteResult);
+    } else {
+        console.log(`No Invitations found for email: ${email}`);
+    }
+
+    // Check if anything was actually deleted
+    if (!ownerDeleted && invitationsDeleted === 0) {
+      console.log(`No records found to delete for email: ${email}`);
+      return res.status(404).json({ error: 'No user account or invitation found for this email.' });
+    }
+
+    console.log(`Deletion process completed for email: ${email}. Owner deleted: ${ownerDeleted}, Invitations deleted: ${invitationsDeleted}`);
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted records for ${email}. Owner account deleted: ${ownerDeleted}. Invitations deleted: ${invitationsDeleted}.`
+  });
+
+} catch (error) {
+  console.error(`Error during deletion process for email ${email}:`, error);
+  res.status(500).json({ error: 'Failed to delete user records.' });
+}
 };
 
 export const updateBusinessOwner = async (req, res) => {

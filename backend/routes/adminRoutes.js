@@ -54,7 +54,7 @@ const updateOwnerValidationRules = [
 
 // Validation rules for deleting a business owner
 const deleteOwnerValidationRules = [
-    param('ownerId', 'Valid Owner ID parameter is required').isMongoId()
+    param('email', 'Valid Email parameter is required').isEmail().normalizeEmail()
 ];
 
 // Validation rules for generating script tag
@@ -83,7 +83,7 @@ router.post(
 
 // Delete a business owner invitation (admin only)
 router.delete(
-    '/business-owners/:ownerId',
+    '/business-owners/:email',
     deleteOwnerValidationRules, // Apply validation
     handleValidationErrors,     // Handle errors
     deleteBusinessOwner         // Call controller
