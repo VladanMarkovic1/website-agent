@@ -44631,10 +44631,14 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       "a",
       {
-        href: "https://dental-website.vercel.app/privacy.html",
+        href: "/privacy.html",
         target: "_blank",
         rel: "noopener noreferrer",
         style: { color: "#888", textDecoration: "none" },
+        onClick: (e) => {
+          e.preventDefault();
+          window.open("/privacy.html", "_blank");
+        },
         children: "Privacy Policy"
       }
     ) })

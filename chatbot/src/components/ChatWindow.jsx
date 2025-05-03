@@ -121,13 +121,17 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </form>
 
         <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
-          <a
-            href="http://localhost:5173/privacy.html"
+            <a
+            href="/privacy.html"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: "#888", textDecoration: "none" }}
+            onClick={(e) => {
+              e.preventDefault();
+              window.open("/privacy.html", "_blank");
+            }}
           >
-             Privacy Policy
+            Privacy Policy
           </a>
         </div>
     </div>
