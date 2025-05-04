@@ -161,7 +161,8 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 } else {
                     // Fallback to AI if explicit inquiry but no match
                     // console.log('Explicit inquiry keywords but no specific service match. Falling back to AI.');
-                    responsePayload = await generateAIFallbackResponse(message, messageHistory);
+                    // Pass businessData to the fallback function
+                    responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 }
                 break;
             
@@ -247,7 +248,8 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                     };
                 } else {
                      // Fallback to AI if no services defined
-                     responsePayload = await generateAIFallbackResponse(message, messageHistory);
+                     // Pass businessData to the fallback function
+                     responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 }
                 break;
 
@@ -286,14 +288,14 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // console.log('[generateAIResponse] Matched case: SERVICE_FAQ');
                 // ... existing code ...
                 console.warn('[generateAIResponse] SERVICE_FAQ case hit but no specific handler implemented yet. Falling back to AI.');
-                responsePayload = await generateAIFallbackResponse(message, messageHistory);
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 break;
 
             case 'UNKNOWN':
             default:
                 // console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); 
-                // Fallback to AI for anything not classified
-                responsePayload = await generateAIFallbackResponse(message, messageHistory);
+                // Pass businessData to the fallback function
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 break;
         }
         // console.log('[generateAIResponse] Exiting switch, final responsePayload:', JSON.stringify(responsePayload)); // Potential PII - Removed
