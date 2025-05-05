@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import BusinessOwner from '../../models/BusinessOwner.js';
 
 export const getBusinessOwners = async (req, res) => {
+  console.log('[getBusinessOwners] Controller function entered.'); // Log entry
   try {
     // Start with invitations and join with business owners
     const businessOwners = await Invitation.aggregate([
