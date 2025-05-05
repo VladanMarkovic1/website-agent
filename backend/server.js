@@ -32,6 +32,9 @@ const startServer = async () => {
         transports: ["websocket", "polling"],
     });
 
+    // Trust the first proxy hop (Render's reverse proxy)
+    app.set('trust proxy', 1); 
+
     // Security middleware
     app.use(helmet()); // Set secure HTTP headers
     
