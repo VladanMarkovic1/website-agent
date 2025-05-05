@@ -36,7 +36,7 @@ const adminLimiter = rateLimit({
 
 // Apply security middleware
 router.use(authenticateToken);  // Verify JWT token
-router.use(adminAuth);         // Verify admin role
+// router.use(adminAuth);         // Verify admin role
 router.use(adminLimiter);      // Apply rate limiting
 
 // Validation rules for sending an invitation
