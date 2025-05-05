@@ -69,8 +69,10 @@ export const getBusinessOwners = async (req, res) => {
       }
     ]);
 
+    // Check if the query returned results
     if (!businessOwners || businessOwners.length === 0) {
-      return res.status(404).json({ error: 'No business owners or invitations found' });
+      // Return 200 OK with an empty array if no owners/invitations are found
+      return res.status(200).json([]); 
     }
 
     // Format the response
