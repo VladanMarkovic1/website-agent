@@ -127,23 +127,40 @@ async function _generateAndRefineResponse(message, businessData, sessionMessages
     return { classifiedIntent, responsePayload: responseAfterOverride1 }; 
 }
 
-async function _trackProblemDescriptionIfNeeded(session, message, finalResponseType) {
-    // Check if the current message seems relevant (keywords, length, not simple types)
+async function _trackProblemDescriptionIfNeeded(session, message, botNextResponseType, userMessageIntentType) {
+    // Types of user messages that should NOT overwrite an existing problemDescription if one is already set
+    const nonOverwritingUserIntentTypes = [
+        'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES', 'CONFIRMATION_NO', 
+        'SMALLTALK', 'GREETING', 'GOODBYE', 
+        'CONTACT_INFO', 'PARTIAL_CONTACT_INFO_PROVIDED', 'CONTACT_INFO_PROVIDED',
+        'REQUEST_HUMAN_AGENT', 'THANKS' // Added more types that are generally not new primary concerns
+    ];
+
+    if (session.problemDescription && 
+        userMessageIntentType && nonOverwritingUserIntentTypes.includes(userMessageIntentType.toUpperCase())) {
+        // If a problem description exists, and the current user message is a simple affirmation, contact info, etc.,
+        // do NOT overwrite the existing problem description.
+        // console.log(`[Session Update] User message type '${userMessageIntentType}' will not overwrite existing problemDescription: "${session.problemDescription}"`);
+        return; 
+    }
+
+    // Original logic for setting problemDescription based on bot's next response type and message content
+    // This uses BOT's next response type (botNextResponseType)
     const isPotentiallyRelevant = 
-        !['CONTACT_INFO', 'CONTACT_INFO_PROVIDED', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES'].includes(finalResponseType) &&
-        (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => message.toLowerCase().includes(keyword)) || message.split(' ').length > 3); // Use a threshold like > 3 words
+        !['CONTACT_INFO', 'CONTACT_INFO_PROVIDED', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES'].includes(botNextResponseType) &&
+        (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => message.toLowerCase().includes(keyword)) || message.split(' ').length > 3);
 
     if (isPotentiallyRelevant) {
-        const redactedMessage = redactPII(message); // Redact before saving
-        // Always update if relevant, capturing the latest concern before lead save
-        if (session.problemDescription !== redactedMessage) { // Avoid redundant updates
+        const redactedMessage = redactPII(message);
+        // Only update if it's different or new, or if no problemDescription was set yet
+        if (!session.problemDescription || session.problemDescription !== redactedMessage) {
             await updateSessionData(session.sessionId, { problemDescription: redactedMessage }); 
             session.problemDescription = redactedMessage; // Update local session object with redacted
-            // console.log(`[Session Update] Updated relevant problemDescription to: "${redactedMessage}"`); // Debug - Removed
+            // console.log(`[Session Update] Updated relevant problemDescription to: "${redactedMessage}"`); 
         }
     } else {
         // Optional: Log if message wasn't relevant (can be noisy)
-        // console.log(`[Session Update] Message "${redactPII(message)}" (type: ${finalResponseType}) not deemed relevant for updating problemDescription.`); // Debug - Removed
+        // console.log(`[Session Update] Message "${redactPII(message)}" (type: ${botNextResponseType}) not deemed relevant for updating problemDescription.`);
     }
 }
 
@@ -347,7 +364,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
         // --- END Store/Update Partial Contact Info --- 
 
         // Track problem description if needed 
-        await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type);
+        await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type, classifiedIntent?.type);
 
         // Save Lead if contact info provided
         const originalClassificationForLeadCheck = classifiedIntent; 

@@ -75,7 +75,7 @@ export const findServiceNameInMessage = (normalizedMsg, services = []) => {
         return false; // No match
     });
 
-    return foundService ? foundService.name : null; 
+    return foundService ? foundService.name : null;
 };
 
 // Helper function to determine the type of question asked
@@ -93,8 +93,8 @@ const checkServiceFAQ = (normalizedMsg, services) => {
 
     // Combine all FAQ keywords (including service-question keywords like 'options', 'best')
     const questionKeywords = [
-        ...SERVICE_FAQ_KEYWORDS.pain,
-        ...SERVICE_FAQ_KEYWORDS.duration,
+        ...SERVICE_FAQ_KEYWORDS.pain, 
+        ...SERVICE_FAQ_KEYWORDS.duration, 
         ...SERVICE_FAQ_KEYWORDS.cost,
         ...SPECIFIC_SERVICE_QUESTION_KEYWORDS
     ];
