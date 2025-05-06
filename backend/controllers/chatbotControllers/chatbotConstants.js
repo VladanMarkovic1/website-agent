@@ -184,7 +184,7 @@ export const SPECIFIC_HEALTH_QUESTIONS = [
 
 // Keywords for checking if message is about specific treatment options
 export const SPECIFIC_SERVICE_QUESTION_KEYWORDS = [
-    'options', 'what', 'how', 'need', 'should'
+    'options', 'option', 'best', 'which', 'what', 'how', 'need', 'should'
 ];
 
 // Keywords indicating a pediatric context

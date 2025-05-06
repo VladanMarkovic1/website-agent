@@ -145,7 +145,12 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
             case 'SERVICE_INQUIRY_EXPLICIT':
                 // console.log('[generateAIResponse] Matched case: SERVICE_INQUIRY_EXPLICIT'); 
-                // Call the dedicated service matcher
+                // If the user message is a question, delegate to AI for a richer response
+                if (message.trim().endsWith('?')) {
+                    responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                    break;
+                }
+                // Otherwise, call the dedicated service matcher
                 const matchedService = await handleServiceInquiry(normalizedMessage, businessData.services);
                 if (matchedService) {
                     // Construct response using matched service data

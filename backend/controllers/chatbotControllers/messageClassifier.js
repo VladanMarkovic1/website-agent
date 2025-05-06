@@ -1,4 +1,4 @@
-import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES, SERVICE_FAQ_KEYWORDS, OPERATING_HOURS_KEYWORDS, RESCHEDULE_KEYWORDS, CANCEL_KEYWORDS, CONFIRMATION_KEYWORDS } from './chatbotConstants.js';
+import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES, SERVICE_FAQ_KEYWORDS, SPECIFIC_SERVICE_QUESTION_KEYWORDS, OPERATING_HOURS_KEYWORDS, RESCHEDULE_KEYWORDS, CANCEL_KEYWORDS, CONFIRMATION_KEYWORDS } from './chatbotConstants.js';
 import { extractContactInfo } from './extractContactInfo.js';
 
 const isGreeting = (normalizedMsg) => {
@@ -91,11 +91,12 @@ const checkServiceFAQ = (normalizedMsg, services) => {
     const mentionedServiceName = findServiceNameInMessage(normalizedMsg, services);
     if (!mentionedServiceName) return null; // No service mentioned
 
-    // Combine all FAQ keywords
+    // Combine all FAQ keywords (including service-question keywords like 'options', 'best')
     const questionKeywords = [
-        ...SERVICE_FAQ_KEYWORDS.pain, 
-        ...SERVICE_FAQ_KEYWORDS.duration, 
-        ...SERVICE_FAQ_KEYWORDS.cost
+        ...SERVICE_FAQ_KEYWORDS.pain,
+        ...SERVICE_FAQ_KEYWORDS.duration,
+        ...SERVICE_FAQ_KEYWORDS.cost,
+        ...SPECIFIC_SERVICE_QUESTION_KEYWORDS
     ];
 
     // Check if the message contains any of the FAQ keywords
