@@ -41,7 +41,8 @@ const startServer = async () => {
     // CORS Configuration
     const whitelist = [
         process.env.DASHBOARD_URL, 
-        process.env.WIDGET_TEST_SITE_URL, // For simple-site-opal.vercel.app
+        process.env.WIDGET_TEST_SITE_URL,
+        process.env.WIDGET_DENTIST_SITE_URL, // For simple-site-opal.vercel.app
         'http://localhost:5173', // Vite default for dashboard dev
         'http://localhost:5174', // Old Vite default for widget dev (if any)
         'http://localhost:5175'  // Vite default for chatbot dev
