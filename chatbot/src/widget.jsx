@@ -60,10 +60,13 @@ if (configFromWindow) {
   // console.log("[Widget Loader] Found config object on window:", configFromWindow); // REMOVED
   initializeChatbot(configFromWindow);
 } else {
-   // Fallback: Try reading from data attributes of the current script tag
-   const currentScript = document.currentScript;
+   // Fallback: Try reading from data attributes of the script tag
+   // First, try by a specific ID, then fallback to document.currentScript
+   const dentalChatbotScriptTagById = document.getElementById('dental-chatbot-script');
+   const currentScript = dentalChatbotScriptTagById || document.currentScript; // Use ID if found, else currentScript
+
    if (currentScript && currentScript.dataset.businessId) {
-        // console.log("[Widget Loader] Found config in data attributes."); // REMOVED
+        // console.log("[Widget Loader] Found config in data attributes via ID or currentScript."); // REMOVED
         const configFromAttributes = {
             businessId: currentScript.dataset.businessId,
             apiKey: currentScript.dataset.apiKey, // Will be undefined if not present
@@ -75,7 +78,7 @@ if (configFromWindow) {
         };
          initializeChatbot(configFromAttributes);
    } else {
-       console.error("[Widget Loader] Chatbot configuration not found on window object or script data attributes."); // KEEP
+       console.error("[Widget Loader] Chatbot configuration not found. Ensure the script tag has id='dental-chatbot-script' and the necessary data attributes, or provide config on window object."); // UPDATED ERROR
    }
 }
 

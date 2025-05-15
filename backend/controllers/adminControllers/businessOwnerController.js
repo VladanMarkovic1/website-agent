@@ -212,8 +212,9 @@ export const generateScriptTag = async (req, res) => {
         const jsUrl = `${widgetBaseUrl}/dental-chatbot.js`;
         
         // Added link for CSS and type="module" for the JS, assuming ES module output from chatbot/vite.config.js
+        // Added id="dental-chatbot-script" to the script tag for reliable selection by the widget.
         // If API key is needed, it should be added as another data attribute to the script tag.
-        const scriptTag = `<link rel="stylesheet" href="${cssUrl}">\n<script type="module" src="${jsUrl}" data-business-id="${businessId}" defer></script>`;
+        const scriptTag = `<link rel="stylesheet" href="${cssUrl}">\n<script id="dental-chatbot-script" type="module" src="${jsUrl}" data-business-id="${businessId}" defer></script>`;
 
         res.status(200).json({ scriptTag });
 
