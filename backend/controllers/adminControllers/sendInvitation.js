@@ -18,8 +18,8 @@ export const sendInvitation = async (req, res) => {
     // Create the invitation record in the database
     const invitation = await Invitation.create({ email, token, businessId, expiresAt });
 
-    // Construct the invitation link using the generated token
-    const invitationLink = `${process.env.FRONTEND_URL}/register?token=${token}`;
+    // Construct the invitation link using the generated token and the DASHBOARD_URL
+    const invitationLink = `${process.env.DASHBOARD_URL}/register?token=${token}`;
 
     // Send the invitation email using our invitation email service
     const emailResult = await sendInvitationEmail(email, invitationLink);
