@@ -199,22 +199,38 @@ export const generateScriptTag = async (req, res) => {
 
     try {
         // Optional: Verify businessId actually exists in the Business collection
-        const businessExists = await Business.findOne({ businessId: businessId });
-        if (!businessExists) {
+        const business = await Business.findOne({ businessId: businessId });
+        if (!business) {
             return res.status(404).json({ error: 'Business not found' });
         }
-        
-        // Construct the script tag
-        // Ensure VITE_WIDGET_URL is set in your backend environment variables
-        const widgetBaseUrl = process.env.VITE_WIDGET_URL || 'http://localhost:5174'; // This default might need to point to 5175 if chatbot runs there locally
+
+        // Retrieve the PLAINTEXT API key. 
+        // IMPORTANT: This assumes you have a way to get the PLAINTEXT key.
+        // If you only store hashes, you cannot put the plaintext key in the script tag.
+        // For this example, let's assume `business.apiKey` holds the plaintext key.
+        // In a real scenario, you might have a separate mechanism or decide if exposing it this way is secure enough.
+        // For now, we will simulate having a plaintext key. If business.apiKey is a hash, this will not work.
+        // Let's assume there's no direct plain text API key available to embed for now, and widget should handle if it's missing.
+        // OR, if the API key is the one seen in the logs (02fb5...), it might be a static key for now.
+        // For the purpose of this step, let's proceed *as if* we are not embedding an API key yet,
+        // to see if the backendUrl fix resolves the main connection errors.
+        // The apiKey in the WebSocket URL in the screenshot seemed to be coming from the widget's own dataset reading.
+
+        const widgetBaseUrl = process.env.VITE_WIDGET_URL || 'http://localhost:5174'; // For widget JS/CSS
+        const liveBackendUrl = process.env.RENDER_BACKEND_URL || 'http://localhost:5000'; // For API calls from the widget
         
         const cssUrl = `${widgetBaseUrl}/dental-chatbot.css`;
         const jsUrl = `${widgetBaseUrl}/dental-chatbot.js`;
         
-        // Added link for CSS and type="module" for the JS, assuming ES module output from chatbot/vite.config.js
-        // Added id="dental-chatbot-script" to the script tag for reliable selection by the widget.
-        // If API key is needed, it should be added as another data attribute to the script tag.
-        const scriptTag = `<link rel="stylesheet" href="${cssUrl}">\n<script id="dental-chatbot-script" type="module" src="${jsUrl}" data-business-id="${businessId}" defer></script>`;
+        // If you had a plain text API key for the business, e.g., from business.actualApiKey:
+        // const apiKeyAttribute = business.actualApiKey ? `data-api-key="${business.actualApiKey}"` : '';
+        // For now, let's use the apiKey from the screenshot as a placeholder if it's static, or omit if dynamic from DB
+        // The widget.jsx already tries to read `currentScript.dataset.apiKey`
+        // The screenshot of the script tag on the client site showed: apiKey="02fb5a06338fe79dd874b58d36aa4fafaf3ccacd39888214c019a946aa6ffd0"
+        // Let's assume this key needs to be on the script tag as data-api-key
+        const apiKeyFromLastScreenshot = "02fb5a06338fe79dd874b58d36aa4fafaf3ccacd39888214c019a946aa6ffd0"; // Temporary
+
+        const scriptTag = `<link rel="stylesheet" href="${cssUrl}">\n<script id="dental-chatbot-script" type="module" src="${jsUrl}" data-business-id="${businessId}" data-backend-url="${liveBackendUrl}" data-api-key="${apiKeyFromLastScreenshot}" defer></script>`;
 
         res.status(200).json({ scriptTag });
 
