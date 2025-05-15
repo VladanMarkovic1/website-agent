@@ -22,7 +22,9 @@ export default defineConfig({
       // external: ['react', 'react-dom'], 
       output: {
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'style.css') {
+          // More robust check: if it's a CSS file, rename it.
+          // Assumes only one CSS file due to cssCodeSplit: false
+          if (assetInfo.name?.endsWith('.css')) { 
             return 'dental-chatbot.css';
           }
           return assetInfo.name;
