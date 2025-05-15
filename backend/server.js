@@ -38,51 +38,26 @@ const startServer = async () => {
     // Security middleware
     app.use(helmet()); // Set secure HTTP headers
     
-    // --- Dynamic CORS Configuration ---
-    // Define allowed origins logic
+    // CORS Configuration
+    const whitelist = [
+        process.env.DASHBOARD_URL, 
+        process.env.WIDGET_TEST_SITE_URL, // For simple-site-opal.vercel.app
+        'http://localhost:5173', // Vite default for dashboard dev
+        'http://localhost:5174', // Old Vite default for widget dev (if any)
+        'http://localhost:5175'  // Vite default for chatbot dev
+    ].filter(Boolean); // Filter out undefined values if env vars are not set
+
     const corsOptions = {
-      origin: async (origin, callback) => {
-        if (!origin) {
-          // Allow requests with no origin (like mobile apps, curl, server-to-server)
-          // In production, you might want to be stricter depending on use case
-          return callback(null, true);
-        }
-        try {
-          // Fetch all active businesses and their allowed origins
-          const businesses = await Business.find({ isActive: true }, 'allowedOrigins').lean(); // Assuming an isActive flag
-          const allowedOrigins = businesses.flatMap(b => b.allowedOrigins || []);
-          // Also allow your dashboard domain(s) - get from ENV or hardcode
-          const dashboardOrigin = process.env.DASHBOARD_URL; // e.g., 'https://your-dashboard.com'
-          if (dashboardOrigin) {
-            allowedOrigins.push(dashboardOrigin);
-          }
-          // Add localhost for development testing if needed
-          if (process.env.NODE_ENV === 'development') {
-             allowedOrigins.push('http://localhost:5173'); // Example Vite default port for chatbot testing
-             allowedOrigins.push('http://localhost:5174'); // Example Vite default port for dashboard testing
-          }
-
-          if (allowedOrigins.includes(origin)) {
-            callback(null, true); // Origin is allowed
-          } else {
-            console.warn(`CORS blocked origin: ${origin}`);
-            callback(new Error('Not allowed by CORS')); // Origin is not allowed
-          }
-        } catch (error) {
-          console.error("Error in CORS origin check:", error);
-          callback(new Error('CORS check failed due to internal error')); // Internal error
-        }
-      },
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'], // Simplify headers if possible
-      credentials: true
+        origin: function (origin, callback) {
+            if (whitelist.indexOf(origin) !== -1 || !origin) { // Allow requests with no origin (like mobile apps or curl requests)
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        credentials: true,
     };
-
-    // Apply CORS middleware
     app.use(cors(corsOptions));
-    // Handle preflight requests for all routes
-    app.options('*', cors(corsOptions)); 
-    // --- End Dynamic CORS Configuration ---
 
     app.use(express.json());
 
