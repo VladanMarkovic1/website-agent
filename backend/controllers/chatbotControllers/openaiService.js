@@ -78,15 +78,17 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
         // 1. Classify Intent
         const intent = classifyUserIntent(message, messageHistory, businessData.services, isNewSession, previousPartialInfo);
-        // console.log('Classified Intent:', JSON.stringify(intent));
+        // console.log('[openaiService] Classified Intent:', JSON.stringify(intent, null, 2)); // To be removed/commented
+        // console.log('[openaiService] User Message for this Intent:', message); // To be removed/commented
+        // console.log('Classified Intent:', JSON.stringify(intent)); // Ensure this remains commented or is removed
 
         let responsePayload = {};
 
         // 2. Handle Intent based on Classification
-        // console.log(`[generateAIResponse] Entering switch with intent type: ${intent.type}`); // Log before switch
+        // console.log(`[generateAIResponse] Entering switch with intent type: ${intent.type}`); // To be removed/commented
         switch (intent.type) {
             case 'CONTACT_INFO_PROVIDED':
-                // console.log('[generateAIResponse] Matched case: CONTACT_INFO_PROVIDED');
+                // console.log('[generateAIResponse] Matched case: CONTACT_INFO_PROVIDED'); // To be removed/commented
                 const contactInfo = intent.contactInfo; // Already contains full accumulated info
                 
                 // --- MODIFIED LOGIC FOR serviceContext ---
@@ -94,17 +96,17 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 let determinedServiceContext = 'your dental needs'; // Default
                 if (sessionServiceInterest && sessionServiceInterest !== 'your dental needs' && sessionServiceInterest !== 'Dental Consultation' && sessionServiceInterest !== 'General Inquiry') {
                     determinedServiceContext = sessionServiceInterest;
-                    // console.log(`[generateAIResponse] Using session service interest: ${determinedServiceContext}`);
+                    // console.log(`[generateAIResponse] Using session service interest: ${determinedServiceContext}`); // To be removed/commented
                 } else if (contactInfo.service) {
                     // Fallback 1: Service extracted alongside contact info
                     determinedServiceContext = contactInfo.service;
-                    // console.log(`[generateAIResponse] Using service extracted with contact info: ${determinedServiceContext}`);
+                    // console.log(`[generateAIResponse] Using service extracted with contact info: ${determinedServiceContext}`); // To be removed/commented
                 } else if (lastBotMessage?.detectedService) {
                     // Fallback 2: Service detected in last bot message (less reliable)
                     determinedServiceContext = lastBotMessage.detectedService;
-                    // console.log(`[generateAIResponse] Using service from last bot message: ${determinedServiceContext}`);
+                    // console.log(`[generateAIResponse] Using service from last bot message: ${determinedServiceContext}`); // To be removed/commented
                 } else {
-                    // console.log(`[generateAIResponse] Using default service context: ${determinedServiceContext}`);
+                    // console.log(`[generateAIResponse] Using default service context: ${determinedServiceContext}`); // To be removed/commented
                 }
                 // --- END MODIFIED LOGIC ---
                 
@@ -127,7 +129,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'PARTIAL_CONTACT_INFO_PROVIDED':
-                // console.log('[generateAIResponse] Matched case: PARTIAL_CONTACT_INFO_PROVIDED');
+                // console.log('[generateAIResponse] Matched case: PARTIAL_CONTACT_INFO_PROVIDED'); // To be removed/commented
                 responsePayload = {
                     type: 'PARTIAL_CONTACT_REQUEST', // Indicate bot is asking for more
                     response: createMissingInfoPrompt(intent.missingFields, intent.contactInfo),
@@ -136,7 +138,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'CONFIRMATION_YES':
-                // console.log('[generateAIResponse] Matched case: CONFIRMATION_YES');
+                // console.log('[generateAIResponse] Matched case: CONFIRMATION_YES'); // To be removed/commented
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
                     response: RESPONSE_TEMPLATES.contact_after_yes // Uses the updated template
@@ -144,7 +146,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'SERVICE_INQUIRY_EXPLICIT':
-                // console.log('[generateAIResponse] Matched case: SERVICE_INQUIRY_EXPLICIT'); 
+                // console.log('[generateAIResponse] Matched case: SERVICE_INQUIRY_EXPLICIT'); // To be removed/commented
                 // If the user message is a question, delegate to AI for a richer response
                 if (message.trim().endsWith('?')) {
                     responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
@@ -165,14 +167,14 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                     };
                 } else {
                     // Fallback to AI if explicit inquiry but no match
-                    // console.log('Explicit inquiry keywords but no specific service match. Falling back to AI.');
+                    // console.log('Explicit inquiry keywords but no specific service match. Falling back to AI.'); // To be removed/commented
                     // Pass businessData to the fallback function
                     responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 }
                 break;
             
             case 'PROBLEM_FOLLOWUP':
-                // console.log('[generateAIResponse] Matched case: PROBLEM_FOLLOWUP');
+                // console.log('[generateAIResponse] Matched case: PROBLEM_FOLLOWUP'); // To be removed/commented
                 // This logic depends on constants and context, reasonable to keep here
                 let suggestedServices = [];
                 const problemCategory = intent.problemCategory;
@@ -202,7 +204,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'DENTAL_PROBLEM':
-                 // console.log('[generateAIResponse] Matched case: DENTAL_PROBLEM');
+                 // console.log('[generateAIResponse] Matched case: DENTAL_PROBLEM'); // To be removed/commented
                  // This logic depends on constants and context, reasonable to keep here
                 let responseTemplate;
                 let concernDetail = intent.category; // e.g., 'pain', 'appearance'
@@ -234,7 +236,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'GREETING':
-                // console.log('[generateAIResponse] Matched case: GREETING');
+                // console.log('[generateAIResponse] Matched case: GREETING'); // To be removed/commented
                 responsePayload = {
                     type: 'GREETING',
                     response: RESPONSE_TEMPLATES.greeting
@@ -242,7 +244,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'REQUEST_SERVICE_LIST':
-                 // console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST');
+                 // console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST'); // To be removed/commented
                  // This logic depends on context, reasonable to keep here
                 if (businessData.services && businessData.services.length > 0) {
                     // Map and decode service names using the NEW helper
@@ -259,13 +261,13 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'APPOINTMENT_REQUEST':
-                // console.log('[generateAIResponse] Matched case: APPOINTMENT_REQUEST');
+                // console.log('[generateAIResponse] Matched case: APPOINTMENT_REQUEST'); // To be removed/commented
                 
                 // Attempt to extract details from the current message
                 const serviceName = findServiceNameInMessage(normalizedMessage, businessData?.services);
                 const timePreference = TIME_PREFERENCE_KEYWORDS.find(kw => normalizedMessage.includes(kw)); // Find first match
 
-                // console.log(`[generateAIResponse] Extracted details for appointment request - Service: ${serviceName}, Time: ${timePreference}`);
+                // console.log(`[generateAIResponse] Extracted details for appointment request - Service: ${serviceName}, Time: ${timePreference}`); // To be removed/commented
 
                 responsePayload = {
                     type: 'APPOINTMENT_REQUEST_DETAILED', // Use a more specific type if needed for overrides
@@ -275,7 +277,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'OPERATING_HOURS_INQUIRY':
-                // console.log('[generateAIResponse] Matched case: OPERATING_HOURS_INQUIRY');
+                // console.log('[generateAIResponse] Matched case: OPERATING_HOURS_INQUIRY'); // To be removed/commented
                 if (businessData?.operatingHours) {
                     responsePayload = {
                         type: 'OPERATING_HOURS_INFO',
@@ -290,7 +292,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'SERVICE_FAQ':
-                // console.log('[generateAIResponse] Matched case: SERVICE_FAQ');
+                // console.log('[generateAIResponse] Matched case: SERVICE_FAQ'); // To be removed/commented
                 // ... existing code ...
                 console.warn('[generateAIResponse] SERVICE_FAQ case hit but no specific handler implemented yet. Falling back to AI.');
                 responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
@@ -298,7 +300,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
             case 'UNKNOWN':
             default:
-                // console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); 
+                // console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); // To be removed/commented
                 // Pass businessData to the fallback function
                 responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 break;

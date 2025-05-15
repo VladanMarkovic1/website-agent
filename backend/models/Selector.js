@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const SelectorsSchema = new mongoose.Schema({
     businessId: { type: String, required: true, unique: true },
     serviceSelector: { type: String, required: true },
-    priceSelector: { type: String },
+    aboutSelector: { type: String },
     contactSelector: { type: String },
     faqsSelector: { 
         question: { type: String },

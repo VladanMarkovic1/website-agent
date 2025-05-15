@@ -38,7 +38,8 @@ async function _getBusinessData(businessId) {
         businessPhoneNumber: contactData?.phone || null,
         businessEmail: contactData?.email || null,
         address: contactData?.address || null,
-        operatingHours: extraInfoData?.operatingHours || null
+        operatingHours: extraInfoData?.operatingHours || null,
+        aboutUsText: extraInfoData?.aboutUsText || null
     };
 
     // console.log("[Business Data Check] Fetched business data:", JSON.stringify(fullBusinessData, null, 2)); // Debug only - Removed
