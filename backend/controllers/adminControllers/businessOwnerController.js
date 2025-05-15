@@ -206,8 +206,14 @@ export const generateScriptTag = async (req, res) => {
         
         // Construct the script tag
         // Ensure VITE_WIDGET_URL is set in your backend environment variables
-        const widgetBaseUrl = process.env.VITE_WIDGET_URL || 'http://localhost:5174'; // Default if not set
-        const scriptTag = `<script src="${widgetBaseUrl}/widget.js" data-business-id="${businessId}" defer></script>`;
+        const widgetBaseUrl = process.env.VITE_WIDGET_URL || 'http://localhost:5174'; // This default might need to point to 5175 if chatbot runs there locally
+        
+        const cssUrl = `${widgetBaseUrl}/dental-chatbot.css`;
+        const jsUrl = `${widgetBaseUrl}/dental-chatbot.js`;
+        
+        // Added link for CSS and type="module" for the JS, assuming ES module output from chatbot/vite.config.js
+        // If API key is needed, it should be added as another data attribute to the script tag.
+        const scriptTag = `<link rel="stylesheet" href="${cssUrl}">\n<script type="module" src="${jsUrl}" data-business-id="${businessId}" defer></script>`;
 
         res.status(200).json({ scriptTag });
 
