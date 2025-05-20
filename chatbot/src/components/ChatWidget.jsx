@@ -141,25 +141,28 @@ const ChatWidget = ({
     //     return null; // Or a spinner
     // }
 
-    // Determine widget positioning class
-    const positionClass = widgetConfig.position === 'bottom-left' ? 'left-5' : 'right-5';
+    // Determine widget positioning class (always bottom-right for SaaS look)
+    // const positionClass = widgetConfig.position === 'bottom-left' ? 'left-5' : 'right-5';
 
     return (
-        <div className={`fixed bottom-5 ${positionClass} z-50`}>
+        <div
+            className="fixed bottom-5 right-5 z-50"
+            style={{ width: 370, height: 540 }}
+        >
             {configError && (
-                 <div className="text-red-500 bg-white p-2 rounded shadow mb-2 text-xs">Error: {configError}</div>
-             )}
+                <div className="text-red-500 bg-white p-2 rounded shadow mb-2 text-xs">Error: {configError}</div>
+            )}
             {isOpen ? (
-                <ChatWindow 
-                    messages={messages} 
-                    onSendMessage={handleSendMessage} 
-                    onClose={() => setIsOpen(false)} 
+                <ChatWindow
+                    messages={messages}
+                    onSendMessage={handleSendMessage}
+                    onClose={() => setIsOpen(false)}
                     primaryColor={widgetConfig.primaryColor}
                     welcomeMessage={widgetConfig.welcomeMessage}
                 />
             ) : (
-                <ChatButton 
-                    onClick={() => setIsOpen(true)} 
+                <ChatButton
+                    onClick={() => setIsOpen(true)}
                     primaryColor={widgetConfig.primaryColor}
                     text={initialButtonText}
                 />
