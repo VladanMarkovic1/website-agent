@@ -45,7 +45,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
 
   return (
     <div className="flex flex-col w-full h-full bg-white rounded-2xl shadow-xl border border-gray-200">
-      {/* Header */}
+      {/* Bot Header */}
       <div 
         className="flex items-center justify-between px-5 py-3 rounded-t-2xl text-white"
         style={{ backgroundColor: primaryColor }}
