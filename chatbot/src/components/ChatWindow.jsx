@@ -44,10 +44,10 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   };
 
   return (
-    <div className="flex flex-col w-[350px] h-[500px] bg-white rounded-lg shadow-xl">
+    <div className="flex flex-col w-[370px] h-[540px] bg-white rounded-2xl shadow-xl border border-gray-200">
       {/* Header */}
       <div 
-        className="flex items-center justify-between p-3 rounded-t-lg text-white"
+        className="flex items-center justify-between px-5 py-3 rounded-t-2xl text-white"
         style={{ backgroundColor: primaryColor }}
       >
         <h2 className="text-base font-semibold truncate">{headerTitle}</h2>
@@ -56,22 +56,22 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           className="text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent"
           aria-label="Close chat"
         >
-          <FaTimes className="w-4 h-4" />
+          <FaTimes className="w-5 h-5" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-white">
         {messages.map((message, index) => (
           <div
             key={message.id}
             className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] p-2.5 rounded-lg text-sm ${
+              className={`max-w-[85%] p-3 rounded-xl text-base leading-relaxed shadow-sm ${
                 message.type === 'user'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-800'
+                  : 'bg-gray-100 text-gray-900'
               }`}
             >
               <ReactMarkdown
@@ -99,33 +99,33 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t">
-        <div className="flex gap-2">
+      <form onSubmit={handleSubmit} className="px-5 py-4 border-t bg-white">
+        <div className="flex gap-2 items-center">
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
+            className="flex-1 p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 text-base"
           />
           <button
             type="submit"
-            className="p-2 text-white rounded-lg transition-colors"
+            className="p-3 text-white rounded-xl transition-colors flex items-center justify-center"
             style={{ backgroundColor: primaryColor }}
             disabled={!input.trim()}
           >
-            <FaPaperPlane />
+            <FaPaperPlane className="w-5 h-5" />
           </button>
         </div>
       </form>
 
-      <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
+      <div className="text-center text-xs text-gray-400 pb-2 pt-1 select-none">
         <a
           href="/privacy.html"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "#888", textDecoration: "none" }}
+          className="text-gray-400 hover:underline"
           onClick={(e) => {
             e.preventDefault();
             window.open("/privacy.html", "_blank");
