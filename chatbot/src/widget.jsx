@@ -13,12 +13,12 @@ async function initializeChatbot(config) {
     return;
   }
   if (!config.apiKey) {
-    console.error("Chatbot Error: Missing apiKey in configuration.");
+      console.error("Chatbot Error: Missing apiKey in configuration.");
     return;
   }
   if (!config.backendUrl) {
-    console.error("Chatbot Error: Missing backendUrl in configuration.");
-    return;
+      console.error("Chatbot Error: Missing backendUrl in configuration.");
+      return;
   }
 
   // Create container for the chatbot if it doesn't exist
@@ -58,7 +58,7 @@ async function initializeChatbot(config) {
         businessId={config.businessId}
         backendUrl={config.backendUrl}
         apiKey={config.apiKey}
-        initialPosition={config.position}
+        initialPosition={config.position} 
         initialButtonText={config.buttonText}
         initialPrimaryColor={config.primaryColor}
       />
@@ -68,32 +68,32 @@ async function initializeChatbot(config) {
   // Return cleanup function
   return () => {
     root.unmount();
-    container.remove();
+    container.remove(); 
   };
 }
 
-// --- Auto-initialization Logic ---
+// --- Auto-initialization Logic --- 
 const configFromWindow = window.DENTAL_CHATBOT_CONFIG || window.chatbotConfig || null;
 
 if (configFromWindow) {
   initializeChatbot(configFromWindow);
 } else {
-  const dentalChatbotScriptTagById = document.getElementById('dental-chatbot-script');
+   const dentalChatbotScriptTagById = document.getElementById('dental-chatbot-script');
   const currentScript = dentalChatbotScriptTagById || document.currentScript;
 
-  if (currentScript && currentScript.dataset.businessId) {
-    const configFromAttributes = {
-      businessId: currentScript.dataset.businessId,
+   if (currentScript && currentScript.dataset.businessId) {
+        const configFromAttributes = {
+            businessId: currentScript.dataset.businessId,
       apiKey: currentScript.dataset.apiKey,
       backendUrl: currentScript.dataset.backendUrl || 'http://localhost:5000',
-      position: currentScript.dataset.position,
-      primaryColor: currentScript.dataset.primaryColor,
-      buttonText: currentScript.dataset.buttonText
-    };
-    initializeChatbot(configFromAttributes);
-  } else {
+            position: currentScript.dataset.position,
+            primaryColor: currentScript.dataset.primaryColor,
+            buttonText: currentScript.dataset.buttonText
+        };
+         initializeChatbot(configFromAttributes);
+   } else {
     console.error("[Widget Loader] Chatbot configuration not found. Ensure the script tag has id='dental-chatbot-script' and the necessary data attributes, or provide config on window object.");
-  }
+   }
 }
 
 window.DentalChatbot = { init: initializeChatbot }; 

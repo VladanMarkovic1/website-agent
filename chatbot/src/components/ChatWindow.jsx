@@ -44,7 +44,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   };
 
   return (
-    <div className="flex flex-col w-80 h-[500px] bg-white rounded-lg shadow-xl">
+    <div className="flex flex-col w-[350px] h-[500px] bg-white rounded-lg shadow-xl">
       {/* Header */}
       <div 
         className="flex items-center justify-between p-3 rounded-t-lg text-white"
@@ -120,20 +120,20 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         </div>
       </form>
 
-        <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
-            <a
-            href="/privacy.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#888", textDecoration: "none" }}
-            onClick={(e) => {
-              e.preventDefault();
-              window.open("/privacy.html", "_blank");
-            }}
-          >
-            Privacy Policy
-          </a>
-        </div>
+      <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
+        <a
+          href="/privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#888", textDecoration: "none" }}
+          onClick={(e) => {
+            e.preventDefault();
+            window.open("/privacy.html", "_blank");
+          }}
+        >
+          Privacy Policy
+        </a>
+      </div>
     </div>
   );
 };
