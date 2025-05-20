@@ -146,8 +146,8 @@ const ChatWidget = ({
 
     return (
         <div
-            className="fixed bottom-5 right-5 z-50"
-            style={{ width: 370, height: 540 }}
+            className="fixed bottom-5 right-5 z-50 flex items-end"
+            style={{ width: 400, height: 600, minWidth: 320, minHeight: 400 }}
         >
             {configError && (
                 <div className="text-red-500 bg-white p-2 rounded shadow mb-2 text-xs">Error: {configError}</div>
