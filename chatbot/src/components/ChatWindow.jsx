@@ -44,7 +44,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   };
 
   return (
-    <div className="flex flex-col w-full h-full bg-white rounded-2xl shadow-xl border border-gray-200 p-4">
+    <div className="flex flex-col w-full h-full">
       {/* Bot Header */}
       <div 
         className="flex items-center justify-between px-4 py-3 rounded-t-2xl text-white"
@@ -61,7 +61,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-2 py-4 space-y-4 bg-white">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-white">
         {messages.map((message, index) => (
           <div
             key={message.id}
@@ -99,7 +99,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="px-2 pt-2 pb-0 border-t bg-white">
+      <form onSubmit={handleSubmit} className="px-4 pt-2 pb-0 border-t bg-white">
         <div className="flex gap-2 items-center">
           <input
             ref={inputRef}
