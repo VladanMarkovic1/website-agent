@@ -44,10 +44,10 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   };
 
   return (
-    <div className="flex flex-col w-full h-full bg-white rounded-2xl shadow-xl border border-gray-200">
+    <div className="flex flex-col w-full h-full bg-white rounded-2xl shadow-xl border border-gray-200 p-4">
       {/* Bot Header */}
       <div 
-        className="flex items-center justify-between px-5 py-3 rounded-t-2xl text-white"
+        className="flex items-center justify-between px-4 py-3 rounded-t-2xl text-white"
         style={{ backgroundColor: primaryColor }}
       >
         <h2 className="text-base font-semibold truncate">{headerTitle}</h2>
@@ -61,14 +61,14 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-white">
+      <div className="flex-1 overflow-y-auto px-2 py-4 space-y-4 bg-white">
         {messages.map((message, index) => (
           <div
             key={message.id}
             className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] p-3 rounded-xl text-base leading-relaxed shadow-sm ${
+              className={`max-w-[85%] p-4 rounded-xl text-base leading-relaxed shadow-sm ${
                 message.type === 'user'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-900'
@@ -99,7 +99,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="px-5 py-4 border-t bg-white">
+      <form onSubmit={handleSubmit} className="px-2 pt-2 pb-0 border-t bg-white">
         <div className="flex gap-2 items-center">
           <input
             ref={inputRef}
@@ -120,7 +120,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         </div>
       </form>
 
-      <div className="text-center text-xs text-gray-400 pb-2 pt-1 select-none">
+      <div className="text-center text-xs text-gray-400 pb-1 pt-2 select-none">
         <a
           href="/privacy.html"
           target="_blank"
