@@ -3,21 +3,30 @@ import { createRoot } from 'react-dom/client';
 import ChatWidget from './components/ChatWidget';
 import './index.css';
 
-// Function to initialize the chatbot
-function initializeChatbot(config) {
-  // Basic validation
+// Function to fetch the built CSS as a string
+async function fetchWidgetCSS() {
+  try {
+    const response = await fetch('/dental-chatbot-widget.css');
+    return await response.text();
+  } catch (e) {
+    console.error('Failed to fetch widget CSS:', e);
+    return '';
+  }
+}
+
+// Function to initialize the chatbot in Shadow DOM
+async function initializeChatbot(config) {
   if (!config || !config.businessId) {
     console.error("Chatbot Error: Missing configuration or businessId.");
     return;
   }
   if (!config.apiKey) {
-      console.error("Chatbot Error: Missing apiKey in configuration.");
-      // Potentially display an error to the user or disable the widget
-      return; // Stop initialization if key is missing
+    console.error("Chatbot Error: Missing apiKey in configuration.");
+    return;
   }
   if (!config.backendUrl) {
-      console.error("Chatbot Error: Missing backendUrl in configuration.");
-      return;
+    console.error("Chatbot Error: Missing backendUrl in configuration.");
+    return;
   }
 
   // Create container for the chatbot if it doesn't exist
@@ -28,16 +37,36 @@ function initializeChatbot(config) {
     document.body.appendChild(container);
   }
 
-  // Create React root and render the chatbot
-  const root = createRoot(container);
+  // Create Shadow Root
+  let shadowRoot = container.shadowRoot;
+  if (!shadowRoot) {
+    shadowRoot = container.attachShadow({ mode: 'open' });
+  }
+
+  // Inject CSS into Shadow Root
+  const styleTag = document.createElement('style');
+  styleTag.textContent = await fetchWidgetCSS();
+  // Remove any previous style tags
+  Array.from(shadowRoot.querySelectorAll('style')).forEach(s => s.remove());
+  shadowRoot.appendChild(styleTag);
+
+  // Create a div inside shadow root for React to mount
+  let reactRootDiv = shadowRoot.getElementById('react-root');
+  if (!reactRootDiv) {
+    reactRootDiv = document.createElement('div');
+    reactRootDiv.id = 'react-root';
+    shadowRoot.appendChild(reactRootDiv);
+  }
+
+  // Create React root and render the chatbot inside the shadow root
+  const root = createRoot(reactRootDiv);
   root.render(
     <React.StrictMode>
       <ChatWidget
         businessId={config.businessId}
-        backendUrl={config.backendUrl} // Pass backendUrl
-        apiKey={config.apiKey}         // Pass apiKey
-        // Pass initial values from config as fallbacks for ChatWidget's dynamic fetching
-        initialPosition={config.position} 
+        backendUrl={config.backendUrl}
+        apiKey={config.apiKey}
+        initialPosition={config.position}
         initialButtonText={config.buttonText}
         initialPrimaryColor={config.primaryColor}
       />
@@ -47,39 +76,32 @@ function initializeChatbot(config) {
   // Return cleanup function
   return () => {
     root.unmount();
-    // Only remove container if we created it? Optional.
-    container.remove(); 
+    container.remove();
   };
 }
 
-// --- Auto-initialization Logic --- 
-// Look for config on the window object provided by the host page
+// --- Auto-initialization Logic ---
 const configFromWindow = window.DENTAL_CHATBOT_CONFIG || window.chatbotConfig || null;
 
 if (configFromWindow) {
-  // console.log("[Widget Loader] Found config object on window:", configFromWindow); // REMOVED
   initializeChatbot(configFromWindow);
 } else {
-   // Fallback: Try reading from data attributes of the script tag
-   // First, try by a specific ID, then fallback to document.currentScript
-   const dentalChatbotScriptTagById = document.getElementById('dental-chatbot-script');
-   const currentScript = dentalChatbotScriptTagById || document.currentScript; // Use ID if found, else currentScript
+  const dentalChatbotScriptTagById = document.getElementById('dental-chatbot-script');
+  const currentScript = dentalChatbotScriptTagById || document.currentScript;
 
-   if (currentScript && currentScript.dataset.businessId) {
-        // console.log("[Widget Loader] Found config in data attributes via ID or currentScript."); // REMOVED
-        const configFromAttributes = {
-            businessId: currentScript.dataset.businessId,
-            apiKey: currentScript.dataset.apiKey, // Will be undefined if not present
-            backendUrl: currentScript.dataset.backendUrl || 'http://localhost:5000', // Default if not set
-            // Optional: read initial style attributes if needed as fallbacks
-            position: currentScript.dataset.position,
-            primaryColor: currentScript.dataset.primaryColor,
-            buttonText: currentScript.dataset.buttonText
-        };
-         initializeChatbot(configFromAttributes);
-   } else {
-       console.error("[Widget Loader] Chatbot configuration not found. Ensure the script tag has id='dental-chatbot-script' and the necessary data attributes, or provide config on window object."); // UPDATED ERROR
-   }
+  if (currentScript && currentScript.dataset.businessId) {
+    const configFromAttributes = {
+      businessId: currentScript.dataset.businessId,
+      apiKey: currentScript.dataset.apiKey,
+      backendUrl: currentScript.dataset.backendUrl || 'http://localhost:5000',
+      position: currentScript.dataset.position,
+      primaryColor: currentScript.dataset.primaryColor,
+      buttonText: currentScript.dataset.buttonText
+    };
+    initializeChatbot(configFromAttributes);
+  } else {
+    console.error("[Widget Loader] Chatbot configuration not found. Ensure the script tag has id='dental-chatbot-script' and the necessary data attributes, or provide config on window object.");
+  }
 }
 
 // Export for manual initialization (optional)
