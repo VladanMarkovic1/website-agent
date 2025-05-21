@@ -87,7 +87,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-gray-100 text-gray-800 p-3 rounded-lg">
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 items-center">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
