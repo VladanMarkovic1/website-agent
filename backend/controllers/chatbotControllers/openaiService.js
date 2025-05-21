@@ -236,11 +236,8 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'GREETING':
-                // console.log('[generateAIResponse] Matched case: GREETING'); // To be removed/commented
-                responsePayload = {
-                    type: 'GREETING',
-                    response: RESPONSE_TEMPLATES.greeting
-                };
+                // For greetings, do not send a welcome message. Instead, use OpenAI fallback to continue the conversation naturally.
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 break;
 
             case 'REQUEST_SERVICE_LIST':
