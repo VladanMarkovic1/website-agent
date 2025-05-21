@@ -19,6 +19,7 @@ const ChatWidget = ({
     const [messages, setMessages] = useState([]);
     const socketRef = useRef(null);
     const [sessionId, setSessionId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     // State for dynamically loaded config
     const [widgetConfig, setWidgetConfig] = useState({
@@ -102,6 +103,7 @@ const ChatWidget = ({
 
         socketRef.current.on('message', (message) => {
             console.log('[ChatWidget] Received message from server:', message);
+            setIsLoading(false); // Stop loading when response received
             // Use functional update to ensure latest state is used
             setMessages((prevMessages) => {
                 // prevMessages is guaranteed to be the latest state here
@@ -127,6 +129,7 @@ const ChatWidget = ({
         // Use simple ID generator and consistent keys
         const userMessage = { id: generateSimpleId(), type: 'user', content: text }; 
         setMessages((prevMessages) => [...prevMessages, userMessage]);
+        setIsLoading(true); // Start loading when user sends message
 
         console.log(`[ChatWidget] Sending message: "${text}"`);
         socketRef.current.emit('message', { 
@@ -156,6 +159,7 @@ const ChatWidget = ({
                     onClose={() => setIsOpen(false)} 
                     primaryColor={widgetConfig.primaryColor}
                     welcomeMessage={widgetConfig.welcomeMessage}
+                    isLoading={isLoading}
                 />
             ) : (
                 <ChatButton 
