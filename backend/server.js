@@ -50,7 +50,9 @@ const startServer = async () => {
         'http://127.0.0.1:5173', // Alternative localhost format
         'http://127.0.0.1:3000', // Alternative localhost format
         'https://*.vercel.app',  // Allow all Vercel deployments
-        'https://*.render.com'   // Allow all Render deployments
+        'https://*.render.com',  // Allow all Render deployments
+        'https://*.squarespace.com', // Allow all Squarespace domains
+        'https://lynx-clarinet-xph4.squarespace.com' // Specific Squarespace domain
     ].filter(Boolean); // Filter out undefined values if env vars are not set
 
     const corsOptions = {
@@ -74,12 +76,17 @@ const startServer = async () => {
                 callback(null, true);
             } else {
                 console.log('CORS blocked request from origin:', origin);
+                // For development, you might want to allow all origins
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('Development mode: allowing all origins');
+                    return callback(null, true);
+                }
                 callback(new Error('Not allowed by CORS'));
             }
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
     };
     app.use(cors(corsOptions));
 
