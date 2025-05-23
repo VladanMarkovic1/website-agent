@@ -42,21 +42,44 @@ const startServer = async () => {
     const whitelist = [
         process.env.DASHBOARD_URL, 
         process.env.WIDGET_TEST_SITE_URL,
-        process.env.WIDGET_DENTIST_SITE_URL, // For simple-site-opal.vercel.app
+        process.env.WIDGET_DENTIST_SITE_URL,
         'http://localhost:5173', // Vite default for dashboard dev
-        'http://localhost:5174', // Old Vite default for widget dev (if any)
-        'http://localhost:5175'  // Vite default for chatbot dev
+        'http://localhost:5174', // Vite default for widget dev
+        'http://localhost:5175', // Vite default for chatbot dev
+        'http://localhost:3000', // Common React development port
+        'http://127.0.0.1:5173', // Alternative localhost format
+        'http://127.0.0.1:3000', // Alternative localhost format
+        'https://*.vercel.app',  // Allow all Vercel deployments
+        'https://*.render.com'   // Allow all Render deployments
     ].filter(Boolean); // Filter out undefined values if env vars are not set
 
     const corsOptions = {
         origin: function (origin, callback) {
-            if (whitelist.indexOf(origin) !== -1 || !origin) { // Allow requests with no origin (like mobile apps or curl requests)
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) {
+                return callback(null, true);
+            }
+            
+            // Check if the origin matches any of the whitelist patterns
+            const isAllowed = whitelist.some(allowedOrigin => {
+                if (allowedOrigin.includes('*')) {
+                    // Handle wildcard domains
+                    const pattern = new RegExp('^' + allowedOrigin.replace('*', '.*') + '$');
+                    return pattern.test(origin);
+                }
+                return allowedOrigin === origin;
+            });
+
+            if (isAllowed) {
                 callback(null, true);
             } else {
+                console.log('CORS blocked request from origin:', origin);
                 callback(new Error('Not allowed by CORS'));
             }
         },
         credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
     };
     app.use(cors(corsOptions));
 
