@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer-core';
+import puppeteer from 'puppeteer';
 import saveScrapedData from '../scraper/saveScrapedData.js';
 
 // Configuration constants
@@ -45,13 +45,6 @@ const scrapeBusinessData = async (business) => {
     
     const browser = await puppeteer.launch({ 
         headless: true,
-        executablePath: process.env.NODE_ENV === 'production' 
-            ? '/opt/render/project/src/backend/node_modules/puppeteer/.local-chromium/linux-*/chrome-linux/chrome'
-            : process.platform === 'win32' 
-                ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-                : process.platform === 'linux'
-                ? '/usr/bin/google-chrome'
-                : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
