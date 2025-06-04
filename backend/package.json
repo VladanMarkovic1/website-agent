@@ -6,7 +6,7 @@
     "start": "node server.js",
     "dev": "set NODE_ENV=development&& npx nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "postinstall": "npm install puppeteer && npx puppeteer browsers install chrome"
   },
   "type": "module",
   "keywords": [],
