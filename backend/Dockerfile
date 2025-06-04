@@ -5,10 +5,7 @@ WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json* ./
-RUN npm install
-
-# Install Playwright browsers and dependencies
-RUN npx playwright install --with-deps
+RUN npm ci
 
 # Copy the rest of your code
 COPY . .
