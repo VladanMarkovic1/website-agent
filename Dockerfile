@@ -7,15 +7,8 @@ WORKDIR /app
 COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --only=production
 
-# Copy all backend files except node_modules
-COPY backend/*.js ./
-COPY backend/scraper/ ./scraper/
-COPY backend/routes/ ./routes/
-COPY backend/utils/ ./utils/
-COPY backend/models/ ./models/
-COPY backend/controllers/ ./controllers/
-COPY backend/middleware/ ./middleware/
-COPY backend/config/ ./config/
+# Copy all backend source code (node_modules excluded by .dockerignore)
+COPY backend/ ./
 
 # Expose the port
 EXPOSE 5000
