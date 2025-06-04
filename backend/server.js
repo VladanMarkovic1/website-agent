@@ -170,6 +170,16 @@ const startServer = async () => {
 
         // Auth routes first
         console.log("🔄 SETTING UP ROUTES...");
+        
+        // Add health check route FIRST
+        console.log("🔄 ADDING HEALTH CHECK ROUTE...");
+        app.get('/health', (req, res) => {
+            console.log("💗 HEALTH CHECK REQUEST RECEIVED");
+            res.json({ status: 'OK', timestamp: new Date().toISOString() });
+            console.log("💗 HEALTH CHECK RESPONSE SENT");
+        });
+        console.log("✅ HEALTH CHECK ROUTE ADDED");
+        
         app.use("/api/v1/auth", authLimiter, registrationRoutes);
         console.log("✅ REGISTRATION ROUTES ADDED");
         app.use("/api/v1/auth", authLimiter, loginRoutes);
