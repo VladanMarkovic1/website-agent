@@ -7,11 +7,14 @@ WORKDIR /app
 COPY backend/package.json backend/package-lock.json* ./
 RUN npm ci
 
-# Copy the rest of your backend code
+# Copy the rest of your backend code (excluding node_modules)
 COPY backend/ .
+
+# Make sure we exclude copying node_modules from local
+RUN rm -rf node_modules && npm ci
 
 # Expose the port your app runs on
 EXPOSE 5000
 
 # Start the server
-CMD ["npm", "start"] 
+CMD ["node", "server.js"] 
