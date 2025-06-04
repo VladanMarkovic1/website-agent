@@ -45,11 +45,17 @@ const scrapeBusinessData = async (business) => {
     
     const browser = await puppeteer.launch({ 
         headless: true,
+        executablePath: process.platform === 'win32' 
+            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+            : process.platform === 'linux'
+            ? '/usr/bin/google-chrome'
+            : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--disable-dev-shm-usage'
         ]
     });
     
