@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import { chromium } from 'playwright';
 import saveScrapedData from '../scraper/saveScrapedData.js';
 
 // Configuration constants
@@ -43,7 +43,7 @@ async function withRetry(operation, name, maxAttempts = CONFIG.RETRY_ATTEMPTS) {
 const scrapeBusinessData = async (business) => {
     const startTime = Date.now();
     
-    const browser = await puppeteer.launch({ 
+    const browser = await chromium.launch({
         headless: true,
         args: [
             '--no-sandbox',
