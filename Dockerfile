@@ -3,17 +3,21 @@ FROM mcr.microsoft.com/playwright:v1.44.0-jammy
 
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY backend/package.json backend/package-lock.json* ./
-RUN npm ci
+# Copy package files and install dependencies first
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci --only=production
 
-# Copy the rest of your backend code (excluding node_modules)
-COPY backend/ .
+# Copy all backend files except node_modules
+COPY backend/*.js ./
+COPY backend/scraper/ ./scraper/
+COPY backend/routes/ ./routes/
+COPY backend/utils/ ./utils/
+COPY backend/models/ ./models/
+COPY backend/controllers/ ./controllers/
+COPY backend/middleware/ ./middleware/
+COPY backend/config/ ./config/
 
-# Make sure we exclude copying node_modules from local
-RUN rm -rf node_modules && npm ci
-
-# Expose the port your app runs on
+# Expose the port
 EXPOSE 5000
 
 # Start the server
