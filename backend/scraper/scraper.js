@@ -42,23 +42,28 @@ async function withRetry(operation, name, maxAttempts = CONFIG.RETRY_ATTEMPTS) {
 
 const scrapeBusinessData = async (business) => {
     const startTime = Date.now();
-    
-    const browser = await chromium.launch({
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process'
-        ]
-    });
-    
+    console.log('=== Playwright Debug Info ===');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('PWD:', process.env.PWD);
+    console.log('__dirname:', typeof __dirname !== 'undefined' ? __dirname : 'undefined');
+    console.log('process.cwd():', process.cwd());
     try {
+        console.log('Attempting to launch Playwright Chromium...');
+        const browser = await chromium.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process'
+            ]
+        });
+        console.log('Chromium launched successfully!');
         const page = await browser.newPage();
         
         // Set longer timeouts
@@ -138,7 +143,7 @@ const scrapeBusinessData = async (business) => {
         }
 
     } catch (error) {
-        console.error(`❌ Fatal error during scraping for ${business.businessName}:`, error);
+        console.error('Playwright launch error:', error);
         throw error;
     } finally {
         await browser.close();
