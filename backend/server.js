@@ -1,81 +1,122 @@
 import express from "express";
+console.log("✅ EXPRESS IMPORTED");
 import dotenv from "dotenv";
+console.log("✅ DOTENV IMPORTED");
 import cors from "cors";
+console.log("✅ CORS IMPORTED");
 import helmet from "helmet";
+console.log("✅ HELMET IMPORTED");
 import http from "http";
+console.log("✅ HTTP IMPORTED");
 import { Server } from "socket.io";
+console.log("✅ SOCKET.IO IMPORTED");
 import rateLimit from 'express-rate-limit';
-import connectDB from "./config/db.js";
-import initWebSocket from "./config/websocket.js";
-import scraperRoutes from "./routes/scraperRoutes.js";
-import serviceRoutes from "./routes/serviceRoutes.js";
-import chatbotRoutes from "./routes/chatbotRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import registrationRoutes from "./routes/registrationRoutes.js";
-import loginRoutes from "./routes/loginRoutes.js";
-import leadRoutes from "./routes/leadRoutes.js";
-import analyticsRoutes from './routes/analyticsRoutes.js';
-import clientRoutes from './routes/clientRoutes.js'; // Import the new client routes
-import Business from './models/Business.js'; // Import Business model
+console.log("✅ RATE LIMIT IMPORTED");
 
+console.log("🔄 ATTEMPTING TO IMPORT CONFIG FILES...");
+import connectDB from "./config/db.js";
+console.log("✅ DB CONFIG IMPORTED");
+import initWebSocket from "./config/websocket.js";
+console.log("✅ WEBSOCKET CONFIG IMPORTED");
+
+console.log("🔄 ATTEMPTING TO IMPORT ROUTE FILES...");
+import scraperRoutes from "./routes/scraperRoutes.js";
+console.log("✅ SCRAPER ROUTES IMPORTED");
+import serviceRoutes from "./routes/serviceRoutes.js";
+console.log("✅ SERVICE ROUTES IMPORTED");
+import chatbotRoutes from "./routes/chatbotRoutes.js";
+console.log("✅ CHATBOT ROUTES IMPORTED");
+import adminRoutes from "./routes/adminRoutes.js";
+console.log("✅ ADMIN ROUTES IMPORTED");
+import registrationRoutes from "./routes/registrationRoutes.js";
+console.log("✅ REGISTRATION ROUTES IMPORTED");
+import loginRoutes from "./routes/loginRoutes.js";
+console.log("✅ LOGIN ROUTES IMPORTED");
+import leadRoutes from "./routes/leadRoutes.js";
+console.log("✅ LEAD ROUTES IMPORTED");
+import analyticsRoutes from './routes/analyticsRoutes.js';
+console.log("✅ ANALYTICS ROUTES IMPORTED");
+import clientRoutes from './routes/clientRoutes.js';
+console.log("✅ CLIENT ROUTES IMPORTED");
+
+console.log("🔄 ATTEMPTING TO IMPORT MODELS...");
+import Business from './models/Business.js';
+console.log("✅ BUSINESS MODEL IMPORTED");
+
+console.log("🔄 CONFIGURING DOTENV...");
 dotenv.config();
+console.log("✅ DOTENV CONFIGURED");
 
 // Add process error handlers to prevent crashes
+console.log("🔄 SETTING UP ERROR HANDLERS...");
 process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    // Don't exit the process, just log the error
+    console.error('🚨 UNCAUGHT EXCEPTION:', error);
+    console.error('🚨 STACK:', error.stack);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Don't exit the process, just log the error
+    console.error('🚨 UNHANDLED REJECTION at:', promise, 'reason:', reason);
 });
+
+console.log("✅ ERROR HANDLERS SET UP");
 
 const startServer = async () => {
     try {
-        await connectDB(); // Ensure MongoDB is connected
+        console.log("🚀 STARTING SERVER...");
+        
+        console.log("🔄 CONNECTING TO DATABASE...");
+        await connectDB();
+        console.log("✅ DATABASE CONNECTED");
 
+        console.log("🔄 CREATING EXPRESS APP...");
         const app = express();
+        console.log("✅ EXPRESS APP CREATED");
+        
+        console.log("🔄 CREATING HTTP SERVER...");
         const server = http.createServer(app);
+        console.log("✅ HTTP SERVER CREATED");
+        
+        console.log("🔄 CREATING SOCKET.IO SERVER...");
         const io = new Server(server, {
             cors: { origin: "*", methods: ["GET", "POST"] },
             transports: ["websocket", "polling"],
         });
+        console.log("✅ SOCKET.IO SERVER CREATED");
 
-        // Trust the first proxy hop (Render's reverse proxy)
-        app.set('trust proxy', 1); 
+        console.log("🔄 SETTING UP MIDDLEWARE...");
+        app.set('trust proxy', 1);
+        console.log("✅ TRUST PROXY SET");
 
-        // Security middleware
-        app.use(helmet()); // Set secure HTTP headers
+        app.use(helmet());
+        console.log("✅ HELMET MIDDLEWARE ADDED");
         
         // CORS Configuration
+        console.log("🔄 SETTING UP CORS...");
         const whitelist = [
             process.env.DASHBOARD_URL, 
             process.env.WIDGET_TEST_SITE_URL,
             process.env.WIDGET_DENTIST_SITE_URL,
-            'http://localhost:5173', // Vite default for dashboard dev
-            'http://localhost:5174', // Vite default for widget dev
-            'http://localhost:5175', // Vite default for chatbot dev
-            'http://localhost:3000', // Common React development port
-            'http://127.0.0.1:5173', // Alternative localhost format
-            'http://127.0.0.1:3000', // Alternative localhost format
-            'https://*.vercel.app',  // Allow all Vercel deployments
-            'https://*.render.com',  // Allow all Render deployments
-            'https://*.squarespace.com', // Allow all Squarespace domains
-            'https://lynx-clarinet-xph4.squarespace.com' // Specific Squarespace domain
-        ].filter(Boolean); // Filter out undefined values if env vars are not set
+            'http://localhost:5173',
+            'http://localhost:5174',
+            'http://localhost:5175',
+            'http://localhost:3000',
+            'http://127.0.0.1:5173',
+            'http://127.0.0.1:3000',
+            'https://*.vercel.app',
+            'https://*.render.com',
+            'https://*.squarespace.com',
+            'https://lynx-clarinet-xph4.squarespace.com'
+        ].filter(Boolean);
+        console.log("✅ CORS WHITELIST CREATED");
 
         const corsOptions = {
             origin: function (origin, callback) {
-                // Allow requests with no origin (like mobile apps or curl requests)
                 if (!origin) {
                     return callback(null, true);
                 }
                 
-                // Check if the origin matches any of the whitelist patterns
                 const isAllowed = whitelist.some(allowedOrigin => {
                     if (allowedOrigin.includes('*')) {
-                        // Handle wildcard domains
                         const pattern = new RegExp('^' + allowedOrigin.replace('*', '.*') + '$');
                         return pattern.test(origin);
                     }
@@ -86,7 +127,6 @@ const startServer = async () => {
                     callback(null, true);
                 } else {
                     console.log('CORS blocked request from origin:', origin);
-                    // For development, you might want to allow all origins
                     if (process.env.NODE_ENV === 'development') {
                         console.log('Development mode: allowing all origins');
                         return callback(null, true);
@@ -98,66 +138,93 @@ const startServer = async () => {
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
         };
+        
         app.use(cors(corsOptions));
+        console.log("✅ CORS MIDDLEWARE ADDED");
 
         app.use(express.json());
+        console.log("✅ JSON MIDDLEWARE ADDED");
 
         // Rate limiting middleware
+        console.log("🔄 SETTING UP RATE LIMITERS...");
         const generalLimiter = rateLimit({
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 100, // Limit each IP to 100 requests per windowMs
+            windowMs: 15 * 60 * 1000,
+            max: 100,
             message: 'Too many requests from this IP, please try again after 15 minutes'
         });
+        console.log("✅ GENERAL LIMITER CREATED");
 
         const authLimiter = rateLimit({
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 20, // Increased from 5 to 20 attempts per 15 minutes
+            windowMs: 15 * 60 * 1000,
+            max: 20,
             message: 'Too many authentication attempts from this IP, please try again after 15 minutes'
         });
+        console.log("✅ AUTH LIMITER CREATED");
 
         const adminLimiter = rateLimit({
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 50, // Increased from 30 to 50 requests per 15 minutes
+            windowMs: 15 * 60 * 1000,
+            max: 50,
             message: 'Too many admin requests from this IP, please try again after 15 minutes'
         });
+        console.log("✅ ADMIN LIMITER CREATED");
 
-        // Auth routes first (without general rate limiting)
+        // Auth routes first
+        console.log("🔄 SETTING UP ROUTES...");
         app.use("/api/v1/auth", authLimiter, registrationRoutes);
+        console.log("✅ REGISTRATION ROUTES ADDED");
         app.use("/api/v1/auth", authLimiter, loginRoutes);
+        console.log("✅ LOGIN ROUTES ADDED");
 
-        // Then apply general rate limiting to other routes
         app.use(generalLimiter);
+        console.log("✅ GENERAL LIMITER APPLIED");
 
         // API Routes
         app.use("/api/v1/scraper", scraperRoutes);
+        console.log("✅ SCRAPER ROUTES ADDED");
         app.use("/api/v1/services", serviceRoutes);
+        console.log("✅ SERVICE ROUTES ADDED");
         app.use("/api/v1/chatbot", chatbotRoutes);
+        console.log("✅ CHATBOT ROUTES ADDED");
         app.use('/api/v1/leads', leadRoutes);
-        app.use("/api/v1/admin", adminLimiter, adminRoutes);           // Admin endpoints with stricter limits
+        console.log("✅ LEAD ROUTES ADDED");
+        app.use("/api/v1/admin", adminLimiter, adminRoutes);
+        console.log("✅ ADMIN ROUTES ADDED");
         app.use('/api/v1/analytics', analyticsRoutes);
-        app.use('/api/v1/clients', clientRoutes); // Mount the client management routes
+        console.log("✅ ANALYTICS ROUTES ADDED");
+        app.use('/api/v1/clients', clientRoutes);
+        console.log("✅ CLIENT ROUTES ADDED");
 
         // Initialize WebSocket Chat
+        console.log("🔄 INITIALIZING WEBSOCKET...");
         initWebSocket(io);
+        console.log("✅ WEBSOCKET INITIALIZED");
 
         // Add error handling middleware
+        console.log("🔄 ADDING ERROR MIDDLEWARE...");
         app.use((err, req, res, next) => {
-            console.error('Server Error:', err);
+            console.error('🚨 SERVER ERROR:', err);
             res.status(err.status || 500).json({
                 error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
             });
         });
+        console.log("✅ ERROR MIDDLEWARE ADDED");
 
+        console.log("🔄 STARTING SERVER LISTENER...");
         const PORT = process.env.PORT || 5000;
-        server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        server.listen(PORT, () => {
+            console.log(`🎉 SERVER SUCCESSFULLY RUNNING ON PORT ${PORT}`);
+            console.log("🎉 ALL SYSTEMS GO!");
+        });
+        console.log("✅ SERVER LISTEN CALLED");
         
     } catch (error) {
-        console.error('Failed to start server:', error);
-        // Don't exit, just log the error
+        console.error('🚨 FAILED TO START SERVER:', error);
+        console.error('🚨 ERROR STACK:', error.stack);
     }
 };
 
+console.log("🔄 CALLING START SERVER...");
 startServer().catch(error => {
-    console.error('Server startup error:', error);
-    // Don't exit the process
+    console.error('🚨 SERVER STARTUP ERROR:', error);
+    console.error('🚨 ERROR STACK:', error.stack);
 });
