@@ -22,7 +22,6 @@ import loginRoutes from "./routes/loginRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
-import debugRoutes from "./routes/debugRoutes.js";
 console.log("✅ ALL ROUTES IMPORTED");
 
 console.log("🔄 CONFIGURING DOTENV...");
@@ -154,7 +153,6 @@ const startServer = async () => {
         app.use("/api/v1/admin", adminLimiter, adminRoutes);
         app.use('/api/v1/analytics', analyticsRoutes);
         app.use('/api/v1/clients', clientRoutes);
-        app.use('/api/v1/debug', debugRoutes);
 
         // Initialize WebSocket
         console.log("🔄 INITIALIZING WEBSOCKET...");
