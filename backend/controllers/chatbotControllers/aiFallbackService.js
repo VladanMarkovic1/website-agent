@@ -50,13 +50,12 @@ export const generateAIFallbackResponse = async (message, messageHistory, busine
             const phone = businessData.businessPhoneNumber || 'the office';
             const email = businessData.businessEmail || 'the office';
             const name = businessData.businessName || 'the dental practice';
-            // Add address if available in businessData and needed
-            // const address = businessData.address || 'our office location'; 
+            const address = businessData.address || 'our office location';
 
             finalResponse = finalResponse.replace(/\[phone number\]|\[PHONE\]/gi, phone);
             finalResponse = finalResponse.replace(/\[email address\]|\[EMAIL\]/gi, email);
             finalResponse = finalResponse.replace(/\[business name\]|\[BUSINESS_NAME\]/gi, name);
-            // finalResponse = finalResponse.replace(/\[address\]|\[ADDRESS\]/gi, address);
+            finalResponse = finalResponse.replace(/\[address\]|\[ADDRESS\]/gi, address);
         }
         // --- End Post-processing ---
 
