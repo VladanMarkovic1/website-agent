@@ -1,76 +1,49 @@
-console.log("🔄 IMPORTING CHEERIO (NO BROWSER NEEDED)...");
-import * as cheerio from 'cheerio';
 import fetch from 'node-fetch';
-console.log("✅ CHEERIO AND FETCH IMPORTED SUCCESSFULLY");
-console.log("🔄 IMPORTING SAVE SCRAPED DATA...");
-import saveScrapedData from '../scraper/saveScrapedData.js';
-console.log("✅ SAVE SCRAPED DATA IMPORTED SUCCESSFULLY");
+import * as cheerio from 'cheerio';
+import saveScrapedData from './saveScrapedData.js';
 
-// Configuration constants
+// Configuration
 const CONFIG = {
     RETRY_ATTEMPTS: 3,
     RETRY_DELAY: 2000, // 2 seconds
     PAGE_TIMEOUT: 30000, // 30 seconds
-    SCRAPE_TIMEOUT: 60000, // 1 minute total
+    MEMORY_LIMIT: 1024 * 1024 * 512, // 512MB limit
 };
 
-console.log("✅ CONFIG OBJECT CREATED");
-
-// Validation functions
-const validateData = {
-    phone: (phone) => {
-        return phone && phone.match(/[\d\s+\-()]+/);
-    },
-    email: (email) => {
-        return email && email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
-    },
-    services: (services) => {
-        return Array.isArray(services) && services.length > 0;
+// Memory monitoring
+const checkMemoryUsage = () => {
+    const usage = process.memoryUsage();
+    if (usage.heapUsed > CONFIG.MEMORY_LIMIT) {
+        throw new Error(`Memory limit exceeded: ${Math.round(usage.heapUsed / 1024 / 1024)}MB`);
     }
+    return usage;
 };
 
-console.log("✅ VALIDATION FUNCTIONS CREATED");
-
-// Helper function for delay
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-// Helper function to retry failed operations
+// Enhanced retry wrapper with exponential backoff
 async function withRetry(operation, name, maxAttempts = CONFIG.RETRY_ATTEMPTS) {
-    console.log(`🔄 STARTING RETRY OPERATION: ${name}`);
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            console.log(`🔄 ATTEMPT ${attempt}/${maxAttempts} FOR: ${name}`);
-            const result = await operation();
-            console.log(`✅ SUCCESS ON ATTEMPT ${attempt} FOR: ${name}`);
-            return result;
+            return await operation();
         } catch (error) {
-            console.log(`❌ ATTEMPT ${attempt} FAILED FOR: ${name}`, error.message);
             if (attempt === maxAttempts) {
-                console.log(`🚨 ALL ATTEMPTS FAILED FOR: ${name}`);
+                console.error(`Final attempt failed for ${name}:`, error.message);
                 throw error;
             }
-            console.log(`⚠️ Attempt ${attempt} failed for ${name}. Retrying in ${CONFIG.RETRY_DELAY/1000}s...`);
-            await delay(CONFIG.RETRY_DELAY);
+            
+            const delay = CONFIG.RETRY_DELAY * Math.pow(2, attempt - 1); // Exponential backoff
+            console.log(`Attempt ${attempt} failed for ${name}, retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 }
 
-console.log("✅ HELPER FUNCTIONS CREATED");
-
 const scrapeBusinessData = async (business) => {
-    console.log("🚀 STARTING SCRAPE BUSINESS DATA FUNCTION");
-    console.log("📋 BUSINESS DATA:", JSON.stringify(business, null, 2));
-    
     const startTime = Date.now();
-    console.log('=== Cheerio Scraping (No Browser) ===');
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('📊 MEMORY BEFORE SCRAPING:', process.memoryUsage());
-    
+
     try {
-        console.log('🔄 MAKING HTTP REQUEST TO WEBSITE...');
-        console.log('🔄 TARGET URL:', business.websiteUrl);
-        
-        // Fetch the webpage with timeout
+        console.log(`Starting scraping for: ${business.businessName}`);
+        checkMemoryUsage();
+
         const response = await fetch(business.websiteUrl, {
             timeout: CONFIG.PAGE_TIMEOUT,
             headers: {
@@ -82,22 +55,13 @@ const scrapeBusinessData = async (business) => {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        console.log('✅ HTTP REQUEST SUCCESSFUL');
-        console.log('📊 Response status:', response.status);
-        
         const html = await response.text();
-        console.log('✅ HTML CONTENT RECEIVED');
-        console.log('📊 HTML length:', html.length);
         
         // Parse HTML with Cheerio
-        console.log('🔄 PARSING HTML WITH CHEERIO...');
         const $ = cheerio.load(html);
-        console.log('✅ HTML PARSED SUCCESSFULLY');
         
         // 1. Scrape Services
-        console.log('🔄 SCRAPING SERVICES...');
         const serviceSelector = business.selectors?.serviceSelector || 'h1, h2, h3, .service, .treatment';
-        console.log('🔄 SERVICE SELECTOR:', serviceSelector);
         
         const rawServices = [];
         $(serviceSelector).each((i, el) => {
@@ -106,19 +70,14 @@ const scrapeBusinessData = async (business) => {
                 rawServices.push(text);
             }
         });
-        
-        console.log('✅ RAW SERVICES SCRAPED:', rawServices);
 
         const services = rawServices.filter(text =>
             text.length > 3 &&
             !text.includes("Dr") &&
             !text.match(/Doctor|Meet|Our Team|Reviews|Testimonials|News|About|Specialist|Physician|Surgeon|Contact/i)
         ).slice(0, 10); // Limit to 10 services
-        
-        console.log('✅ FILTERED SERVICES:', services);
 
         // 2. Scrape Contact Details
-        console.log('🔄 SCRAPING CONTACT DETAILS...');
         
         // Phone - try multiple approaches
         let phone = "Not found";
@@ -143,13 +102,11 @@ const scrapeBusinessData = async (business) => {
         
         // If no phone found with selectors, search in all text content
         if (phone === "Not found") {
-            console.log('🔄 SEARCHING FOR PHONE IN FULL TEXT...');
             const fullText = $('body').text();
             // Look for phone patterns like 303-447-2281, (303) 447-2281, 303.447.2281, etc.
             const phoneMatches = fullText.match(/(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/g);
             if (phoneMatches && phoneMatches.length > 0) {
                 phone = phoneMatches[0].trim();
-                console.log('✅ FOUND PHONE IN TEXT:', phone);
             }
         }
         
@@ -175,13 +132,11 @@ const scrapeBusinessData = async (business) => {
         
         // If no email found with selectors, search in all text content
         if (email === "Not found") {
-            console.log('🔄 SEARCHING FOR EMAIL IN FULL TEXT...');
             const fullText = $('body').text();
             // Look for email patterns
             const emailMatches = fullText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
             if (emailMatches && emailMatches.length > 0) {
                 email = emailMatches[0].trim();
-                console.log('✅ FOUND EMAIL IN TEXT:', email);
             }
         }
         
@@ -200,21 +155,17 @@ const scrapeBusinessData = async (business) => {
                     const addressMatch = textAfterKeyword.match(/\d+\s+[A-Za-z\s,]+\d{5}/);
                     if (addressMatch) {
                         address = addressMatch[0].trim();
-                        console.log('✅ FOUND ADDRESS:', address);
                     }
                 }
             }
         });
         
         const contactDetails = { phone, email, address };
-        console.log('✅ CONTACT DETAILS SCRAPED:', contactDetails);
 
         // 3. Scrape FAQs (try FAQ page)
         let faqs = [];
-        console.log('🔄 ATTEMPTING TO SCRAPE FAQS...');
         try {
             const faqUrl = `${business.websiteUrl}/faq`;
-            console.log('🔄 TRYING FAQ PAGE:', faqUrl);
             
             const faqResponse = await fetch(faqUrl, {
                 timeout: CONFIG.PAGE_TIMEOUT,
@@ -244,33 +195,24 @@ const scrapeBusinessData = async (business) => {
                         answer: answers[i] || "No answer found"
                     })).slice(0, 5); // Limit to 5 FAQs
                 }
-                console.log('✅ FAQS SCRAPED:', faqs);
-            } else {
-                console.log('⚠️ FAQ page not accessible');
             }
         } catch (faqError) {
-            console.log("⚠️ Could not scrape FAQs:", faqError.message);
+            console.log("Could not scrape FAQs:", faqError.message);
         }
 
         // Save all scraped data
-        console.log('🔄 SAVING SCRAPED DATA...');
         const scrapedData = { services, contactDetails, faqs };
-        console.log('📊 FINAL SCRAPED DATA:', JSON.stringify(scrapedData, null, 2));
-        console.log('📊 MEMORY AFTER SCRAPING:', process.memoryUsage());
+        checkMemoryUsage();
         
         await saveScrapedData(business.businessId, scrapedData);
-        console.log('✅ SCRAPED DATA SAVED SUCCESSFULLY');
 
         const duration = (Date.now() - startTime) / 1000;
-        console.log(`🎉 SCRAPING COMPLETED SUCCESSFULLY IN ${duration} SECONDS`);
+        console.log(`Scraping completed successfully in ${duration} seconds`);
 
     } catch (error) {
-        console.error('🚨 CHEERIO SCRAPING ERROR:', error.message);
-        console.error('🚨 SCRAPING ERROR STACK:', error.stack);
+        console.error('Scraping error:', error.message);
         throw error;
     }
 };
-
-console.log("✅ SCRAPE BUSINESS DATA FUNCTION DEFINED");
 
 export default scrapeBusinessData;
