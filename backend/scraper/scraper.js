@@ -1,6 +1,6 @@
 console.log("🔄 IMPORTING PLAYWRIGHT...");
-import { chromium } from 'playwright';
-console.log("✅ PLAYWRIGHT IMPORTED SUCCESSFULLY");
+import { webkit } from 'playwright';
+console.log("✅ WEBKIT IMPORTED SUCCESSFULLY (LIGHTER THAN CHROMIUM)");
 console.log("🔄 IMPORTING SAVE SCRAPED DATA...");
 import saveScrapedData from '../scraper/saveScrapedData.js';
 console.log("✅ SAVE SCRAPED DATA IMPORTED SUCCESSFULLY");
@@ -71,37 +71,29 @@ const scrapeBusinessData = async (business) => {
     let page = null;
     
     try {
-        console.log('🔄 ATTEMPTING TO LAUNCH PLAYWRIGHT CHROMIUM...');
-        console.log('🔄 CHROMIUM LAUNCH OPTIONS:', {
+        console.log('🔄 ATTEMPTING TO LAUNCH PLAYWRIGHT WEBKIT...');
+        console.log('🔄 WEBKIT LAUNCH OPTIONS:', {
             headless: true,
             args: [
                 '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-web-security',
-                '--disable-features=IsolateOrigins,site-per-process',
                 '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process'
+                '--disable-gpu'
             ]
         });
         
-        browser = await chromium.launch({
+        // Log memory before browser launch
+        console.log('📊 MEMORY BEFORE BROWSER LAUNCH:', process.memoryUsage());
+        
+        browser = await webkit.launch({
             headless: true,
+            timeout: 30000, // 30 second timeout
             args: [
                 '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-web-security',
-                '--disable-features=IsolateOrigins,site-per-process',
                 '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process'
+                '--disable-gpu'
             ]
         });
-        console.log('✅ CHROMIUM LAUNCHED SUCCESSFULLY!');
+        console.log('✅ WEBKIT LAUNCHED SUCCESSFULLY!');
         
         console.log('🔄 CREATING NEW PAGE...');
         page = await browser.newPage();
