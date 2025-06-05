@@ -1,6 +1,7 @@
-console.log("🔄 IMPORTING PLAYWRIGHT...");
-import { webkit } from 'playwright';
-console.log("✅ WEBKIT IMPORTED SUCCESSFULLY (LIGHTER THAN CHROMIUM)");
+console.log("🔄 IMPORTING CHEERIO (NO BROWSER NEEDED)...");
+import * as cheerio from 'cheerio';
+import fetch from 'node-fetch';
+console.log("✅ CHEERIO AND FETCH IMPORTED SUCCESSFULLY");
 console.log("🔄 IMPORTING SAVE SCRAPED DATA...");
 import saveScrapedData from '../scraper/saveScrapedData.js';
 console.log("✅ SAVE SCRAPED DATA IMPORTED SUCCESSFULLY");
@@ -9,8 +10,8 @@ console.log("✅ SAVE SCRAPED DATA IMPORTED SUCCESSFULLY");
 const CONFIG = {
     RETRY_ATTEMPTS: 3,
     RETRY_DELAY: 2000, // 2 seconds
-    PAGE_TIMEOUT: 60000, // Increased to 60 seconds
-    SCRAPE_TIMEOUT: 120000, // 2 minutes total
+    PAGE_TIMEOUT: 30000, // 30 seconds
+    SCRAPE_TIMEOUT: 60000, // 1 minute total
 };
 
 console.log("✅ CONFIG OBJECT CREATED");
@@ -61,175 +62,164 @@ const scrapeBusinessData = async (business) => {
     console.log("📋 BUSINESS DATA:", JSON.stringify(business, null, 2));
     
     const startTime = Date.now();
-    console.log('=== Playwright Debug Info ===');
+    console.log('=== Cheerio Scraping (No Browser) ===');
     console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('PWD:', process.env.PWD);
-    console.log('__dirname:', typeof __dirname !== 'undefined' ? __dirname : 'undefined');
-    console.log('process.cwd():', process.cwd());
-    
-    let browser = null;
-    let page = null;
+    console.log('📊 MEMORY BEFORE SCRAPING:', process.memoryUsage());
     
     try {
-        console.log('🔄 ATTEMPTING TO LAUNCH PLAYWRIGHT WEBKIT...');
-        console.log('🔄 WEBKIT LAUNCH OPTIONS:', {
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu'
-            ]
+        console.log('🔄 MAKING HTTP REQUEST TO WEBSITE...');
+        console.log('🔄 TARGET URL:', business.websiteUrl);
+        
+        // Fetch the webpage with timeout
+        const response = await fetch(business.websiteUrl, {
+            timeout: CONFIG.PAGE_TIMEOUT,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
         });
         
-        // Log memory before browser launch
-        console.log('📊 MEMORY BEFORE BROWSER LAUNCH:', process.memoryUsage());
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
-        browser = await webkit.launch({
-            headless: true,
-            timeout: 30000, // 30 second timeout
-            args: [
-                '--no-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu'
-            ]
+        console.log('✅ HTTP REQUEST SUCCESSFUL');
+        console.log('📊 Response status:', response.status);
+        
+        const html = await response.text();
+        console.log('✅ HTML CONTENT RECEIVED');
+        console.log('📊 HTML length:', html.length);
+        
+        // Parse HTML with Cheerio
+        console.log('🔄 PARSING HTML WITH CHEERIO...');
+        const $ = cheerio.load(html);
+        console.log('✅ HTML PARSED SUCCESSFULLY');
+        
+        // 1. Scrape Services
+        console.log('🔄 SCRAPING SERVICES...');
+        const serviceSelector = business.selectors?.serviceSelector || 'h1, h2, h3, .service, .treatment';
+        console.log('🔄 SERVICE SELECTOR:', serviceSelector);
+        
+        const rawServices = [];
+        $(serviceSelector).each((i, el) => {
+            const text = $(el).text().trim();
+            if (text && text.length > 3) {
+                rawServices.push(text);
+            }
         });
-        console.log('✅ WEBKIT LAUNCHED SUCCESSFULLY!');
         
-        console.log('🔄 CREATING NEW PAGE...');
-        page = await browser.newPage();
-        console.log('✅ NEW PAGE CREATED SUCCESSFULLY');
+        console.log('✅ RAW SERVICES SCRAPED:', rawServices);
+
+        const services = rawServices.filter(text =>
+            text.length > 3 &&
+            !text.includes("Dr") &&
+            !text.match(/Doctor|Meet|Our Team|Reviews|Testimonials|News|About|Specialist|Physician|Surgeon|Contact/i)
+        ).slice(0, 10); // Limit to 10 services
         
-        // Set longer timeouts
-        console.log('🔄 SETTING PAGE TIMEOUTS...');
-        await page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
-        console.log('✅ PAGE TIMEOUTS SET');
+        console.log('✅ FILTERED SERVICES:', services);
+
+        // 2. Scrape Contact Details
+        console.log('🔄 SCRAPING CONTACT DETAILS...');
         
-        // 1. Scrape Main Page
+        // Phone
+        let phone = "Not found";
+        const phoneSelectors = [
+            business.selectors?.contactSelector?.phone,
+            'a[href^="tel:"]',
+            '.phone',
+            '.contact-phone',
+            '[class*="phone"]',
+            '[id*="phone"]'
+        ].filter(Boolean);
+        
+        for (const selector of phoneSelectors) {
+            const phoneEl = $(selector).first();
+            if (phoneEl.length) {
+                phone = phoneEl.text().trim() || phoneEl.attr('href')?.replace('tel:', '') || phone;
+                if (phone !== "Not found") break;
+            }
+        }
+        
+        // Email
+        let email = "Not found";
+        const emailSelectors = [
+            business.selectors?.contactSelector?.email,
+            'a[href^="mailto:"]',
+            '.email',
+            '.contact-email',
+            '[class*="email"]',
+            '[id*="email"]'
+        ].filter(Boolean);
+        
+        for (const selector of emailSelectors) {
+            const emailEl = $(selector).first();
+            if (emailEl.length) {
+                email = emailEl.text().trim() || emailEl.attr('href')?.replace('mailto:', '') || email;
+                if (email !== "Not found") break;
+            }
+        }
+        
+        const contactDetails = { phone, email };
+        console.log('✅ CONTACT DETAILS SCRAPED:', contactDetails);
+
+        // 3. Scrape FAQs (try FAQ page)
+        let faqs = [];
+        console.log('🔄 ATTEMPTING TO SCRAPE FAQS...');
         try {
-            console.log('🔄 NAVIGATING TO MAIN PAGE:', business.websiteUrl);
-            await page.goto(business.websiteUrl, { 
-                waitUntil: 'domcontentloaded',
-                timeout: CONFIG.PAGE_TIMEOUT 
-            });
-            console.log('✅ NAVIGATION TO MAIN PAGE SUCCESSFUL');
+            const faqUrl = `${business.websiteUrl}/faq`;
+            console.log('🔄 TRYING FAQ PAGE:', faqUrl);
             
-            // Simple delay instead of waitForTimeout
-            console.log('🔄 WAITING 3 SECONDS FOR PAGE TO LOAD...');
-            await delay(3000);
-            console.log('✅ PAGE LOAD DELAY COMPLETED');
-
-            // 2. Scrape Services
-            console.log('🔄 SCRAPING SERVICES...');
-            console.log('🔄 SERVICE SELECTOR:', business.selectors?.serviceSelector);
-            const rawServices = await page.evaluate((serviceSelector) => {
-                console.log('📄 EVALUATING SERVICE SELECTOR IN PAGE:', serviceSelector);
-                const elements = document.querySelectorAll(serviceSelector);
-                console.log('📄 FOUND ELEMENTS:', elements.length);
-                return Array.from(elements)
-                    .map(el => el.textContent.trim())
-                    .filter(text => text.length > 0);
-            }, business.selectors?.serviceSelector || 'h1, h2, h3');
-            console.log('✅ RAW SERVICES SCRAPED:', rawServices);
-
-            const services = rawServices.filter(text =>
-                text.length > 3 &&
-                !text.includes("Dr") &&
-                !text.match(/Doctor|Meet|Our Team|Reviews|Testimonials|News|About|Specialist|Physician|Surgeon|Contact/i)
-            );
-            console.log('✅ FILTERED SERVICES:', services);
-
-            // 3. Scrape Contact Details
-            console.log('🔄 SCRAPING CONTACT DETAILS...');
-            console.log('🔄 CONTACT SELECTORS:', business.selectors?.contactSelector);
-            const contactDetails = await page.evaluate((selectors) => {
-                console.log('📄 EVALUATING CONTACT SELECTORS IN PAGE:', selectors);
-                return {
-                    phone: document.querySelector(selectors?.phone || 'a[href^="tel:"]')?.textContent.trim() || "Not found",
-                    email: document.querySelector(selectors?.email || 'a[href^="mailto:"]')?.textContent.trim() || "Not found"
-                };
-            }, business.selectors?.contactSelector || {});
-            console.log('✅ CONTACT DETAILS SCRAPED:', contactDetails);
-
-            // 4. Scrape FAQs
-            let faqs = [];
-            console.log('🔄 ATTEMPTING TO SCRAPE FAQS...');
-            try {
-                const faqUrl = `${business.websiteUrl}/faq`;
-                console.log('🔄 NAVIGATING TO FAQ PAGE:', faqUrl);
-                await page.goto(faqUrl, { 
-                    waitUntil: 'domcontentloaded',
-                    timeout: CONFIG.PAGE_TIMEOUT 
-                });
-                console.log('✅ NAVIGATION TO FAQ PAGE SUCCESSFUL');
+            const faqResponse = await fetch(faqUrl, {
+                timeout: CONFIG.PAGE_TIMEOUT,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+            
+            if (faqResponse.ok) {
+                const faqHtml = await faqResponse.text();
+                const $faq = cheerio.load(faqHtml);
                 
-                console.log('🔄 WAITING 3 SECONDS FOR FAQ PAGE TO LOAD...');
-                await delay(3000);
-                console.log('✅ FAQ PAGE LOAD DELAY COMPLETED');
-
                 if (business.selectors?.faqsSelector?.question && business.selectors?.faqsSelector?.answer) {
-                    console.log('🔄 SCRAPING FAQ QUESTIONS AND ANSWERS...');
-                    const questions = await page.evaluate((selector) => {
-                        console.log('📄 EVALUATING FAQ QUESTION SELECTOR:', selector);
-                        return Array.from(document.querySelectorAll(selector))
-                            .map(el => el.textContent.trim());
-                    }, business.selectors.faqsSelector.question);
-
-                    const answers = await page.evaluate((selector) => {
-                        console.log('📄 EVALUATING FAQ ANSWER SELECTOR:', selector);
-                        return Array.from(document.querySelectorAll(selector))
-                            .map(el => el.textContent.trim());
-                    }, business.selectors.faqsSelector.answer);
-
+                    const questions = [];
+                    const answers = [];
+                    
+                    $faq(business.selectors.faqsSelector.question).each((i, el) => {
+                        questions.push($faq(el).text().trim());
+                    });
+                    
+                    $faq(business.selectors.faqsSelector.answer).each((i, el) => {
+                        answers.push($faq(el).text().trim());
+                    });
+                    
                     faqs = questions.map((q, i) => ({
                         question: q,
                         answer: answers[i] || "No answer found"
-                    }));
-                    console.log('✅ FAQS SCRAPED:', faqs);
-                } else {
-                    console.log('⚠️ NO FAQ SELECTORS PROVIDED');
+                    })).slice(0, 5); // Limit to 5 FAQs
                 }
-            } catch (faqError) {
-                console.log("⚠️ Could not scrape FAQs:", faqError.message);
-                // Continue without FAQs
+                console.log('✅ FAQS SCRAPED:', faqs);
+            } else {
+                console.log('⚠️ FAQ page not accessible');
             }
-
-            // Save all scraped data
-            console.log('🔄 SAVING SCRAPED DATA...');
-            const scrapedData = { services, contactDetails, faqs };
-            console.log('📊 FINAL SCRAPED DATA:', JSON.stringify(scrapedData, null, 2));
-            await saveScrapedData(business.businessId, scrapedData);
-            console.log('✅ SCRAPED DATA SAVED SUCCESSFULLY');
-
-            const duration = (Date.now() - startTime) / 1000;
-            console.log(`🎉 SCRAPING COMPLETED SUCCESSFULLY IN ${duration} SECONDS`);
-
-        } catch (navigationError) {
-            console.error('🚨 NAVIGATION ERROR:', navigationError.message);
-            console.error('🚨 NAVIGATION ERROR STACK:', navigationError.stack);
-            throw navigationError;
+        } catch (faqError) {
+            console.log("⚠️ Could not scrape FAQs:", faqError.message);
         }
+
+        // Save all scraped data
+        console.log('🔄 SAVING SCRAPED DATA...');
+        const scrapedData = { services, contactDetails, faqs };
+        console.log('📊 FINAL SCRAPED DATA:', JSON.stringify(scrapedData, null, 2));
+        console.log('📊 MEMORY AFTER SCRAPING:', process.memoryUsage());
+        
+        await saveScrapedData(business.businessId, scrapedData);
+        console.log('✅ SCRAPED DATA SAVED SUCCESSFULLY');
+
+        const duration = (Date.now() - startTime) / 1000;
+        console.log(`🎉 SCRAPING COMPLETED SUCCESSFULLY IN ${duration} SECONDS`);
 
     } catch (error) {
-        console.error('🚨 PLAYWRIGHT LAUNCH ERROR:', error.message);
-        console.error('🚨 PLAYWRIGHT ERROR STACK:', error.stack);
+        console.error('🚨 CHEERIO SCRAPING ERROR:', error.message);
+        console.error('🚨 SCRAPING ERROR STACK:', error.stack);
         throw error;
-    } finally {
-        console.log('🔄 CLEANING UP BROWSER RESOURCES...');
-        try {
-            if (page) {
-                console.log('🔄 CLOSING PAGE...');
-                await page.close();
-                console.log('✅ PAGE CLOSED');
-            }
-            if (browser) {
-                console.log('🔄 CLOSING BROWSER...');
-                await browser.close();
-                console.log('✅ BROWSER CLOSED');
-            }
-        } catch (cleanupError) {
-            console.error('🚨 CLEANUP ERROR:', cleanupError.message);
-        }
-        console.log('✅ CLEANUP COMPLETED');
     }
 };
 
