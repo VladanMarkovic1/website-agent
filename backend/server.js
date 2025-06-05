@@ -33,36 +33,36 @@ let isShuttingDown = false;
 const startServer = async () => {
     try {
         console.log("🚀 STARTING SERVER...");
-        
+
         console.log("🔄 CONNECTING TO DATABASE...");
         await connectDB();
         console.log("✅ DATABASE CONNECTED");
 
         console.log("🔄 CREATING EXPRESS APP...");
-        const app = express();
+    const app = express();
         console.log("✅ EXPRESS APP CREATED");
         
         console.log("🔄 CREATING HTTP SERVER...");
-        const server = http.createServer(app);
+    const server = http.createServer(app);
         console.log("✅ HTTP SERVER CREATED");
         
         console.log("🔄 CREATING SOCKET.IO SERVER...");
-        const io = new Server(server, {
-            cors: { origin: "*", methods: ["GET", "POST"] },
-            transports: ["websocket", "polling"],
-        });
+    const io = new Server(server, {
+        cors: { origin: "*", methods: ["GET", "POST"] },
+        transports: ["websocket", "polling"],
+    });
         console.log("✅ SOCKET.IO SERVER CREATED");
 
         console.log("🔄 SETTING UP MIDDLEWARE...");
-        app.set('trust proxy', 1);
-        
+    app.set('trust proxy', 1); 
+
         app.use(helmet());
-        
-        // CORS Configuration
-        const whitelist = [
-            process.env.DASHBOARD_URL, 
-            process.env.WIDGET_TEST_SITE_URL,
-            process.env.WIDGET_DENTIST_SITE_URL,
+    
+    // CORS Configuration
+    const whitelist = [
+        process.env.DASHBOARD_URL, 
+        process.env.WIDGET_TEST_SITE_URL,
+        process.env.WIDGET_DENTIST_SITE_URL,
             'http://localhost:5173',
             'http://localhost:5174',
             'http://localhost:5175',
@@ -72,60 +72,61 @@ const startServer = async () => {
             'https://*.vercel.app',
             'https://*.render.com',
             'https://*.squarespace.com',
-            'https://lynx-clarinet-xph4.squarespace.com'
+            'https://lynx-clarinet-xph4.squarespace.com',
+            'https://mybouldersmile.com'
         ].filter(Boolean);
 
-        const corsOptions = {
-            origin: function (origin, callback) {
-                if (!origin) {
+    const corsOptions = {
+        origin: function (origin, callback) {
+            if (!origin) {
+                return callback(null, true);
+            }
+            
+            const isAllowed = whitelist.some(allowedOrigin => {
+                if (allowedOrigin.includes('*')) {
+                    const pattern = new RegExp('^' + allowedOrigin.replace('*', '.*') + '$');
+                    return pattern.test(origin);
+                }
+                return allowedOrigin === origin;
+            });
+
+            if (isAllowed) {
+                callback(null, true);
+            } else {
+                console.log('CORS blocked request from origin:', origin);
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('Development mode: allowing all origins');
                     return callback(null, true);
                 }
-                
-                const isAllowed = whitelist.some(allowedOrigin => {
-                    if (allowedOrigin.includes('*')) {
-                        const pattern = new RegExp('^' + allowedOrigin.replace('*', '.*') + '$');
-                        return pattern.test(origin);
-                    }
-                    return allowedOrigin === origin;
-                });
-
-                if (isAllowed) {
-                    callback(null, true);
-                } else {
-                    console.log('CORS blocked request from origin:', origin);
-                    if (process.env.NODE_ENV === 'development') {
-                        console.log('Development mode: allowing all origins');
-                        return callback(null, true);
-                    }
-                    callback(new Error('Not allowed by CORS'));
-                }
-            },
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
-        };
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+    };
         
-        app.use(cors(corsOptions));
-        app.use(express.json());
+    app.use(cors(corsOptions));
+    app.use(express.json());
 
-        // Rate limiting middleware
-        const generalLimiter = rateLimit({
+    // Rate limiting middleware
+    const generalLimiter = rateLimit({
             windowMs: 15 * 60 * 1000,
             max: 100,
-            message: 'Too many requests from this IP, please try again after 15 minutes'
-        });
+        message: 'Too many requests from this IP, please try again after 15 minutes'
+    });
 
-        const authLimiter = rateLimit({
+    const authLimiter = rateLimit({
             windowMs: 15 * 60 * 1000,
             max: 20,
-            message: 'Too many authentication attempts from this IP, please try again after 15 minutes'
-        });
+        message: 'Too many authentication attempts from this IP, please try again after 15 minutes'
+    });
 
-        const adminLimiter = rateLimit({
+    const adminLimiter = rateLimit({
             windowMs: 15 * 60 * 1000,
             max: 50,
-            message: 'Too many admin requests from this IP, please try again after 15 minutes'
-        });
+        message: 'Too many admin requests from this IP, please try again after 15 minutes'
+    });
 
         // Health check route
         app.get('/health', (req, res) => {
@@ -140,34 +141,34 @@ const startServer = async () => {
         });
         
         // Auth routes first
-        app.use("/api/v1/auth", authLimiter, registrationRoutes);
-        app.use("/api/v1/auth", authLimiter, loginRoutes);
+    app.use("/api/v1/auth", authLimiter, registrationRoutes);
+    app.use("/api/v1/auth", authLimiter, loginRoutes);
 
-        app.use(generalLimiter);
+    app.use(generalLimiter);
 
         // ALL API Routes
-        app.use("/api/v1/scraper", scraperRoutes);
-        app.use("/api/v1/services", serviceRoutes);
-        app.use("/api/v1/chatbot", chatbotRoutes);
-        app.use('/api/v1/leads', leadRoutes);
+    app.use("/api/v1/scraper", scraperRoutes);
+    app.use("/api/v1/services", serviceRoutes);
+    app.use("/api/v1/chatbot", chatbotRoutes);
+    app.use('/api/v1/leads', leadRoutes);
         app.use("/api/v1/admin", adminLimiter, adminRoutes);
-        app.use('/api/v1/analytics', analyticsRoutes);
+    app.use('/api/v1/analytics', analyticsRoutes);
         app.use('/api/v1/clients', clientRoutes);
 
         // Initialize WebSocket
         console.log("🔄 INITIALIZING WEBSOCKET...");
-        initWebSocket(io);
+    initWebSocket(io);
         console.log("✅ WEBSOCKET INITIALIZED");
 
         // Error handling middleware
-        app.use((err, req, res, next) => {
+    app.use((err, req, res, next) => {
             console.error('🚨 SERVER ERROR:', err);
-            res.status(err.status || 500).json({
-                error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-            });
+        res.status(err.status || 500).json({
+            error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
         });
+    });
 
-        const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT || 5000;
         
         // SIGTERM handler BEFORE starting server
         process.on('SIGTERM', () => {

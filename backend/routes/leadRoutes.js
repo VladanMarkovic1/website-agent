@@ -21,6 +21,62 @@ const handleValidationErrors = (req, res, next) => {
     next();
 };
 
+// Validation for contact form (public endpoint)
+const contactFormValidationRules = [
+    body('name', 'Name is required').notEmpty().trim().escape(),
+    body('email', 'Valid email is required').isEmail().normalizeEmail(),
+    body('practiceName', 'Practice name is required').notEmpty().trim().escape(),
+    body('practiceWebsite').optional({ checkFalsy: true }).isURL().withMessage('Please provide a valid URL'),
+    body('message').optional().trim().escape()
+];
+
+// Rate limiter specifically for contact form (more restrictive)
+const contactFormLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 contact form submissions per windowMs
+    message: 'Too many contact form submissions from this IP, please try again after 15 minutes',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// POST /contact - Public contact form endpoint for demo requests
+router.post(
+    "/contact",
+    contactFormLimiter,
+    contactFormValidationRules,
+    handleValidationErrors,
+    async (req, res) => {
+        try {
+            const { name, email, practiceName, practiceWebsite, message } = req.body;
+            
+            console.log("📧 New demo request received:", {
+                name,
+                email,
+                practiceName,
+                practiceWebsite: practiceWebsite || 'Not provided',
+                message: message || 'Standard demo request',
+                timestamp: new Date().toISOString(),
+                ip: req.ip
+            });
+
+            // Here you could save to database, send email, etc.
+            // For now, we'll just log it and return success
+            
+            res.status(200).json({
+                success: true,
+                message: "Demo request received successfully! We'll contact you within 24 hours."
+            });
+            
+        } catch (error) {
+            console.error("❌ Error handling contact form:", error);
+            res.status(500).json({
+                success: false,
+                message: "There was an error processing your request. Please try again."
+            });
+        }
+    }
+);
+
 // Validation for businessId in URL parameter (assuming slug)
 const businessIdParamValidation = [
     param('businessId', 'Business ID in URL is required').notEmpty().trim().escape()
