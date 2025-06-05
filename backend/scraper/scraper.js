@@ -120,7 +120,7 @@ const scrapeBusinessData = async (business) => {
         // 2. Scrape Contact Details
         console.log('🔄 SCRAPING CONTACT DETAILS...');
         
-        // Phone
+        // Phone - try multiple approaches
         let phone = "Not found";
         const phoneSelectors = [
             business.selectors?.contactSelector?.phone,
@@ -128,18 +128,32 @@ const scrapeBusinessData = async (business) => {
             '.phone',
             '.contact-phone',
             '[class*="phone"]',
-            '[id*="phone"]'
+            '[id*="phone"]',
+            'span.elementor-icon-list-text'
         ].filter(Boolean);
         
+        // First try selectors
         for (const selector of phoneSelectors) {
             const phoneEl = $(selector).first();
             if (phoneEl.length) {
                 phone = phoneEl.text().trim() || phoneEl.attr('href')?.replace('tel:', '') || phone;
-                if (phone !== "Not found") break;
+                if (phone !== "Not found" && phone.match(/[\d\s+\-()]{10,}/)) break;
             }
         }
         
-        // Email
+        // If no phone found with selectors, search in all text content
+        if (phone === "Not found") {
+            console.log('🔄 SEARCHING FOR PHONE IN FULL TEXT...');
+            const fullText = $('body').text();
+            // Look for phone patterns like 303-447-2281, (303) 447-2281, 303.447.2281, etc.
+            const phoneMatches = fullText.match(/(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/g);
+            if (phoneMatches && phoneMatches.length > 0) {
+                phone = phoneMatches[0].trim();
+                console.log('✅ FOUND PHONE IN TEXT:', phone);
+            }
+        }
+        
+        // Email - try multiple approaches  
         let email = "Not found";
         const emailSelectors = [
             business.selectors?.contactSelector?.email,
@@ -150,15 +164,49 @@ const scrapeBusinessData = async (business) => {
             '[id*="email"]'
         ].filter(Boolean);
         
+        // First try selectors
         for (const selector of emailSelectors) {
             const emailEl = $(selector).first();
             if (emailEl.length) {
                 email = emailEl.text().trim() || emailEl.attr('href')?.replace('mailto:', '') || email;
-                if (email !== "Not found") break;
+                if (email !== "Not found" && email.includes('@')) break;
             }
         }
         
-        const contactDetails = { phone, email };
+        // If no email found with selectors, search in all text content
+        if (email === "Not found") {
+            console.log('🔄 SEARCHING FOR EMAIL IN FULL TEXT...');
+            const fullText = $('body').text();
+            // Look for email patterns
+            const emailMatches = fullText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+            if (emailMatches && emailMatches.length > 0) {
+                email = emailMatches[0].trim();
+                console.log('✅ FOUND EMAIL IN TEXT:', email);
+            }
+        }
+        
+        // Also try to find address
+        let address = "Not found";
+        const addressKeywords = ['address', 'location', 'directions', 'visit us'];
+        
+        // Look for address in text near keywords
+        addressKeywords.forEach(keyword => {
+            if (address === "Not found") {
+                const fullText = $('body').text();
+                const keywordIndex = fullText.toLowerCase().indexOf(keyword);
+                if (keywordIndex !== -1) {
+                    // Look for text that contains street address patterns
+                    const textAfterKeyword = fullText.slice(keywordIndex, keywordIndex + 200);
+                    const addressMatch = textAfterKeyword.match(/\d+\s+[A-Za-z\s,]+\d{5}/);
+                    if (addressMatch) {
+                        address = addressMatch[0].trim();
+                        console.log('✅ FOUND ADDRESS:', address);
+                    }
+                }
+            }
+        });
+        
+        const contactDetails = { phone, email, address };
         console.log('✅ CONTACT DETAILS SCRAPED:', contactDetails);
 
         // 3. Scrape FAQs (try FAQ page)
