@@ -74,6 +74,7 @@ const startServer = async () => {
             'https://*.squarespace.com',
             'https://lynx-clarinet-xph4.squarespace.com',
             'https://mybouldersmile.com'
+
         ].filter(Boolean);
 
     const corsOptions = {
