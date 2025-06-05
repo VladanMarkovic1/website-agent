@@ -94,4 +94,36 @@ router.get('/contact-debug/:businessId', async (req, res) => {
     }
 });
 
+// Quick fix endpoint to update contact data with correct info
+router.post('/fix-contact/:businessId', async (req, res) => {
+    try {
+        const { businessId } = req.params;
+        console.log(`🔧 [FIX] Updating contact data for business: ${businessId}`);
+        
+        // Update with the correct contact info found in scraping tests
+        const updatedContact = await Contact.findOneAndUpdate(
+            { businessId },
+            { 
+                $set: { 
+                    phone: "(303) 447-2281",
+                    email: "office@radiance-smile.com",
+                    address: "Boulder, CO" // You can update this with actual address later
+                } 
+            },
+            { new: true, upsert: true }
+        );
+        
+        console.log(`✅ [FIX] Contact data updated:`, updatedContact);
+        res.json({ 
+            success: true, 
+            message: "Contact data updated successfully",
+            updatedContact 
+        });
+        
+    } catch (error) {
+        console.error(`🚨 [FIX] Error updating contact:`, error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router; 
