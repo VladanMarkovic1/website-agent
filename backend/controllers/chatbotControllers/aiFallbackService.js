@@ -53,10 +53,18 @@ export const generateAIFallbackResponse = async (message, messageHistory, busine
             // Add address if available in businessData and needed
             // const address = businessData.address || 'our office location'; 
 
+            console.log("🔍 [AI FALLBACK DEBUG] Business data phone:", businessData.businessPhoneNumber);
+            console.log("🔍 [AI FALLBACK DEBUG] Business data email:", businessData.businessEmail);
+            console.log("🔍 [AI FALLBACK DEBUG] Phone to use:", phone);
+            console.log("🔍 [AI FALLBACK DEBUG] Email to use:", email);
+            console.log("🔍 [AI FALLBACK DEBUG] Original response:", aiResponseContent);
+
             finalResponse = finalResponse.replace(/\[phone number\]|\[PHONE\]/gi, phone);
             finalResponse = finalResponse.replace(/\[email address\]|\[EMAIL\]/gi, email);
             finalResponse = finalResponse.replace(/\[business name\]|\[BUSINESS_NAME\]/gi, name);
             // finalResponse = finalResponse.replace(/\[address\]|\[ADDRESS\]/gi, address);
+            
+            console.log("🔍 [AI FALLBACK DEBUG] Final response after replacements:", finalResponse);
         }
         // --- End Post-processing ---
 

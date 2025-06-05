@@ -25,6 +25,10 @@ async function _getBusinessData(businessId) {
     if (!business) {
         throw new Error("Business not found");
     }
+    
+    console.log("🔍 [CONTACT DEBUG] Contact data from database:", JSON.stringify(contactData, null, 2));
+    console.log("🔍 [CONTACT DEBUG] Phone:", contactData?.phone);
+    console.log("🔍 [CONTACT DEBUG] Email:", contactData?.email);
 
     const services = serviceData?.services?.map(service => ({
         name: service.name,
@@ -42,6 +46,8 @@ async function _getBusinessData(businessId) {
         aboutUsText: extraInfoData?.aboutUsText || null
     };
 
+    console.log("🔍 [CONTACT DEBUG] Final business phone:", fullBusinessData.businessPhoneNumber);
+    console.log("🔍 [CONTACT DEBUG] Final business email:", fullBusinessData.businessEmail);
     // console.log("[Business Data Check] Fetched business data:", JSON.stringify(fullBusinessData, null, 2)); // Debug only - Removed
     return fullBusinessData;
 }
