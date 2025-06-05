@@ -22,33 +22,8 @@ import loginRoutes from "./routes/loginRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
-
-// Route Imports
-console.log("🔄 IMPORTING ROUTES...");
-import authRoutes from "./routes/authRoutes.js";
-console.log("✅ AUTH ROUTES IMPORTED");
-import chatbotRoutes from "./routes/chatbotRoutes.js";
-console.log("✅ CHATBOT ROUTES IMPORTED");
-import registrationRoutes from "./routes/registrationRoutes.js";
-console.log("✅ REGISTRATION ROUTES IMPORTED");
-import businessRoutes from "./routes/businessRoutes.js";
-console.log("✅ BUSINESS ROUTES IMPORTED");
-import scraperRoutes from "./routes/scraperRoutes.js";
-console.log("✅ SCRAPER ROUTES IMPORTED");
-import serviceRoutes from "./routes/serviceRoutes.js";
-console.log("✅ SERVICE ROUTES IMPORTED");
-import leadRoutes from "./routes/leadRoutes.js";
-console.log("✅ LEAD ROUTES IMPORTED");
-import clientRoutes from "./routes/clientRoutes.js";
-console.log("✅ CLIENT ROUTES IMPORTED");
-import analyticRoutes from "./routes/analyticRoutes.js";
-console.log("✅ ANALYTIC ROUTES IMPORTED");
-import selectorRoutes from "./routes/selectorRoutes.js";
-console.log("✅ SELECTOR ROUTES IMPORTED");
 import debugRoutes from "./routes/debugRoutes.js";
-console.log("✅ DEBUG ROUTES IMPORTED");
-import loginRoutes from './routes/loginRoutes.js';
-import adminRoutes from './routes/adminRoutes.js';
+console.log("✅ ALL ROUTES IMPORTED");
 
 console.log("🔄 CONFIGURING DOTENV...");
 dotenv.config();
