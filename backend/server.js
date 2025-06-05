@@ -71,7 +71,7 @@ const startServer = async () => {
             'http://127.0.0.1:3000',
             'https://*.vercel.app',
             'https://*.render.com',
-            'https://*.squarespace.com',
+         
             'https://lynx-clarinet-xph4.squarespace.com',
             'https://mybouldersmile.com'
 
