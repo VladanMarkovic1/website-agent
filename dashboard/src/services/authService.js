@@ -1,4 +1,5 @@
 import apiClient from './api'; // Import the configured Axios instance
+import { clearCSRFToken } from './csrfService.js';
 
 /**
  * Makes an API call to log in a user.
@@ -41,4 +42,16 @@ export const registerUser = async (userData) => {
          // Error is already processed by the interceptor, re-throw it
         throw error;
     }
+};
+
+/**
+ * Logout user and clear all tokens
+ */
+export const logoutUser = () => {
+    // Clear session storage
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    
+    // Clear CSRF token
+    clearCSRFToken();
 }; 
