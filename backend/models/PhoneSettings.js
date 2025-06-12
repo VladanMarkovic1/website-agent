@@ -220,8 +220,6 @@ const phoneSettingsSchema = new mongoose.Schema({
 });
 
 // Indexes for performance
-phoneSettingsSchema.index({ businessId: 1 });
-phoneSettingsSchema.index({ trackingNumber: 1 });
 phoneSettingsSchema.index({ status: 1 });
 
 // Virtual for formatted tracking number
