@@ -5,7 +5,7 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api/v1',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'

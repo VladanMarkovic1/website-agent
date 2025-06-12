@@ -22,6 +22,12 @@ import loginRoutes from "./routes/loginRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
+
+// Phase 3: Call Tracking System Routes
+import voiceWebhookRoutes from './routes/voiceWebhookRoutes.js';
+import smsWebhookRoutes from './routes/smsWebhookRoutes.js';
+import callTrackingRoutes from './routes/callTrackingRoutes.js';
+import numberPortingRoutes from './routes/numberPortingRoutes.js';
 console.log("✅ ALL ROUTES IMPORTED");
 
 console.log("🔄 CONFIGURING DOTENV...");
@@ -155,6 +161,12 @@ const startServer = async () => {
         app.use("/api/v1/admin", adminLimiter, adminRoutes);
     app.use('/api/v1/analytics', analyticsRoutes);
         app.use('/api/v1/clients', clientRoutes);
+
+        // Phase 3: Call Tracking System Routes
+        app.use('/api/webhooks/voice', voiceWebhookRoutes);
+        app.use('/api/webhooks/sms', smsWebhookRoutes);
+        app.use('/api/call-tracking', callTrackingRoutes);
+        app.use('/api/number-porting', numberPortingRoutes);
 
         // Initialize WebSocket
         console.log("🔄 INITIALIZING WEBSOCKET...");
