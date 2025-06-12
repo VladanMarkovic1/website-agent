@@ -77,7 +77,7 @@ const BusinessOwnerPage = () => {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="mt-4 w-full text-left px-3 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+            className="mt-4 w-full text-left px-3 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-700 transition-colors duration-200"
           >
             <HiOutlineLogout className="inline-block mr-2 h-5 w-5" />
             Logout
