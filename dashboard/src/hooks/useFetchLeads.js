@@ -68,8 +68,8 @@ export const useFetchLeads = (businessId) => {
         errorMessage = 'Your security software (like Kaspersky) might be blocking connections to our server. Please add this website to your trusted sites or temporarily disable web protection.';
       } else if (err.response?.status === 401) {
         errorMessage = 'Authentication failed. Redirecting to login...';
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         navigate('/login');
       } else if (err.response?.status === 404) {
          errorMessage = 'Business not found. Please check your login details.';
