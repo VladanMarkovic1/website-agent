@@ -8,6 +8,7 @@ import {
   HiOutlineMenuAlt2,
   HiOutlineX,
   HiOutlineChartBar,
+  HiOutlinePhone,
 } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -33,6 +34,7 @@ const BusinessOwnerPage = () => {
   const navigation = [
     { name: 'Leads', href: '/dashboard/leads', icon: HiOutlineClipboardList },
     { name: 'Analytics', href: '/dashboard/analytics', icon: HiOutlineChartBar },
+    { name: 'Call Tracking', href: '/dashboard/call-tracking', icon: HiOutlinePhone },
     { name: 'Services', href: '/dashboard/services', icon: HiOutlineOfficeBuilding },
     { name: 'Settings', href: '/dashboard/settings', icon: HiOutlineCog },
   ];
@@ -44,7 +46,7 @@ const BusinessOwnerPage = () => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-x-auto">
       {/* Sidebar - Always visible on desktop, toggleable on mobile/tablet */}
-      <aside className={`fixed top-0 left-0 h-screen overflow-y-auto z-50 md:w-48 lg:w-52 xl:w-72 bg-gradient-to-b from-blue-600 to-indigo-700 transition-transform duration-200 ease-in-out ${
+      <aside className={`fixed top-0 left-0 h-screen overflow-y-auto z-50 md:w-44 lg:w-48 xl:w-60 bg-gradient-to-b from-blue-600 to-indigo-700 transition-transform duration-200 ease-in-out ${
         isSidebarOpen ? 'translate-x-0 w-80' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="p-4">
@@ -84,7 +86,7 @@ const BusinessOwnerPage = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-hidden lg:ml-52 xl:ml-72">
+      <main className="flex-1 min-w-0 overflow-hidden lg:ml-48 xl:ml-60">
         {/* Mobile/Tablet Header */}
         <div className="lg:hidden fixed top-0 left-0 right-0 p-4 z-30 bg-white shadow-sm w-full flex items-center">
           <button 
