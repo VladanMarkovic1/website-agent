@@ -58,8 +58,6 @@ const AnalyticsDashboard = () => {
     setError(null);
 
     try {
-      console.log(`🔄 Loading call tracking analytics for business: ${businessId}, timeframe: ${timeframe}`);
-
       // Fetch real data from backend
       const [analyticsResponse, trendsResponse] = await Promise.all([
         getCallTrackingAnalytics(businessId, timeframe),
@@ -87,8 +85,6 @@ const AnalyticsDashboard = () => {
       // Format call distribution for pie chart
       const distribution = formatCallDistribution(analyticsResponse.analytics.calls);
       setCallDistribution(distribution);
-
-      console.log('✅ Analytics loaded successfully:', formattedAnalytics);
 
     } catch (err) {
       console.error('❌ Failed to load analytics:', err);
