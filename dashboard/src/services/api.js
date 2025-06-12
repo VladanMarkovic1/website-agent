@@ -1,12 +1,7 @@
 import axios from 'axios';
 
 // Get the API base URL from environment variables
-const API_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-if (!API_BACKEND_URL) {
-    console.error("Error: VITE_API_BASE_URL is not defined in the environment variables.");
-    // Handle this appropriately - maybe show an error message to the user
-}
+const API_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 // Create an Axios instance
 const apiClient = axios.create({

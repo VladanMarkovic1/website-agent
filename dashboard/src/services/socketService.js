@@ -1,8 +1,5 @@
 import { io } from 'socket.io-client';
 
-// Debug: Log environment variables
-console.log('🔍 DEBUG: SocketService - VITE_SOCKET_URL:', import.meta.env.VITE_SOCKET_URL);
-
 // Socket event constants
 export const SOCKET_EVENTS = {
   // Connection events
@@ -32,18 +29,26 @@ export const SOCKET_EVENTS = {
   SYSTEM_HEALTH_UPDATED: 'system-health-updated'
 };
 
+/**
+ * Socket Service for Real-time Communication
+ * Handles WebSocket connections for live updates
+ */
 class SocketService {
   constructor() {
     this.socket = null;
-    this.eventListeners = new Map();
+    this.listeners = new Map();
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 1000;
     this.isConnected = false;
     this.connectionCallbacks = new Set();
     this.notificationPermission = 'default';
     this.initNotifications();
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
-    this.reconnectDelay = 1000;
     this.eventSubscriptions = new Map();
+    
+    // Get socket URL from environment variables
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api/v1';
+    this.socketUrl = backendUrl.replace('/api/v1', ''); // Remove /api/v1 for socket connection
   }
 
   // Initialize browser notification permission
@@ -57,15 +62,11 @@ class SocketService {
   // Connect to the WebSocket server
   connect(token) {
     if (this.socket && this.socket.connected) {
-      console.log('Socket already connected');
       return;
     }
 
-    const socketUrl = 'http://localhost:5000';
-    console.log('🔗 Connecting to socket at:', socketUrl);
-
     // Create socket connection with authentication
-    this.socket = io(socketUrl, {
+    this.socket = io(this.socketUrl, {
       auth: {
         token: token
       },
@@ -81,14 +82,12 @@ class SocketService {
     if (!this.socket) return;
 
     this.socket.on(SOCKET_EVENTS.CONNECT, () => {
-      console.log('Connected to WebSocket server');
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.emit('connection-status', { connected: true });
     });
 
     this.socket.on(SOCKET_EVENTS.DISCONNECT, (reason) => {
-      console.log('Disconnected from WebSocket server:', reason);
       this.isConnected = false;
       this.emit('connection-status', { connected: false, reason });
     });
@@ -107,65 +106,54 @@ class SocketService {
 
     // Call events
     this.socket.on(SOCKET_EVENTS.NEW_CALL, (data) => {
-      console.log('New call received:', data);
       this.emit('new-call', data);
       this.notifyNewCall(data);
     });
 
     this.socket.on(SOCKET_EVENTS.MISSED_CALL, (data) => {
-      console.log('Missed call received:', data);
       this.emit('missed-call', data);
       this.notifyMissedCall(data);
     });
 
     this.socket.on(SOCKET_EVENTS.CALL_COMPLETED, (data) => {
-      console.log('Call completed:', data);
       this.emit('call-completed', data);
     });
 
     this.socket.on(SOCKET_EVENTS.CALL_UPDATED, (data) => {
-      console.log('Call updated:', data);
       this.emit('call-updated', data);
     });
 
     // SMS events
     this.socket.on(SOCKET_EVENTS.NEW_SMS, (data) => {
-      console.log('New SMS received:', data);
       this.emit('new-sms', data);
       this.notifyNewSMS(data);
     });
 
     this.socket.on(SOCKET_EVENTS.SMS_SENT, (data) => {
-      console.log('SMS sent:', data);
       this.emit('sms-sent', data);
     });
 
     this.socket.on(SOCKET_EVENTS.CONVERSATION_UPDATED, (data) => {
-      console.log('Conversation updated:', data);
       this.emit('conversation-updated', data);
     });
 
     // Lead events
     this.socket.on(SOCKET_EVENTS.LEAD_CREATED, (data) => {
-      console.log('New lead created:', data);
       this.emit('lead-created', data);
       this.notifyLeadCreated(data);
     });
 
     this.socket.on(SOCKET_EVENTS.LEAD_UPDATED, (data) => {
-      console.log('Lead updated:', data);
       this.emit('lead-updated', data);
     });
 
     // Analytics events
     this.socket.on(SOCKET_EVENTS.ANALYTICS_UPDATED, (data) => {
-      console.log('Analytics updated:', data);
       this.emit('analytics-updated', data);
     });
 
     // System events
     this.socket.on(SOCKET_EVENTS.SYSTEM_HEALTH_UPDATED, (data) => {
-      console.log('System health updated:', data);
       this.emit('system-health-updated', data);
     });
   }

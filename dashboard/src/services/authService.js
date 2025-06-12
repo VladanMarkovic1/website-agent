@@ -54,6 +54,4 @@ export const logoutUser = () => {
     
     // Clear CSRF token
     clearCSRFToken();
-    
-    console.log('✅ User logged out successfully');
 }; 

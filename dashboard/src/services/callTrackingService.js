@@ -55,17 +55,11 @@ callTrackingApi.interceptors.response.use(
 // Get call tracking analytics
 export const getCallTrackingAnalytics = async (businessId, timeframe = '1d') => {
     try {
-        console.log('🔍 [Debug] getCallTrackingAnalytics called with:', { businessId, timeframe });
-        console.log('🔍 [Debug] Base URL:', callTrackingApi.defaults.baseURL);
-        
         const url = `/${businessId}/analytics`;
-        console.log('🔍 [Debug] Request URL:', url);
-        console.log('🔍 [Debug] Full URL:', callTrackingApi.defaults.baseURL + url);
         
         const response = await callTrackingApi.get(url, {
             params: { timeframe }
         });
-        console.log('✅ [Debug] Analytics response:', response.data);
         return response.data;
     } catch (error) {
         console.error('❌ Error fetching call tracking analytics:', error);
@@ -157,16 +151,11 @@ export const sendManualSMS = async (businessId, phoneNumber, message) => {
 // Get call tracking trends for charts
 export const getCallTrends = async (businessId, timeframe = '1d') => {
     try {
-        console.log('🔍 [Debug] getCallTrends called with:', { businessId, timeframe });
-        
         const url = `/${businessId}/trends`;
-        console.log('🔍 [Debug] Trends request URL:', url);
-        console.log('🔍 [Debug] Trends full URL:', callTrackingApi.defaults.baseURL + url);
         
         const response = await callTrackingApi.get(url, {
             params: { timeframe }
         });
-        console.log('✅ [Debug] Trends response:', response.data);
         return response.data;
     } catch (error) {
         console.error('❌ Error fetching call trends:', error);
