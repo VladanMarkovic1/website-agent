@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "NODE_ENV=production node server.js",
     "dev": "set NODE_ENV=development&& npx nodemon server.js",
+    "prod": "NODE_ENV=production node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
@@ -27,13 +28,15 @@
     "helmet": "^7.1.0",
     "http": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
+    "moment-timezone": "^0.6.0",
     "mongoose": "^8.3.2",
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.13",
     "openai": "^4.85.4",
     "playwright": "^1.44.0",
     "socket.io": "^4.7.5",
-    "string-similarity": "^4.0.4"
+    "string-similarity": "^4.0.4",
+    "twilio": "^5.7.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
