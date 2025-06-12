@@ -1,17 +1,9 @@
 import mongoose from "mongoose";
 
 const phoneSettingsSchema = new mongoose.Schema({
-    businessId: {
-        type: String,
-        required: true,
-        unique: true
-    },
+    businessId: { type: String, required: true, unique: true },
     // Phone number configuration - supports multiple scenarios
-    trackingNumber: {
-        type: String,
-        required: true,
-        unique: true
-    },
+    trackingNumber: { type: String, required: true, unique: true },
     forwardingNumber: {
         type: String,
         required: true
