@@ -4,112 +4,105 @@
  * @returns {Object|null} Extracted contact info or null
  */
 export function extractContactInfo(message) {
-    // Handle space-separated format (name phone email)
-    const parts = message.split(/[\s,]+/).map(part => part.trim()).filter(Boolean);
-    if (parts.length >= 3) {
-        // Find email in parts
-        const emailIndex = parts.findIndex(part => 
-            /^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$/i.test(part)
-        );
-        
-        if (emailIndex !== -1) {
-            // Find phone number (sequence of digits)
-            const phoneIndex = parts.findIndex(part => 
-                /^\d[\d-]{7,}$/.test(part.replace(/\s+/g, ''))
-            );
-            
-            if (phoneIndex !== -1) {
-                // Assume name is everything before phone and email
-                const nameEndIndex = Math.min(phoneIndex, emailIndex);
-                const name = parts.slice(0, nameEndIndex).join(' ');
-                
-                if (name) {
-                    return {
-                        name,
-                        phone: parts[phoneIndex].replace(/\s+/g, ''),
-                        email: parts[emailIndex]
-                    };
-                }
-            }
-        }
-    }
-
-    // Handle comma-separated format (name, phone, email)
+    // First, try the comma-separated format (most reliable)
     const commaParts = message.split(',').map(part => part.trim());
     if (commaParts.length === 3) {
-        const [name, phone, email] = commaParts;
-        // Validate each part
-        if (
-            name && // Name exists
-            /^\d[\d\s-]{7,}$/.test(phone.replace(/\s+/g, '')) && // Phone number validation
-            /^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$/i.test(email) // Email validation
-        ) {
+        const [rawName, rawPhone, rawEmail] = commaParts;
+        
+        // Extract just the numbers from phone (handles all formats)
+        const phoneDigits = rawPhone.replace(/\D/g, '');
+        
+        // Validate email
+        const emailValid = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+$/i.test(rawEmail);
+        
+        // Validate phone (should be 10 digits for US numbers, or 7+ for others)
+        const phoneValid = phoneDigits.length >= 7;
+        
+        // Validate name (should not be empty and not just numbers)
+        const nameValid = rawName && rawName.trim().length > 0 && !/^\d+$/.test(rawName.trim());
+        
+        if (nameValid && phoneValid && emailValid) {
             return {
-                name,
-                phone: phone.replace(/\s+/g, ''),
-                email
+                name: rawName.trim(),
+                phone: phoneDigits,
+                email: rawEmail.trim()
             };
         }
     }
 
     // Handle structured format (name: xxx, phone: xxx, email: xxx)
     const structuredMatch = {
-        name: message.match(/name:\s*([^,]+)/i)?.[1]?.trim(),
-        phone: message.match(/phone:\s*([^,]+)/i)?.[1]?.trim(),
-        email: message.match(/email:\s*([^,]+)/i)?.[1]?.trim()
+        name: message.match(/name:\s*([^,]+?)(?=\s*,|\s*phone|\s*email|$)/i)?.[1]?.trim(),
+        phone: message.match(/phone:\s*([^,]+?)(?=\s*,|\s*email|\s*name|$)/i)?.[1]?.trim(),
+        email: message.match(/(?:email|mail):\s*([^,]+?)(?=\s*,|\s*phone|\s*name|$)/i)?.[1]?.trim()
     };
 
-    if (structuredMatch.name && structuredMatch.phone && structuredMatch.email) {
-        return structuredMatch;
+    if (structuredMatch.name && structuredMatch.phone) {
+        const cleanedPhone = structuredMatch.phone.replace(/\D/g, '');
+        const result = {
+            name: structuredMatch.name,
+            phone: cleanedPhone
+        };
+        
+        if (structuredMatch.email) {
+            result.email = structuredMatch.email;
+        }
+        
+        return result;
     }
 
-    // Handle natural format
-    const emailRegex = /[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\\.[a-zA-Z0-9._-]+/i;
-    const phoneRegex = /(\+?1(?:[\s.-]?))?\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/g;
-    const nameRegex = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/;
-
-    // --- Reworked Natural Extraction (v5) ---
+    // Handle natural format - extract components separately
     let extractedEmail = null;
     let extractedPhone = null;
     let extractedName = null;
 
-    // 1. Try Email
-    const localEmailRegex = /[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+/i;
-    const emailTestResult = localEmailRegex.test(message);
-    const emailMatchResult = message.match(localEmailRegex);
-    if (emailMatchResult && emailMatchResult[0]) {
-        extractedEmail = emailMatchResult[0];
+    // 1. Extract Email
+    const emailMatch = message.match(/[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+/i);
+    if (emailMatch) {
+        extractedEmail = emailMatch[0];
     }
 
-    // 2. Try Phone
-    phoneRegex.lastIndex = 0; 
-    const phoneMatchResult = phoneRegex.exec(message);
-    if (phoneMatchResult) {
-        const potentialPrefix = phoneMatchResult[1] || '';
-        const areaCode = phoneMatchResult[2];
-        const middlePart = phoneMatchResult[3];
-        const lastPart = phoneMatchResult[4];
-        const prefix = potentialPrefix.includes('1') ? '+1' : ''; 
-        extractedPhone = prefix + areaCode + middlePart + lastPart;
+    // 2. Extract Phone - find any sequence that looks like a phone number
+    const phoneMatch = message.match(/[\(\d][\d\s\-\(\)\.]{6,}/);
+    if (phoneMatch) {
+        const phoneDigits = phoneMatch[0].replace(/\D/g, '');
+        if (phoneDigits.length >= 7) {
+            extractedPhone = phoneDigits;
+        }
     }
 
-    // 3. Try Name *ONLY IF* email or phone was also found in this message
+    // 3. Extract Name - improved logic to avoid including phone/email keywords
     if (extractedEmail || extractedPhone) {
-        let potentialNamePortion = message;
-        if (extractedEmail) potentialNamePortion = potentialNamePortion.replace(extractedEmail, '');
-        if (phoneMatchResult) potentialNamePortion = potentialNamePortion.replace(phoneMatchResult[0], '');
-        potentialNamePortion = potentialNamePortion.replace(/[,.:;!?&]/g, '').trim();
-
-        if (potentialNamePortion.length > 0) {
-            const nameMatch = potentialNamePortion.match(nameRegex);
-            if (nameMatch && nameMatch[1].trim().length > 1) { 
-                extractedName = nameMatch[1].trim();
+        let nameCandidate = message;
+        
+        // Remove email and phone from the message
+        if (extractedEmail) nameCandidate = nameCandidate.replace(extractedEmail, '');
+        if (phoneMatch) nameCandidate = nameCandidate.replace(phoneMatch[0], '');
+        
+        // Remove common keywords that might be included
+        nameCandidate = nameCandidate.replace(/\b(name|phone|email|mail|contact|number|tel|telephone):\s*/gi, '');
+        nameCandidate = nameCandidate.replace(/\b(name|phone|email|mail|contact|number|tel|telephone)\b/gi, '');
+        
+        // Clean up punctuation and extra spaces
+        nameCandidate = nameCandidate.replace(/[,.:;!?&\-\(\)]/g, ' ').trim();
+        nameCandidate = nameCandidate.replace(/\s+/g, ' ').trim();
+        
+        // Extract the first meaningful word(s) - limit to 2-3 words max for names
+        const nameMatch = nameCandidate.match(/([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/);
+        if (nameMatch && nameMatch[1].trim().length > 1) {
+            const potentialName = nameMatch[1].trim();
+            // Additional validation: make sure it's not just common words
+            const commonWords = ['the', 'is', 'are', 'and', 'or', 'but', 'my', 'me', 'i', 'you', 'your', 'hi', 'hello', 'hey'];
+            const nameWords = potentialName.toLowerCase().split(' ');
+            const isValidName = !nameWords.every(word => commonWords.includes(word));
+            
+            if (isValidName) {
+                extractedName = potentialName;
             }
         }
     }
-    // --- End Reworked Natural Extraction (v5) ---
 
-    // Return if *any* piece was extracted
+    // Return if we found something
     if (extractedEmail || extractedPhone || extractedName) {
         return {
             email: extractedEmail,
