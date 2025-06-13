@@ -258,12 +258,13 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'APPOINTMENT_REQUEST':
-                // Let AI generate the response, but always prepend the tip
-                const aiAppointmentResponse = await generateAIFallbackResponse(message, messageHistory, businessData);
+                // Always prepend the tip, then add the AI/template response
                 const tip = "Just so you know, I don't have access to a live calendar to confirm real-time availability. However, I can arrange for our team to call you and finalize your appointment.\n\n";
+                const aiAppointmentResponse = await generateAIFallbackResponse(message, messageHistory, businessData);
+                const aiText = aiAppointmentResponse.response || "";
                 responsePayload = {
                     type: 'APPOINTMENT_REQUEST',
-                    response: tip + (aiAppointmentResponse.response || "")
+                    response: tip + aiText
                 };
                 break;
 
