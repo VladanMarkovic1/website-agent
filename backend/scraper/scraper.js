@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 import saveScrapedData from './saveScrapedData.js';
+import Selectors from '../models/Selector.js';
 
 // Configuration
 const CONFIG = {
@@ -43,6 +44,14 @@ const scrapeBusinessData = async (business) => {
     try {
         console.log(`Starting scraping for: ${business.businessName}`);
         checkMemoryUsage();
+
+        // Fetch latest selectors from DB
+        const selectors = await Selectors.findOne({ businessId: business.businessId }).lean();
+        if (selectors) {
+            business.selectors = selectors;
+        } else {
+            business.selectors = {};
+        }
 
         const response = await fetch(business.websiteUrl, {
             timeout: CONFIG.PAGE_TIMEOUT,

@@ -34,16 +34,18 @@ async function _getBusinessData(businessId) {
         description: service.description
     })) || [];
 
-    // Use the real, scraped phone number from Contact
-    const businessPhoneNumber = contactData?.phone || null;
+    // Use the real, scraped phone number from Contact, fallback to 'Not available'
+    const businessPhoneNumber = contactData?.phone || 'Not available';
+    const businessEmail = contactData?.email || 'Not available';
+    const businessAddress = contactData?.address || 'Not available';
     console.log(`[DEBUG] BusinessId: ${businessId} | Contact phone from DB:`, contactData?.phone); // Debug log
 
     const fullBusinessData = {
         ...business.toObject(),
         services: services,
         businessPhoneNumber: businessPhoneNumber,
-        businessEmail: contactData?.email || null,
-        address: contactData?.address || null,
+        businessEmail: businessEmail,
+        address: businessAddress,
         operatingHours: extraInfoData?.operatingHours || null,
         aboutUsText: extraInfoData?.aboutUsText || null
     };
