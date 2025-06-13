@@ -36,6 +36,7 @@ async function _getBusinessData(businessId) {
 
     // Use the real, scraped phone number from Contact
     const businessPhoneNumber = contactData?.phone || null;
+    console.log(`[DEBUG] BusinessId: ${businessId} | Contact phone from DB:`, contactData?.phone); // Debug log
 
     const fullBusinessData = {
         ...business.toObject(),
@@ -46,6 +47,7 @@ async function _getBusinessData(businessId) {
         operatingHours: extraInfoData?.operatingHours || null,
         aboutUsText: extraInfoData?.aboutUsText || null
     };
+    console.log(`[DEBUG] BusinessId: ${businessId} | businessPhoneNumber passed to chatbot:`, businessPhoneNumber); // Debug log
 
     // console.log("[Business Data Check] Fetched business data:", JSON.stringify(fullBusinessData, null, 2)); // Debug only - Removed
     return fullBusinessData;
