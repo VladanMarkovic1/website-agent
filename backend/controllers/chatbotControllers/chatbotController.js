@@ -346,7 +346,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
         const userMessageTypes = detectRequestTypes(message);
         const finalResponse = applyResponseOverrides(responsePayload, userMessageTypes, session, businessData); 
 
-        // Always prepend the required tip for appointment/booking/visit requests (after all overrides)
+        // Always use a single, natural message for appointment/booking/visit requests (after all overrides)
         const appointmentKeywords = [
             'appointment', 'appointments', 'appoinment', 'book', 'schedule', 'check in', 'check availability',
             'see the doctor', 'see dr', 'make an appointment',
@@ -354,9 +354,8 @@ const processChatMessage = async (message, sessionId, businessId) => {
         ];
         const normalizedMessage = message.toLowerCase();
         const isAppointmentRequest = appointmentKeywords.some(keyword => normalizedMessage.includes(keyword));
-        const requiredTip = "Just so you know, I don't have access to a live calendar to confirm real-time availability. However, I can arrange for our team to call you and finalize your appointment.";
-        if (isAppointmentRequest && !finalResponse.response.includes(requiredTip)) {
-            finalResponse.response = requiredTip + "\n\n" + finalResponse.response;
+        if (isAppointmentRequest) {
+            finalResponse.response = "Just so you know, I don't have access to a live calendar to confirm real-time availability. However, I can arrange for our team to call you and finalize your appointment. To proceed, could you please provide your full name, phone number, and email address?";
         }
 
         // --- Store/Update Partial Contact Info in Session ---
