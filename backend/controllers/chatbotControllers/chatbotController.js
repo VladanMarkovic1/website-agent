@@ -17,13 +17,12 @@ import { redactPII } from '../../utils/piiFilter.js';
 
 // Fetch business data (could be further extracted later)
 async function _getBusinessData(businessId) {
-    const [business, serviceData, contactData, extraInfoData, phoneSettings, selector] = await Promise.all([
+    const [business, serviceData, contactData, extraInfoData, phoneSettings] = await Promise.all([
         Business.findOne({ businessId }),
         Service.findOne({ businessId }),
         Contact.findOne({ businessId }),
         ExtraInfo.findOne({ businessId }),
-        PhoneSettings.findOne({ businessId, status: 'active' }),
-        Selector.findOne({ businessId })
+        PhoneSettings.findOne({ businessId, status: 'active' })
     ]);
 
     if (!business) {
@@ -32,17 +31,11 @@ async function _getBusinessData(businessId) {
 
     const services = serviceData?.services?.map(service => ({
         name: service.name,
-        description: service.description || null,
-        price: service.price || null
+        description: service.description
     })) || [];
 
-    // Use selector.contactSelector.phone if available, else fallback to previous logic
-    let businessPhoneNumber = null;
-    if (selector?.contactSelector && typeof selector.contactSelector === 'object' && selector.contactSelector.phone) {
-        businessPhoneNumber = selector.contactSelector.phone;
-    } else {
-        businessPhoneNumber = phoneSettings?.getBusinessDisplayNumber?.call(phoneSettings) || contactData?.phone || null;
-    }
+    // Use the real, scraped phone number from Contact
+    const businessPhoneNumber = contactData?.phone || null;
 
     const fullBusinessData = {
         ...business.toObject(),
