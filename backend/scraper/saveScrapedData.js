@@ -19,6 +19,8 @@ const saveScrapedData = async (businessId, scrapedData) => {
             { new: true, upsert: true }
         );
 
+        console.log('[SCRAPER DEBUG] Saving contact details to DB:', scrapedData.contactDetails);
+
         const contactResult = await Contact.findOneAndUpdate(
             { businessId },
             { $set: scrapedData.contactDetails },

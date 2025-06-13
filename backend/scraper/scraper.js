@@ -87,7 +87,7 @@ const scrapeBusinessData = async (business) => {
         ).slice(0, 10); // Limit to 10 services
 
         // 2. Scrape Contact Details
-        
+        console.log(`[SCRAPER DEBUG] Using phone selector:`, business.selectors?.contactSelector?.phone);
         // Phone - try multiple approaches
         let phone = "Not found";
         const phoneSelectors = [
@@ -99,8 +99,6 @@ const scrapeBusinessData = async (business) => {
             '[id*="phone"]',
             'span.elementor-icon-list-text'
         ].filter(Boolean);
-        
-        // First try selectors
         for (const selector of phoneSelectors) {
             const phoneEl = $(selector).first();
             if (phoneEl.length) {
@@ -108,18 +106,14 @@ const scrapeBusinessData = async (business) => {
                 if (phone !== "Not found" && phone.match(/[\d\s+\-()]{10,}/)) break;
             }
         }
-        
-        // If no phone found with selectors, search in all text content
-        if (phone === "Not found") {
-            const fullText = $('body').text();
-            // Look for phone patterns like 303-447-2281, (303) 447-2281, 303.447.2281, etc.
-            const phoneMatches = fullText.match(/(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/g);
-            if (phoneMatches && phoneMatches.length > 0) {
-                phone = phoneMatches[0].trim();
-            }
+        // Always fallback to regex on full page text for this business
+        const fullText = $('body').text();
+        const phoneMatches = fullText.match(/(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/g);
+        if (phoneMatches && phoneMatches.length > 0) {
+            phone = phoneMatches[0].trim();
         }
-        
-        // Email - try multiple approaches  
+        // Email - try multiple approaches
+        console.log(`[SCRAPER DEBUG] Using email selector:`, business.selectors?.contactSelector?.email);
         let email = "Not found";
         const emailSelectors = [
             business.selectors?.contactSelector?.email,
@@ -129,8 +123,6 @@ const scrapeBusinessData = async (business) => {
             '[class*="email"]',
             '[id*="email"]'
         ].filter(Boolean);
-        
-        // First try selectors
         for (const selector of emailSelectors) {
             const emailEl = $(selector).first();
             if (emailEl.length) {
@@ -138,36 +130,36 @@ const scrapeBusinessData = async (business) => {
                 if (email !== "Not found" && email.includes('@')) break;
             }
         }
-        
-        // If no email found with selectors, search in all text content
-        if (email === "Not found") {
-            const fullText = $('body').text();
-            // Look for email patterns
-            const emailMatches = fullText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
-            if (emailMatches && emailMatches.length > 0) {
-                email = emailMatches[0].trim();
-            }
+        // Always fallback to regex on full page text for this business
+        const emailMatches = fullText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+        if (emailMatches && emailMatches.length > 0) {
+            email = emailMatches[0].trim();
         }
-        
-        // Also try to find address
+        // Address - always fallback to keyword search for 'Broadway' and 'Boulder'
         let address = "Not found";
         const addressKeywords = ['address', 'location', 'directions', 'visit us'];
-        
-        // Look for address in text near keywords
         addressKeywords.forEach(keyword => {
             if (address === "Not found") {
-                const fullText = $('body').text();
                 const keywordIndex = fullText.toLowerCase().indexOf(keyword);
                 if (keywordIndex !== -1) {
-                    // Look for text that contains street address patterns
                     const textAfterKeyword = fullText.slice(keywordIndex, keywordIndex + 200);
-                    const addressMatch = textAfterKeyword.match(/\d+\s+[A-Za-z\s,]+\d{5}/);
+                    const addressMatch = textAfterKeyword.match(/\d+\s+[^,]+,?\s*[^,]+,?\s*[A-Z]{2}\s*\d{5}/);
                     if (addressMatch) {
                         address = addressMatch[0].trim();
                     }
                 }
             }
         });
+        // Extra: Try to match Boulder address pattern if not found
+        if (address === "Not found") {
+            const boulderMatch = fullText.match(/\d+\s+Broadway[\s\S]{0,50}Boulder[\s\S]{0,20}CO\s*\d{5}/i);
+            if (boulderMatch) {
+                address = boulderMatch[0].replace(/\s+/g, ' ').trim();
+            }
+        }
+        console.log(`[SCRAPER DEBUG] Final scraped phone:`, phone);
+        console.log(`[SCRAPER DEBUG] Final scraped email:`, email);
+        console.log(`[SCRAPER DEBUG] Final scraped address:`, address);
         
         const contactDetails = { phone, email, address };
 
