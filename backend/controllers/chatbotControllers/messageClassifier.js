@@ -46,6 +46,11 @@ const listServiceKeywords = [
 // Keywords indicating potential service inquiry
 const serviceInquiryKeywords = ['interested in', 'about', 'want'];
 
+// Keywords for payment/insurance inquiries
+const paymentKeywords = [
+    'payment plan', 'payment plans', 'payment options', 'insurance', 'financing', 'do you accept', 'do you offer payment', 'do you take insurance', 'can i pay in installments', 'installment', 'installments', 'credit', 'billing', 'cost', 'price', 'how much', 'is it covered', 'coverage', 'copay', 'co-pay', 'down payment', 'monthly payment', 'pay over time', 'split payment', 'affordable', 'discount', 'do you offer financing', 'do you have financing', 'do you offer credit', 'do you accept credit', 'do you accept insurance', 'do you take my insurance', 'is insurance accepted', 'is insurance available', 'is there a payment plan', 'is there financing', 'is there a discount', 'is there a copay', 'is there a co-pay'
+];
+
 // Helper function to find a matching service name in the message
 // (More robust matching might be needed depending on service name complexity)
 export const findServiceNameInMessage = (normalizedMsg, services = []) => {
@@ -290,6 +295,10 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
 
     if (appointmentKeywords.some(keyword => normalizedMessage.includes(keyword))) {
         return { type: 'APPOINTMENT_REQUEST' };
+    }
+
+    if (paymentKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+        return { type: 'PAYMENT_PLAN_INQUIRY' };
     }
 
     // --- NEW ORDER: Check for specific service inquiries FIRST ---

@@ -290,6 +290,13 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 break;
 
+            case 'PAYMENT_PLAN_INQUIRY':
+                responsePayload = {
+                    type: 'PAYMENT_PLAN_INQUIRY',
+                    response: "Yes, we offer flexible payment plans and accept most major insurance providers. Would you like more details or to speak with our team about your specific situation?"
+                };
+                break;
+
             case 'UNKNOWN':
             default:
                 // console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); // To be removed/commented
