@@ -3,6 +3,7 @@ import Service from "../../models/Service.js";
 import Contact from "../../models/Contact.js";
 import ExtraInfo from "../../models/ExtraInfo.js";
 import PhoneSettings from "../../models/PhoneSettings.js";
+import Selector from "../../models/Selector.js";
 import { saveLead } from "../leadControllers/leadController.js";
 import { trackChatEvent } from "../analyticsControllers/trackEventService.js";
 import { generateAIResponse } from "./openaiService.js";
@@ -16,12 +17,13 @@ import { redactPII } from '../../utils/piiFilter.js';
 
 // Fetch business data (could be further extracted later)
 async function _getBusinessData(businessId) {
-    const [business, serviceData, contactData, extraInfoData, phoneSettings] = await Promise.all([
+    const [business, serviceData, contactData, extraInfoData, phoneSettings, selector] = await Promise.all([
         Business.findOne({ businessId }),
         Service.findOne({ businessId }),
         Contact.findOne({ businessId }),
         ExtraInfo.findOne({ businessId }),
-        PhoneSettings.findOne({ businessId, status: 'active' })
+        PhoneSettings.findOne({ businessId, status: 'active' }),
+        Selector.findOne({ businessId })
     ]);
 
     if (!business) {
@@ -34,8 +36,13 @@ async function _getBusinessData(businessId) {
         price: service.price || null
     })) || [];
 
-    // Use phoneSettings.getBusinessDisplayNumber() if available, else fallback to contactData?.phone
-    const businessPhoneNumber = phoneSettings?.getBusinessDisplayNumber?.call(phoneSettings) || contactData?.phone || null;
+    // Use selector.contactSelector.phone if available, else fallback to previous logic
+    let businessPhoneNumber = null;
+    if (selector?.contactSelector && typeof selector.contactSelector === 'object' && selector.contactSelector.phone) {
+        businessPhoneNumber = selector.contactSelector.phone;
+    } else {
+        businessPhoneNumber = phoneSettings?.getBusinessDisplayNumber?.call(phoneSettings) || contactData?.phone || null;
+    }
 
     const fullBusinessData = {
         ...business.toObject(),
