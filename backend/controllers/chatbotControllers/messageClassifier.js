@@ -48,7 +48,8 @@ const serviceInquiryKeywords = ['interested in', 'about', 'want'];
 
 // Keywords for payment/insurance inquiries
 const paymentKeywords = [
-    'payment plan', 'payment plans', 'payment options', 'insurance', 'financing', 'do you accept', 'do you offer payment', 'do you take insurance', 'can i pay in installments', 'installment', 'installments', 'credit', 'billing', 'cost', 'price', 'how much', 'is it covered', 'coverage', 'copay', 'co-pay', 'down payment', 'monthly payment', 'pay over time', 'split payment', 'affordable', 'discount', 'do you offer financing', 'do you have financing', 'do you offer credit', 'do you accept credit', 'do you accept insurance', 'do you take my insurance', 'is insurance accepted', 'is insurance available', 'is there a payment plan', 'is there financing', 'is there a discount', 'is there a copay', 'is there a co-pay'
+    'payment plan', 'payment plans', 'payment options', 'insurance', 'financing', 'do you accept', 'do you offer payment', 'do you take insurance', 'can i pay in installments', 'installment', 'installments', 'credit', 'billing', 'cost', 'price', 'how much', 'is it covered', 'coverage', 'copay', 'co-pay', 'down payment', 'monthly payment', 'pay over time', 'split payment', 'affordable', 'discount', 'do you offer financing', 'do you have financing', 'do you offer credit', 'do you accept credit', 'do you accept insurance', 'do you take my insurance', 'is insurance accepted', 'is insurance available', 'is there a payment plan', 'is there financing', 'is there a discount', 'is there a copay', 'is there a co-pay',
+    'offer insurance', 'provide insurance', 'any insurance', 'insurance options', 'accept insurance', 'take insurance', 'do you have insurance', 'do you offer any insurance', 'do you provide insurance', 'insurance plans', 'insurance policy', 'insurance coverage', 'insurance available', 'insurance plan', 'insurance policies', 'insurance accepted', 'insurance provider', 'insurance companies', 'insurance question', 'insurance info', 'insurance information', 'insurance details', 'insurance support', 'insurance help', 'insurance inquiry', 'insurance assistance', 'insurance services', 'insurance support', 'insurance-related', 'insurance-related question', 'insurance-related inquiry'
 ];
 
 // Helper function to find a matching service name in the message
@@ -298,6 +299,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     }
 
     if (paymentKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+        console.log('[DEBUG][messageClassifier.js] PAYMENT_PLAN_INQUIRY matched for message:', message);
         return { type: 'PAYMENT_PLAN_INQUIRY' };
     }
 
@@ -342,6 +344,9 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     if (GREETINGS.some(greeting => normalizedMessage.startsWith(greeting))) {
         return { type: 'GREETING' };
     }
+
+    // At the end, before returning default intent
+    console.log('[DEBUG][messageClassifier.js] Default intent for message:', message);
 
     // Fallback
     return { type: 'UNKNOWN' };
