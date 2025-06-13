@@ -133,19 +133,6 @@ async function _generateAndRefineResponse(message, businessData, sessionMessages
     }
     // --- END MODIFIED LOGIC ---
     
-    // Always prepend the required tip for appointment/booking/visit requests
-    const appointmentKeywords = [
-        'appointment', 'appointments', 'appoinment', 'book', 'schedule', 'check in', 'check availability',
-        'see the doctor', 'see dr', 'make an appointment',
-        'can i come', 'can i visit', 'can i stop by', 'can i drop in', 'can i come today', 'can i come tomorrow', 'can i visit today', 'can i visit tomorrow', 'can i book for', 'can i get in', 'can i see you', 'can i see the dentist', 'can i see dr', 'can i get an appointment', 'can i get a slot', 'can i get scheduled', 'can i get in today', 'can i get in tomorrow'
-    ];
-    const normalizedMessage = message.toLowerCase();
-    const isAppointmentRequest = appointmentKeywords.some(keyword => normalizedMessage.includes(keyword));
-    const requiredTip = "Just so you know, I don't have access to a live calendar to confirm real-time availability. However, I can arrange for our team to call you and finalize your appointment.";
-    if (isAppointmentRequest && !responseAfterOverride1.response.includes(requiredTip)) {
-        responseAfterOverride1.response = requiredTip + "\n\n" + responseAfterOverride1.response;
-    }
-
     // Return both the potentially overridden payload and the original classified intent
     return { classifiedIntent, responsePayload: responseAfterOverride1 }; 
 }
@@ -356,12 +343,21 @@ const processChatMessage = async (message, sessionId, businessId) => {
         // console.log("[Controller Flow] Response payload after _generateAndRefineResponse (inc. AI type overrides):", JSON.stringify(responsePayload, null, 2)); // Debug - Removed
 
         // --- Second Override Pass (Based on user message type) --- 
-        // console.log("[Override Check 2 Prep] Original Classified Type:", classifiedIntent?.type); // Debug - Removed
-        // console.log("[Override Check 2 Prep] Type before user message override:", responsePayload.type); // Debug - Removed
         const userMessageTypes = detectRequestTypes(message);
-        // console.log("[Override Check 2] Applying overrides based on detected user message types:", userMessageTypes); // Debug - Removed
         const finalResponse = applyResponseOverrides(responsePayload, userMessageTypes, session, businessData); 
-        // console.log(`[Controller Flow] Final response payload after user type overrides (type: ${finalResponse.type}):`, redactPII(finalResponse.response)); // Log redacted final response? - Removed for prod
+
+        // Always prepend the required tip for appointment/booking/visit requests (after all overrides)
+        const appointmentKeywords = [
+            'appointment', 'appointments', 'appoinment', 'book', 'schedule', 'check in', 'check availability',
+            'see the doctor', 'see dr', 'make an appointment',
+            'can i come', 'can i visit', 'can i stop by', 'can i drop in', 'can i come today', 'can i come tomorrow', 'can i visit today', 'can i visit tomorrow', 'can i book for', 'can i get in', 'can i see you', 'can i see the dentist', 'can i see dr', 'can i get an appointment', 'can i get a slot', 'can i get scheduled', 'can i get in today', 'can i get in tomorrow'
+        ];
+        const normalizedMessage = message.toLowerCase();
+        const isAppointmentRequest = appointmentKeywords.some(keyword => normalizedMessage.includes(keyword));
+        const requiredTip = "Just so you know, I don't have access to a live calendar to confirm real-time availability. However, I can arrange for our team to call you and finalize your appointment.";
+        if (isAppointmentRequest && !finalResponse.response.includes(requiredTip)) {
+            finalResponse.response = requiredTip + "\n\n" + finalResponse.response;
+        }
 
         // --- Store/Update Partial Contact Info in Session ---
         // Use the contactInfo from the original classification attempt
