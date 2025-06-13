@@ -302,7 +302,10 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         // console.log('--- generateAIResponse Orchestrator End ---');
         // Before returning responsePayload at the end of generateAIResponse
         console.log('[DEBUG][openaiService.js] Returning response:', responsePayload?.type, responsePayload?.response);
-        return responsePayload;
+        return {
+            classifiedIntent: intent,
+            responsePayload
+        };
 
     } catch (error) {
         console.error("Error in generateAIResponse orchestrator:", error);
