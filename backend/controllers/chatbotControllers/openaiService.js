@@ -300,17 +300,9 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         // console.log('[generateAIResponse] Exiting switch, final responsePayload:', JSON.stringify(responsePayload)); // Potential PII - Removed
 
         // console.log('--- generateAIResponse Orchestrator End ---');
-        // Return both the original classified intent and the final payload
-        return {
-            classifiedIntent: intent, // The original result from classifyUserIntent
-            responsePayload: {
-                 type: responsePayload.type || 'ERROR',
-                 response: responsePayload.response || RESPONSE_TEMPLATES.error_fallback,
-                 contactInfo: responsePayload.contactInfo || null, 
-                 serviceContext: responsePayload.serviceContext || null, 
-                 problemCategory: responsePayload.problemCategory || null 
-            }
-        };
+        // Before returning responsePayload at the end of generateAIResponse
+        console.log('[DEBUG][openaiService.js] Returning response:', responsePayload?.type, responsePayload?.response);
+        return responsePayload;
 
     } catch (error) {
         console.error("Error in generateAIResponse orchestrator:", error);
