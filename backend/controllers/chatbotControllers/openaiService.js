@@ -258,19 +258,13 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'APPOINTMENT_REQUEST':
-                // console.log('[generateAIResponse] Matched case: APPOINTMENT_REQUEST'); // To be removed/commented
-                
-                // Attempt to extract details from the current message
-                const serviceName = findServiceNameInMessage(normalizedMessage, businessData?.services);
-                const timePreference = TIME_PREFERENCE_KEYWORDS.find(kw => normalizedMessage.includes(kw)); // Find first match
-
-                // console.log(`[generateAIResponse] Extracted details for appointment request - Service: ${serviceName}, Time: ${timePreference}`); // To be removed/commented
-
+                // Let AI generate the response, but prepend a tip about no live calendar
+                const aiAppointmentResponse = await generateAIFallbackResponse(message, messageHistory, businessData);
+                aiAppointmentResponse.response = `Just so you know, I don't have access to a live calendar to confirm real-time availability. However, I can arrange for our team to call you and finalize your appointment.\n\n${aiAppointmentResponse.response}`;
                 responsePayload = {
-                    type: 'APPOINTMENT_REQUEST_DETAILED', // Use a more specific type if needed for overrides
-                    response: RESPONSE_TEMPLATES.APPOINTMENT_REQUEST_ACKNOWLEDGE_DETAIL(serviceName, timePreference) 
+                    type: 'APPOINTMENT_REQUEST',
+                    response: aiAppointmentResponse.response
                 };
-                
                 break;
 
             case 'OPERATING_HOURS_INQUIRY':
