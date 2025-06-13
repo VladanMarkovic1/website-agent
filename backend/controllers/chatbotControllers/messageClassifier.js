@@ -22,7 +22,8 @@ const checkDentalProblem = (normalizedMsg) => {
 // Keywords for Appointment Requests
 const appointmentKeywords = [
     'appointment', 'appointments', 'appoinment', 'book', 'schedule', 'check in', 'check availability',
-    'see the doctor', 'see dr', 'make an appointment'
+    'see the doctor', 'see dr', 'make an appointment',
+    'can i come', 'can i visit', 'can i stop by', 'can i drop in', 'can i come today', 'can i come tomorrow', 'can i visit today', 'can i visit tomorrow', 'can i book for', 'can i get in', 'can i see you', 'can i see the dentist', 'can i see dr', 'can i get an appointment', 'can i get a slot', 'can i get scheduled', 'can i get in today', 'can i get in tomorrow'
 ];
 
 // Keywords for Availability Inquiries (Higher Priority than List Services)
@@ -32,6 +33,7 @@ const availabilityKeywords = [
     'hours', 'available', 'availability', 'when',
     'monday', 'tuesday', 'wednesday', 'thursday', 'friday',
     'time',
+    'today', 'tomorrow', 'open', 'opening', 'close', 'closing', 'walk in', 'walk-in', 'walkin', 'walk ins', 'walk-ins', 'walkins',
     // Add common misspellings if needed, e.g., 'appoinment', 'appointmet'
 ];
 
