@@ -23,6 +23,15 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
 
     let finalResponse = { ...initialResponse }; // Start with the initial response
 
+    // Prevent override if the required tip is already present in the response
+    const requiredTip = "Just so you know, I don't have access to a live calendar to confirm real-time availability. However, I can arrange for our team to call you and finalize your appointment.";
+    if (
+        (finalResponse.type === 'APPOINTMENT_REQUEST' || finalResponse.type === 'BOOKING_REQUEST' || finalResponse.type === 'APPOINTMENT_REQUEST_DETAILED') &&
+        finalResponse.response && finalResponse.response.includes(requiredTip)
+    ) {
+        return finalResponse;
+    }
+
     // Check if an override is potentially needed (keywords match AND no contact info yet)
     const needsOverrideCheck = isPotentiallyOverridingRequest && !session.contactInfo;
     
