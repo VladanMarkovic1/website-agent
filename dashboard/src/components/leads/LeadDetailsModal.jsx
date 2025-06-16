@@ -127,6 +127,41 @@ const LeadDetailsModal = ({ lead: initialLead, businessId, onClose, onLeadUpdate
                   <dt className="text-sm font-medium text-gray-500">Service Interest:</dt>
                   <dd className="text-sm text-gray-900">{currentLead.service || 'N/A'}</dd>
                 </div>
+                {/* Extra Details */}
+                {currentLead.details && (
+                  <>
+                    {currentLead.details.concern && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Concern:</dt>
+                        <dd className="text-sm text-gray-900">{currentLead.details.concern}</dd>
+                      </div>
+                    )}
+                    {currentLead.details.timing && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Timing:</dt>
+                        <dd className="text-sm text-gray-900">{currentLead.details.timing}</dd>
+                      </div>
+                    )}
+                    {currentLead.details.days && currentLead.details.days.length > 0 && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Best Days:</dt>
+                        <dd className="text-sm text-gray-900">{currentLead.details.days.join(', ')}</dd>
+                      </div>
+                    )}
+                    {currentLead.details.time && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Preferred Time:</dt>
+                        <dd className="text-sm text-gray-900">{currentLead.details.time}</dd>
+                      </div>
+                    )}
+                    {currentLead.details.insurance && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Insurance:</dt>
+                        <dd className="text-sm text-gray-900">{currentLead.details.insurance}</dd>
+                      </div>
+                    )}
+                  </>
+                )}
               </dl>
             </div>
             {/* Lead Details */}
