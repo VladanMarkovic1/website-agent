@@ -25,7 +25,7 @@ async function findServiceInText(businessId, text) {
 export const saveLead = async (leadContext) => {
     try {
         // Log the entire received object immediately
-        // console.log("Raw leadContext received in saveLead:", JSON.stringify(leadContext, null, 2));
+        console.log('[DEBUG] saveLead received leadContext:', JSON.stringify(leadContext, null, 2));
         
         // Destructure the needed properties from the leadContext object
         const {
@@ -35,7 +35,8 @@ export const saveLead = async (leadContext) => {
             email,
             serviceInterest,
             problemDescription,
-            messageHistory 
+            messageHistory,
+            details
         } = leadContext;
 
         // console.log("🔍 Finding business (after destructuring):", { businessId });
@@ -103,6 +104,7 @@ export const saveLead = async (leadContext) => {
             existingLead.reason = formattedContext.reason;
             existingLead.lastContactedAt = new Date();
             existingLead.status = 'new'; 
+            existingLead.details = details || {};
             
             existingLead.interactions.push({
                 type: 'chatbot',
@@ -111,6 +113,7 @@ export const saveLead = async (leadContext) => {
                 service: finalService
             });
             
+            console.log('[DEBUG] Updating existing lead with details:', existingLead.details);
             await existingLead.save();
             console.log("✅ Existing lead updated successfully (Status reset to 'new')");
             return `Thank you, ${name}. I've updated your information with us.`
@@ -128,6 +131,7 @@ export const saveLead = async (leadContext) => {
             source: 'chatbot',
             status: 'new',
             lastContactedAt: new Date(),
+            details: details || {},
             interactions: [{
                  type: 'chatbot',
                  status: 'Lead Created',
@@ -135,6 +139,7 @@ export const saveLead = async (leadContext) => {
                  service: finalService
             }],
         });
+        console.log('[DEBUG] Creating new lead with details:', lead.details);
 
         // console.log("Creating new lead with data:", { /* ... */ });
 
