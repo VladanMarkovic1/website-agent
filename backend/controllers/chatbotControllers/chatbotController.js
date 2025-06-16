@@ -12,7 +12,7 @@ import { detectRequestTypes } from "./requestTypeDetector.js";
 import { applyResponseOverrides } from "./overrideService.js";
 import { DENTAL_KEYWORDS_FOR_TRACKING, RESPONSE_TEMPLATES } from "./chatbotConstants.js"; // Import RESPONSE_TEMPLATES too
 import { redactPII } from '../../utils/piiFilter.js';
-import { extractExtraDetails } from "./extractContactInfo.js";
+import { extractContactInfo, extractExtraDetails } from "./extractContactInfo.js";
 
 // Removed session map, timeout, cleanup (moved to sessionService)
 
