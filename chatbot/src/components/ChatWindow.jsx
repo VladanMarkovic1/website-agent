@@ -16,6 +16,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const [selectedConcern, setSelectedConcern] = useState(null);
   const [appointmentTimeframe, setAppointmentTimeframe] = useState(null);
   const [freeChat, setFreeChat] = useState(false);
+  const [userDetails, setUserDetails] = useState({ name: '', phone: '', email: '' });
 
   // Button options
   const concernOptions = [
@@ -62,13 +63,22 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
 
   const handleTimingClick = (option) => {
     setAppointmentTimeframe(option);
-    // For now, stop here. Next steps will be added later.
+    if (option === 'Now') {
+      setStep(3);
+    }
+    // For other options, you can add more logic later
+  };
+
+  const handleUserDetailChange = (e) => {
+    setUserDetails({ ...userDetails, [e.target.name]: e.target.value });
   };
 
   const handleBack = () => {
     if (step === 2) {
       setStep(1);
       setAppointmentTimeframe(null);
+    } else if (step === 3) {
+      setStep(2);
     }
   };
 
@@ -138,6 +148,52 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             </button>
           </div>
         )}
+        {/* Step 3: Collect Name, Phone, Email */}
+        {step === 3 && (
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="mb-4 text-center font-semibold">Please enter your details so we can book your appointment:</div>
+            <input
+              type="text"
+              name="name"
+              value={userDetails.name}
+              onChange={handleUserDetailChange}
+              placeholder="Your Name"
+              className="mb-2 p-2 border rounded-lg w-full max-w-xs"
+              autoComplete="name"
+            />
+            <input
+              type="tel"
+              name="phone"
+              value={userDetails.phone}
+              onChange={handleUserDetailChange}
+              placeholder="Phone Number"
+              className="mb-2 p-2 border rounded-lg w-full max-w-xs"
+              autoComplete="tel"
+            />
+            <input
+              type="email"
+              name="email"
+              value={userDetails.email}
+              onChange={handleUserDetailChange}
+              placeholder="Email Address"
+              className="mb-2 p-2 border rounded-lg w-full max-w-xs"
+              autoComplete="email"
+            />
+            <button
+              className="mt-2 text-blue-600 underline text-sm"
+              onClick={handleBack}
+            >
+              Back
+            </button>
+            <button
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+              disabled={!(userDetails.name && userDetails.phone && userDetails.email)}
+              // onClick={handleSubmitDetails} // Implement this later
+            >
+              Submit
+            </button>
+          </div>
+        )}
         {/* Disabled input at bottom */}
         <form className="p-4 border-t">
           <div className="flex gap-2">
@@ -145,7 +201,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your message..."
+              placeholder={freeChat ? "Type your message..." : "Click Other to unlock chat."}
               className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
               disabled={!freeChat}
             />
@@ -254,7 +310,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
+            placeholder={freeChat ? "Type your message..." : "Click Other to unlock chat."}
             className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
           />
           <button
