@@ -129,24 +129,19 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   };
 
   const handleSubmitDetails = async () => {
-    const leadPayload = {
-      businessId: import.meta.env.VITE_BUSINESS_ID,
-      name: userDetails.name,
-      phone: userDetails.phone,
-      email: userDetails.email,
-      problemDescription: selectedConcern,
-      details: {
-        concern: selectedConcern,
-        timing: appointmentTimeframe,
-        bestDays,
-        preferredTime,
-        hasInsurance
-      }
-    };
+    // Compose message string as in the old way
+    let message = `${userDetails.name}, ${userDetails.phone}, ${userDetails.email}`;
+    // Add extra details for context
+    const extras = [];
+    if (selectedConcern) extras.push(`Concern: ${selectedConcern}`);
+    if (appointmentTimeframe) extras.push(`Timing: ${appointmentTimeframe}`);
+    if (bestDays.length) extras.push(`Days: ${bestDays.join(', ')}`);
+    if (preferredTime) extras.push(`Time: ${preferredTime}`);
+    if (hasInsurance) extras.push(`Insurance: ${hasInsurance}`);
+    if (extras.length) message += '. ' + extras.join('. ');
     try {
-      await submitLead(leadPayload);
+      onSendMessage(message); // Use the same handler as classic chat
       setSubmitStatus('success');
-      // Optionally reset state or show a thank you message
     } catch (e) {
       setSubmitStatus('error');
     }
