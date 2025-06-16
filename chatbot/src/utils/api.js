@@ -76,7 +76,7 @@ export const triggerScraping = async () => {
 
 export const submitLead = async (leadData) => {
   try {
-    const response = await api.post(`/leads`, leadData);
+    const response = await api.post(`/chatbot/${BUSINESS_ID}/message`, leadData);
     return response;
   } catch (error) {
     console.error('Failed to submit lead:', error);
