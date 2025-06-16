@@ -125,43 +125,8 @@ const LeadDetailsModal = ({ lead: initialLead, businessId, onClose, onLeadUpdate
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Service Interest:</dt>
-                  <dd className="text-sm text-gray-900">{currentLead.service || 'N/A'}</dd>
+                  <dd className="text-sm text-gray-900">{currentLead.details?.concern || currentLead.service || 'N/A'}</dd>
                 </div>
-                {/* Extra Details */}
-                {currentLead.details && (
-                  <>
-                    {currentLead.details.concern && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Concern:</dt>
-                        <dd className="text-sm text-gray-900">{currentLead.details.concern}</dd>
-                      </div>
-                    )}
-                    {currentLead.details.timing && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Timing:</dt>
-                        <dd className="text-sm text-gray-900">{currentLead.details.timing}</dd>
-                      </div>
-                    )}
-                    {currentLead.details.days && currentLead.details.days.length > 0 && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Best Days:</dt>
-                        <dd className="text-sm text-gray-900">{currentLead.details.days.join(', ')}</dd>
-                      </div>
-                    )}
-                    {currentLead.details.time && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Preferred Time:</dt>
-                        <dd className="text-sm text-gray-900">{currentLead.details.time}</dd>
-                      </div>
-                    )}
-                    {currentLead.details.insurance && (
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Insurance:</dt>
-                        <dd className="text-sm text-gray-900">{currentLead.details.insurance}</dd>
-                      </div>
-                    )}
-                  </>
-                )}
               </dl>
             </div>
             {/* Lead Details */}
@@ -205,6 +170,45 @@ const LeadDetailsModal = ({ lead: initialLead, businessId, onClose, onLeadUpdate
               </dl>
             </div>
           </div>
+
+          {/* Extra Details Section */}
+          {currentLead.details && (
+            <div className="mb-4">
+              <h3 className="text-md font-medium text-gray-900 mb-2">Extra Details</h3>
+              <dl className="space-y-2">
+                {currentLead.details.concern && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Concern:</dt>
+                    <dd className="text-sm text-gray-900">{currentLead.details.concern}</dd>
+                  </div>
+                )}
+                {currentLead.details.timing && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Timing:</dt>
+                    <dd className="text-sm text-gray-900">{currentLead.details.timing}</dd>
+                  </div>
+                )}
+                {currentLead.details.days && currentLead.details.days.length > 0 && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Best Days:</dt>
+                    <dd className="text-sm text-gray-900">{currentLead.details.days.join(', ')}</dd>
+                  </div>
+                )}
+                {currentLead.details.time && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Preferred Time:</dt>
+                    <dd className="text-sm text-gray-900">{currentLead.details.time}</dd>
+                  </div>
+                )}
+                {currentLead.details.insurance && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Insurance:</dt>
+                    <dd className="text-sm text-gray-900">{currentLead.details.insurance}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
 
           {/* Context/Reason */}
           <div className="mb-4">
