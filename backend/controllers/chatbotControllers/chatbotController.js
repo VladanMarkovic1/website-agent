@@ -12,6 +12,7 @@ import { detectRequestTypes } from "./requestTypeDetector.js";
 import { applyResponseOverrides } from "./overrideService.js";
 import { DENTAL_KEYWORDS_FOR_TRACKING, RESPONSE_TEMPLATES } from "./chatbotConstants.js"; // Import RESPONSE_TEMPLATES too
 import { redactPII } from '../../utils/piiFilter.js';
+import { extractExtraDetails } from "./extractContactInfo.js";
 
 // Removed session map, timeout, cleanup (moved to sessionService)
 
@@ -232,6 +233,13 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
         // Extract PII to be sent to saveLead (which handles encryption)
         const leadPii = classifiedIntent.contactInfo; 
 
+        // Extract extra details from the last user message in the session
+        const lastUserMessage = (session.messages || []).slice().reverse().find(m => m.role === 'user');
+        let extraDetails = {};
+        if (lastUserMessage && lastUserMessage.content) {
+            extraDetails = extractExtraDetails(lastUserMessage.content);
+        }
+
         const leadContext = {
             businessId: session.businessId,
             name: leadPii.name, 
@@ -240,7 +248,8 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
             // Prioritize specific session.serviceInterest 
             serviceInterest: session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation',
             problemDescription: leadProblemContext, // Use the improved context
-            messageHistory: session.messages // Already redacted from _logInteractionMessages
+            messageHistory: session.messages, // Already redacted from _logInteractionMessages
+            details: extraDetails // <-- Save extra details here
         };
         // console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2)); // Logs raw PII before encryption - REMOVED
         

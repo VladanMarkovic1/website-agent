@@ -114,6 +114,26 @@ export function extractContactInfo(message) {
     return null;
 }
 
+export function extractExtraDetails(message) {
+    const details = {};
+    const daysMatch = message.match(/Days:\s*([A-Za-z,\s]+)/i);
+    if (daysMatch) details.days = daysMatch[1].split(',').map(d => d.trim()).filter(Boolean);
+
+    const timeMatch = message.match(/Time:\s*([A-Za-z0-9\-: ]+)/i);
+    if (timeMatch) details.time = timeMatch[1].trim();
+
+    const insuranceMatch = message.match(/Insurance:\s*(Yes|No)/i);
+    if (insuranceMatch) details.insurance = insuranceMatch[1];
+
+    const concernMatch = message.match(/Concern:\s*([A-Za-z ]+)/i);
+    if (concernMatch) details.concern = concernMatch[1].trim();
+
+    const timingMatch = message.match(/Timing:\s*([A-Za-z0-9\- ]+)/i);
+    if (timingMatch) details.timing = timingMatch[1].trim();
+
+    return details;
+}
+
 
 
 
