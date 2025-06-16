@@ -128,7 +128,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   };
 
   const handleSubmitDetails = async () => {
-    // Compose message string as in the old way
+    // Compose message string as in the old way, but only use the user's name
     let message = `${userDetails.name}, ${userDetails.phone}, ${userDetails.email}`;
     // Add extra details for context
     const extras = [];
