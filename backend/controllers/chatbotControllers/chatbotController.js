@@ -245,10 +245,9 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
             name: leadPii.name, 
             phone: leadPii.phone,
             email: leadPii.email,
-            // Prioritize specific session.serviceInterest 
-            serviceInterest: session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation',
-            problemDescription: leadProblemContext, // Use the improved context
-            messageHistory: session.messages, // Already redacted from _logInteractionMessages
+            serviceInterest: extraDetails.concern || session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation',
+            problemDescription: leadProblemContext,
+            messageHistory: session.messages,
             details: extraDetails // <-- Save extra details here
         };
         // console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2)); // Logs raw PII before encryption - REMOVED
