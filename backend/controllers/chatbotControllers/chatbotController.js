@@ -238,6 +238,9 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
         let extraDetails = {};
         if (lastUserMessage && lastUserMessage.content) {
             extraDetails = extractExtraDetails(lastUserMessage.content);
+            console.log('[DEBUG] Extracted extraDetails from last user message:', extraDetails);
+        } else {
+            console.log('[DEBUG] No last user message found for extraDetails extraction.');
         }
 
         const leadContext = {
@@ -250,7 +253,7 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
             messageHistory: session.messages,
             details: extraDetails // <-- Save extra details here
         };
-        // console.log('[Lead Save Prep] Context object being sent to saveLead:', JSON.stringify(leadContext, null, 2)); // Logs raw PII before encryption - REMOVED
+        console.log('[DEBUG] leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
         
         // console.log(`[Controller] Attempting to call saveLead for session: ${session.sessionId}`); // REMOVED LOG
         await saveLead(leadContext);
