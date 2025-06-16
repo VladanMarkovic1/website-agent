@@ -395,9 +395,27 @@ const processChatMessage = async (message, sessionId, businessId) => {
         // Track problem description if needed 
         await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type, classifiedIntent?.type);
 
-        // Save Lead if contact info provided
+        // Save Lead if contact info provided (AI classifier way)
         const originalClassificationForLeadCheck = classifiedIntent; 
         await _handleLeadSavingIfNeeded(finalResponse, session, originalClassificationForLeadCheck);
+
+        // --- Fallback: Always save lead if message contains all info (for button-based flow) ---
+        const contactInfo = extractContactInfo(message);
+        const extraDetails = extractExtraDetails(message);
+        if (contactInfo && contactInfo.name && contactInfo.phone && (extraDetails.concern || extraDetails.timing)) {
+            const leadContext = {
+                businessId,
+                name: contactInfo.name,
+                phone: contactInfo.phone,
+                email: contactInfo.email,
+                serviceInterest: extraDetails.concern || 'Dental Consultation',
+                problemDescription: extraDetails.concern || 'User provided contact details after chatbot interaction.',
+                messageHistory: session.messages,
+                details: extraDetails
+            };
+            console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
+            await saveLead(leadContext);
+        }
 
         // Track conversation end
         await _trackConversationCompletionIfNeeded(finalResponse, session);
