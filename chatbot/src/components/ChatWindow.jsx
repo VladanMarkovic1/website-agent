@@ -11,6 +11,20 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  // New state for button-based flow
+  const [step, setStep] = useState(1); // 1: concern, 2: timing, 'chat': free chat
+  const [selectedConcern, setSelectedConcern] = useState(null);
+  const [appointmentTimeframe, setAppointmentTimeframe] = useState(null);
+  const [freeChat, setFreeChat] = useState(false);
+
+  // Button options
+  const concernOptions = [
+    'Pain', 'Broken teeth', 'Implants', 'Regular care', 'Whitening', 'Invisalign', 'Other'
+  ];
+  const timingOptions = [
+    'Now', '1-3 weeks', '1-3 months'
+  ];
+
   // Update header title based on service mentions in messages
   useEffect(() => {
     if (messages.length > 0) {
@@ -35,6 +49,29 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     inputRef.current?.focus();
   }, []);
 
+  // Handlers
+  const handleConcernClick = (option) => {
+    setSelectedConcern(option);
+    if (option === 'Other') {
+      setFreeChat(true);
+      setStep('chat');
+    } else {
+      setStep(2);
+    }
+  };
+
+  const handleTimingClick = (option) => {
+    setAppointmentTimeframe(option);
+    // For now, stop here. Next steps will be added later.
+  };
+
+  const handleBack = () => {
+    if (step === 2) {
+      setStep(1);
+      setAppointmentTimeframe(null);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -42,6 +79,106 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     onSendMessage(input);
     setInput('');
   };
+
+  // Render logic for new flow
+  if (!freeChat) {
+    return (
+      <div className="flex flex-col w-80 h-[500px] bg-white rounded-lg shadow-xl">
+        {/* Header */}
+        <div 
+          className="flex items-center justify-between p-3 rounded-t-lg text-white"
+          style={{ backgroundColor: primaryColor }}
+        >
+          <h2 className="text-base font-semibold truncate">Chat Assistant</h2>
+          <button
+            onClick={onClose}
+            className="text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent"
+            aria-label="Close chat"
+          >
+            <FaTimes className="w-4 h-4" />
+          </button>
+        </div>
+        {/* Step 1: Concern Selection */}
+        {step === 1 && (
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="mb-4 text-center font-semibold">🦷 How can we serve you? <br />Click on your concern:</div>
+            <div className="grid grid-cols-2 gap-2 w-full max-w-xs mb-4">
+              {concernOptions.map((option) => (
+                <button
+                  key={option}
+                  className="py-2 px-3 rounded-lg border border-gray-300 bg-gray-50 hover:bg-blue-100 text-gray-800 font-medium focus:outline-none"
+                  onClick={() => handleConcernClick(option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Step 2: Appointment Timing */}
+        {step === 2 && (
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="mb-4 text-center font-semibold">📅 How soon would you like an appointment?</div>
+            <div className="flex flex-col gap-2 w-full max-w-xs mb-4">
+              {timingOptions.map((option) => (
+                <button
+                  key={option}
+                  className="py-2 px-3 rounded-lg border border-gray-300 bg-gray-50 hover:bg-blue-100 text-gray-800 font-medium focus:outline-none"
+                  onClick={() => handleTimingClick(option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <button
+              className="mt-2 text-blue-600 underline text-sm"
+              onClick={handleBack}
+            >
+              Back
+            </button>
+          </div>
+        )}
+        {/* Disabled input at bottom */}
+        <form className="p-4 border-t">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message..."
+              className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
+              disabled={!freeChat}
+            />
+            <button
+              type="submit"
+              className="p-2 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: primaryColor }}
+              disabled={!input.trim() || !freeChat}
+            >
+              <FaPaperPlane />
+            </button>
+          </div>
+        </form>
+        <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
+          <a
+            href="/privacy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#888", textDecoration: "none" }}
+            onClick={(e) => {
+              e.preventDefault();
+              window.open("/privacy.html", "_blank");
+            }}
+          >
+            Privacy Policy
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ... existing code for free chat ...
+  // (Keep your original chat window rendering here for free chat mode)
 
   return (
     <div className="flex flex-col w-80 h-[500px] bg-white rounded-lg shadow-xl">
