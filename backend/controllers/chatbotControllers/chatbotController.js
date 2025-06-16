@@ -13,6 +13,7 @@ import { applyResponseOverrides } from "./overrideService.js";
 import { DENTAL_KEYWORDS_FOR_TRACKING, RESPONSE_TEMPLATES } from "./chatbotConstants.js"; // Import RESPONSE_TEMPLATES too
 import { redactPII } from '../../utils/piiFilter.js';
 import { extractContactInfo, extractExtraDetails } from "./extractContactInfo.js";
+import Lead from '../../models/Lead.js'; // Add this import at the top if not present
 
 // Removed session map, timeout, cleanup (moved to sessionService)
 
@@ -403,6 +404,12 @@ const processChatMessage = async (message, sessionId, businessId) => {
         const contactInfo = extractContactInfo(message);
         const extraDetails = extractExtraDetails(message);
         if (contactInfo && contactInfo.name && contactInfo.phone && (extraDetails.concern || extraDetails.timing)) {
+            // Check for existing lead
+            const existingLead = await Lead.findOne({
+                businessId,
+                $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
+            });
+
             const leadContext = {
                 businessId,
                 name: contactInfo.name,
@@ -413,8 +420,30 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 messageHistory: session.messages,
                 details: extraDetails
             };
-            console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
-            await saveLead(leadContext);
+
+            if (existingLead) {
+                // Update existing lead with new details
+                existingLead.name = contactInfo.name;
+                existingLead.phone = contactInfo.phone;
+                existingLead.email = contactInfo.email || existingLead.email;
+                existingLead.service = leadContext.serviceInterest;
+                existingLead.reason = `Patient's Concern: ${leadContext.problemDescription}`;
+                existingLead.details = extraDetails;
+                existingLead.lastContactedAt = new Date();
+                existingLead.status = 'new';
+                existingLead.interactions.push({
+                    type: 'chatbot',
+                    status: 'Re-engaged via Chatbot',
+                    message: `User re-engaged via chatbot. Concern: ${leadContext.problemDescription}`,
+                    service: leadContext.serviceInterest
+                });
+                await existingLead.save();
+                console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
+            } else {
+                // Create new lead
+                console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
+                await saveLead(leadContext);
+            }
         }
 
         // Track conversation end
