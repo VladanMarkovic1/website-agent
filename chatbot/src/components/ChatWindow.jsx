@@ -196,7 +196,18 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           <FaTimes className="w-4 h-4" />
         </button>
       </div>
-
+      {/* Back button for free chat mode */}
+      <button
+        className="text-blue-600 underline text-sm mx-4 my-2 self-start"
+        onClick={() => {
+          setFreeChat(false);
+          setStep(1);
+          setSelectedConcern(null);
+          setAppointmentTimeframe(null);
+        }}
+      >
+        ← Back
+      </button>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.map((message, index) => (
