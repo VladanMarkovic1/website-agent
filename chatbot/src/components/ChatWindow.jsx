@@ -17,6 +17,9 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const [appointmentTimeframe, setAppointmentTimeframe] = useState(null);
   const [freeChat, setFreeChat] = useState(false);
   const [userDetails, setUserDetails] = useState({ name: '', phone: '', email: '' });
+  const [bestDays, setBestDays] = useState([]); // array of selected days
+  const [preferredTime, setPreferredTime] = useState('');
+  const [hasInsurance, setHasInsurance] = useState('');
 
   // Button options
   const concernOptions = [
@@ -25,6 +28,11 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const timingOptions = [
     'Now', '1-3 weeks', '1-3 months'
   ];
+
+  // Day and time options
+  const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const timeOptions = ['7am-12pm', '1pm-4pm'];
+  const insuranceOptions = ['Yes', 'No'];
 
   // Update header title based on service mentions in messages
   useEffect(() => {
@@ -65,8 +73,23 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     setAppointmentTimeframe(option);
     if (option === 'Now') {
       setStep(3);
+    } else {
+      setStep(4); // new step for best days
     }
-    // For other options, you can add more logic later
+  };
+
+  const handleDayToggle = (day) => {
+    setBestDays((prev) => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
+
+  const handleTimeSelect = (time) => {
+    setPreferredTime(time);
+    setStep(6); // insurance step
+  };
+
+  const handleInsuranceSelect = (val) => {
+    setHasInsurance(val);
+    setStep(3); // go to name/phone/email form
   };
 
   const handleUserDetailChange = (e) => {
@@ -78,7 +101,20 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       setStep(1);
       setAppointmentTimeframe(null);
     } else if (step === 3) {
+      if (appointmentTimeframe === 'Now') {
+        setStep(2);
+      } else {
+        setStep(6); // insurance step
+      }
+    } else if (step === 4) {
       setStep(2);
+      setBestDays([]);
+    } else if (step === 5) {
+      setStep(4);
+      setPreferredTime('');
+    } else if (step === 6) {
+      setStep(5);
+      setHasInsurance('');
     }
   };
 
@@ -191,6 +227,82 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               // onClick={handleSubmitDetails} // Implement this later
             >
               Submit
+            </button>
+          </div>
+        )}
+        {/* Step 4: Best Days */}
+        {step === 4 && (
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="mb-4 text-center font-semibold">What days work the best?</div>
+            <div className="grid grid-cols-2 gap-2 w-full max-w-xs mb-4">
+              {dayOptions.map((day) => (
+                <button
+                  key={day}
+                  className={`py-2 px-3 rounded-lg border ${bestDays.includes(day) ? 'bg-blue-200 border-blue-400' : 'bg-gray-50 border-gray-300'} text-gray-800 font-medium focus:outline-none`}
+                  onClick={() => handleDayToggle(day)}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+            <button
+              className="mt-2 text-blue-600 underline text-sm"
+              onClick={handleBack}
+            >
+              Back
+            </button>
+            <button
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+              disabled={bestDays.length === 0}
+              onClick={() => setStep(5)}
+            >
+              Next
+            </button>
+          </div>
+        )}
+        {/* Step 5: Morning/Afternoon */}
+        {step === 5 && (
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="mb-4 text-center font-semibold">Do you prefer morning or afternoon appointment?</div>
+            <div className="flex flex-row gap-2 w-full max-w-xs mb-4">
+              {timeOptions.map((time) => (
+                <button
+                  key={time}
+                  className={`py-2 px-3 rounded-lg border ${preferredTime === time ? 'bg-blue-200 border-blue-400' : 'bg-gray-50 border-gray-300'} text-gray-800 font-medium focus:outline-none`}
+                  onClick={() => handleTimeSelect(time)}
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
+            <button
+              className="mt-2 text-blue-600 underline text-sm"
+              onClick={handleBack}
+            >
+              Back
+            </button>
+          </div>
+        )}
+        {/* Step 6: Dental Insurance */}
+        {step === 6 && (
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="mb-4 text-center font-semibold">Do you have dental insurance?</div>
+            <div className="flex flex-row gap-2 w-full max-w-xs mb-4">
+              {insuranceOptions.map((val) => (
+                <button
+                  key={val}
+                  className={`py-2 px-3 rounded-lg border ${hasInsurance === val ? 'bg-blue-200 border-blue-400' : 'bg-gray-50 border-gray-300'} text-gray-800 font-medium focus:outline-none`}
+                  onClick={() => handleInsuranceSelect(val)}
+                >
+                  {val}
+                </button>
+              ))}
+            </div>
+            <button
+              className="mt-2 text-blue-600 underline text-sm"
+              onClick={handleBack}
+            >
+              Back
             </button>
           </div>
         )}
