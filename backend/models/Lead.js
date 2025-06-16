@@ -126,7 +126,12 @@ const leadSchema = new mongoose.Schema({
         notes: String,
         message: String,
         service: String
-    }]
+    }],
+    details: {
+        type: Object,
+        required: false,
+        default: {}
+    }
 }, {
     // Ensure getters are applied when converting to JSON/Object
     toJSON: { getters: true }, 

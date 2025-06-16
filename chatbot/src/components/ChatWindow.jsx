@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaPaperPlane } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
+import { submitLead } from '../utils/api';
 
 const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5' }) => {
   // Add console log here
@@ -20,6 +21,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const [bestDays, setBestDays] = useState([]); // array of selected days
   const [preferredTime, setPreferredTime] = useState('');
   const [hasInsurance, setHasInsurance] = useState('');
+  const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'error'
 
   // Button options
   const concernOptions = [
@@ -126,6 +128,30 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     setInput('');
   };
 
+  const handleSubmitDetails = async () => {
+    const leadPayload = {
+      businessId: import.meta.env.VITE_BUSINESS_ID,
+      name: userDetails.name,
+      phone: userDetails.phone,
+      email: userDetails.email,
+      problemDescription: selectedConcern,
+      details: {
+        concern: selectedConcern,
+        timing: appointmentTimeframe,
+        bestDays,
+        preferredTime,
+        hasInsurance
+      }
+    };
+    try {
+      await submitLead(leadPayload);
+      setSubmitStatus('success');
+      // Optionally reset state or show a thank you message
+    } catch (e) {
+      setSubmitStatus('error');
+    }
+  };
+
   // Render logic for new flow
   if (!freeChat) {
     return (
@@ -224,10 +250,12 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             <button
               className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
               disabled={!(userDetails.name && userDetails.phone && userDetails.email)}
-              // onClick={handleSubmitDetails} // Implement this later
+              onClick={handleSubmitDetails}
             >
               Submit
             </button>
+            {submitStatus === 'success' && <div className="mt-2 text-green-600">Thank you! Your request has been submitted.</div>}
+            {submitStatus === 'error' && <div className="mt-2 text-red-600">There was an error submitting your request. Please try again.</div>}
           </div>
         )}
         {/* Step 4: Best Days */}

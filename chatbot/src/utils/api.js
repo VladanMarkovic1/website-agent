@@ -74,4 +74,14 @@ export const triggerScraping = async () => {
   }
 };
 
+export const submitLead = async (leadData) => {
+  try {
+    const response = await api.post(`/leads`, leadData);
+    return response;
+  } catch (error) {
+    console.error('Failed to submit lead:', error);
+    throw error;
+  }
+};
+
 export default api; 
