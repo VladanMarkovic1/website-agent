@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaPaperPlane } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
-import { submitLead } from '../utils/api';
 
 const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5' }) => {
   // Add console log here
