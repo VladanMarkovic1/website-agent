@@ -371,27 +371,29 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             </button>
           </div>
         )}
-        {/* Disabled input at bottom */}
-        <form className="p-4 border-t">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={freeChat ? "Type your message..." : "Click Other to unlock chat."}
-              className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
-              disabled={!freeChat}
-            />
-            <button
-              type="submit"
-              className="p-2 text-white rounded-lg transition-colors"
-              style={{ backgroundColor: primaryColor }}
-              disabled={!input.trim() || !freeChat}
-            >
-              <FaPaperPlane />
-            </button>
-          </div>
-        </form>
+        {/* Disabled input at bottom - Only show if freeChat is true */}
+        {freeChat && (
+          <form className="p-4 border-t" onSubmit={handleSubmit}>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
+                ref={inputRef}
+              />
+              <button
+                type="submit"
+                className="p-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: primaryColor }}
+                disabled={!input.trim()}
+              >
+                <FaPaperPlane />
+              </button>
+            </div>
+          </form>
+        )}
         <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
           <a
             href="/privacy.html"
@@ -442,53 +444,48 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         ← Back
       </button>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4">
         {messages.map((message, index) => (
           <div
-            key={message.id}
-            className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            key={index}
+            className={`mb-4 ${
+              message.role === "user" ? "text-right" : "text-left"
+            }`}
           >
             <div
-              className={`max-w-[85%] p-2.5 rounded-lg text-sm ${
-                message.type === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-800'
+              className={`inline-block p-3 rounded-lg ${
+                message.role === "user"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-800"
               }`}
             >
-              <ReactMarkdown
-                components={{
-                  p: ({ children }) => <p className="m-0">{children}</p>
-                }}
-              >
-                {message.content}
-              </ReactMarkdown>
+              <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
           </div>
         ))}
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 text-gray-800 p-3 rounded-lg">
-              <div className="flex space-x-2 items-center">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+          <div className="text-left">
+            <div className="inline-block p-3 rounded-lg bg-gray-100 text-gray-800">
+              <div className="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
               </div>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t">
+      {/* Input form for free chat mode */}
+      <form className="p-4 border-t" onSubmit={handleSubmit}>
         <div className="flex gap-2">
           <input
-            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={freeChat ? "Type your message..." : "Click Other to unlock chat."}
+            placeholder="Type your message..."
             className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
+            ref={inputRef}
           />
           <button
             type="submit"
@@ -500,21 +497,20 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           </button>
         </div>
       </form>
-
-        <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
-            <a
-            href="/privacy.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#888", textDecoration: "none" }}
-            onClick={(e) => {
-              e.preventDefault();
-              window.open("/privacy.html", "_blank");
-            }}
-          >
-            Privacy Policy
-          </a>
-        </div>
+      <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
+        <a
+          href="/privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#888", textDecoration: "none" }}
+          onClick={(e) => {
+            e.preventDefault();
+            window.open("/privacy.html", "_blank");
+          }}
+        >
+          Privacy Policy
+        </a>
+      </div>
     </div>
   );
 };
