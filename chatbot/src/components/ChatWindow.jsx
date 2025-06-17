@@ -374,27 +374,33 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         )}
         {/* Step 6: Dental Insurance */}
         {step === 6 && (
-          <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <div className="mb-4 text-center font-semibold">Do you have dental insurance?</div>
-            <div className="flex flex-row gap-2 w-full max-w-xs mb-4">
+          <div className="flex-1 flex flex-col items-center p-4">
+            <div className="w-full pt-6 pb-7 text-center font-bold text-lg">Do you have dental insurance?</div>
+            <div className="flex flex-row justify-center gap-4 w-full max-w-xs mb-8">
               {insuranceOptions.map((val) => (
                 <button
                   key={val}
-                  className={`py-2 px-3 rounded-lg border ${hasInsurance === val ? 'bg-blue-200 border-blue-400' : 'bg-gray-50 border-gray-300'} text-gray-800 font-medium focus:outline-none`}
+                  className={`flex-1 py-3 rounded-xl font-medium text-base transition-all duration-150 shadow-sm focus:outline-none
+                    ${hasInsurance === val
+                      ? 'text-white scale-105'
+                      : 'text-gray-700'} bg-gray-100 hover:bg-gray-200`}
+                  style={hasInsurance === val ? { backgroundColor: primaryColor, color: '#fff', border: 'none' } : { border: 'none' }}
                   onClick={() => handleInsuranceSelect(val)}
                 >
                   {val}
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={handleBack}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
-            >
-              <FaArrowLeft className="w-3 h-3" />
-              Back
-            </button>
+            <div className="flex justify-center w-full max-w-xs mt-2">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none"
+              >
+                <FaArrowLeft className="w-4 h-4" />
+                Back
+              </button>
+            </div>
           </div>
         )}
         {/* Bottom section with input and privacy policy */}
