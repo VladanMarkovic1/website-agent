@@ -220,9 +220,9 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               </button>
               <button
                 onClick={() => handleConcernClick('Other')}
-                className="col-span-2 flex flex-col items-center py-4 text-lg rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
+                className="col-span-2 flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 font-semibold text-gray-800"
               >
-                <span className="font-semibold text-gray-800">Other Concerns</span>
+                Other Concerns
               </button>
             </div>
           </div>
