@@ -389,7 +389,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
                 />
                 <button
                   onClick={handleSubmit}
-                  className="p-2.5 text-white rounded-lg transition-colors"
+                  className="p-2.5 text-white rounded-lg transition-colors focus:outline-none focus:ring-0 border-0 shadow-none"
                   style={{ backgroundColor: primaryColor }}
                   disabled={!input.trim() || !freeChat}
                 >
