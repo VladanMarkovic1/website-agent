@@ -374,42 +374,44 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           </div>
         )}
         {/* Input form - Show initially and when Other is selected, hide when specific concern is selected */}
-        {(!selectedConcern || freeChat) && (
-          <form className="p-4 border-t" onSubmit={handleSubmit}>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Click other to unlock chat..."
-                className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
-                ref={inputRef}
-                disabled={!freeChat}
-              />
-              <button
-                type="submit"
-                className="p-2 text-white rounded-lg transition-colors"
-                style={{ backgroundColor: primaryColor }}
-                disabled={!input.trim() || !freeChat}
-              >
-                <FaPaperPlane />
-              </button>
-            </div>
-          </form>
-        )}
-        <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
-          <a
-            href="/privacy.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#888", textDecoration: "none" }}
-            onClick={(e) => {
-              e.preventDefault();
-              window.open("/privacy.html", "_blank");
-            }}
-          >
-            Privacy Policy
-          </a>
+        <div className="mt-auto">
+          {(!selectedConcern || freeChat) && (
+            <form className="p-3 border-t" onSubmit={handleSubmit}>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Click other to unlock chat..."
+                  className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  ref={inputRef}
+                  disabled={!freeChat}
+                />
+                <button
+                  type="submit"
+                  className="p-2 text-white rounded-lg transition-colors"
+                  style={{ backgroundColor: primaryColor }}
+                  disabled={!input.trim() || !freeChat}
+                >
+                  <FaPaperPlane className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          )}
+          <div className="text-center py-1 text-[11px] text-gray-500">
+            <a
+              href="/privacy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-700"
+              onClick={(e) => {
+                e.preventDefault();
+                window.open("/privacy.html", "_blank");
+              }}
+            >
+              Privacy Policy
+            </a>
+          </div>
         </div>
       </div>
     );
