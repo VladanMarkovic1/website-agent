@@ -304,16 +304,16 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         {/* Step 4: Best Days */}
         {step === 4 && (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <div className="mb-6 text-center font-bold text-lg">What days work the best?</div>
+            <div className="mt-2 mb-7 text-center font-bold text-lg">What days work the best?</div>
             <div className="grid grid-cols-3 gap-3 w-full max-w-xs mb-8">
               {dayOptions.map((day) => (
                 <button
                   key={day}
                   className={`py-3 rounded-xl font-medium text-base transition-all duration-150 shadow-sm focus:outline-none
                     ${bestDays.includes(day)
-                      ? `bg-[${primaryColor}] text-white scale-105`
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                  style={bestDays.includes(day) ? { backgroundColor: primaryColor, color: '#fff' } : {}}
+                      ? 'text-white scale-105'
+                      : 'text-gray-700'} bg-gray-100 hover:bg-gray-200`}
+                  style={bestDays.includes(day) ? { backgroundColor: primaryColor, color: '#fff', border: 'none' } : { border: 'none' }}
                   onClick={() => handleDayToggle(day)}
                 >
                   {day}
