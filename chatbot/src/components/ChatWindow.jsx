@@ -2,6 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaPaperPlane, FaArrowLeft } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 
+const getSubmissionMessage = () => {
+  const today = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+  if (today === 0 || today === 6) {
+    return 'We are closed for the weekend, but we will call you early on Monday with more information.';
+  }
+  return 'Our team will get back to you within 2 hours with more information.';
+};
+
 const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5' }) => {
   // Add console log here
   console.log('[ChatWindow] Rendering with messages:', messages);
@@ -285,19 +293,24 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             <button
               type="button"
               onClick={handleBack}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
+              className="flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none mt-2 mb-2"
             >
-              <FaArrowLeft className="w-3 h-3" />
+              <FaArrowLeft className="w-4 h-4" />
               Back
             </button>
             <button
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+              className="mt-4 px-4 py-2 text-white rounded-lg disabled:opacity-50 transition-colors duration-150"
+              style={{ backgroundColor: (userDetails.name && userDetails.phone && userDetails.email) ? primaryColor : '#ccc', border: 'none' }}
               disabled={!(userDetails.name && userDetails.phone && userDetails.email)}
               onClick={handleSubmitDetails}
             >
               Submit
             </button>
-            {submitStatus === 'success' && <div className="mt-2 text-green-600">Thank you! Your request has been submitted.</div>}
+            {submitStatus === 'success' && (
+              <div className="mt-4 text-green-600 text-base font-medium text-left w-full max-w-xs">
+                {getSubmissionMessage()}
+              </div>
+            )}
             {submitStatus === 'error' && <div className="mt-2 text-red-600">There was an error submitting your request. Please try again.</div>}
           </div>
         )}
