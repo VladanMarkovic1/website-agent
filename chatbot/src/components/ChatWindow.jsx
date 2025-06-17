@@ -549,12 +549,12 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           </div>
         </form>
       )}
-      <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
+      <div className="w-full text-center py-2">
         <a
           href="/privacy.html"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "#888", textDecoration: "none" }}
+          className="text-[13px] text-black font-medium hover:underline"
           onClick={(e) => {
             e.preventDefault();
             window.open("/privacy.html", "_blank");
