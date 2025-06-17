@@ -324,11 +324,10 @@ const processChatMessage = async (message, sessionId, businessId) => {
         await _detectAndSetInitialServiceInterest(session, businessData, message);
 
         // Prepare message history (use session.messages)
-        const sessionMessages = session.messages || []; // Should be redacted already if fetched from DB
+        const sessionMessages = session.messages || [];
 
         // Get previous partial info
         const previousPartialInfo = session.partialContactInfo || { name: null, phone: null, email: null };
-        // console.log("[Controller] Retrieved previous partial contact info from session:", previousPartialInfo); // Potential PII - Removed
 
         // Generate response (AI + Overrides)
         const { classifiedIntent, responsePayload } = await _generateAndRefineResponse(
@@ -339,8 +338,6 @@ const processChatMessage = async (message, sessionId, businessId) => {
             session,
             previousPartialInfo
         );
-
-        // console.log("[Controller Flow] Response payload after _generateAndRefineResponse (inc. AI type overrides):", JSON.stringify(responsePayload, null, 2)); // Debug - Removed
 
         // --- Second Override Pass (Based on user message type) --- 
         const userMessageTypes = detectRequestTypes(message);
@@ -359,109 +356,87 @@ const processChatMessage = async (message, sessionId, businessId) => {
         }
 
         // --- Store/Update Partial Contact Info in Session ---
-        // Use the contactInfo from the original classification attempt
         if (classifiedIntent?.type === 'PARTIAL_CONTACT_INFO_PROVIDED' && classifiedIntent.contactInfo) {
-             const accumulatedPartialInfo = classifiedIntent.contactInfo; // This has merged previous + current extraction
-             // Only update session if the accumulated info differs from what was already there
-             // (or if there was no previous partial info)
+             const accumulatedPartialInfo = classifiedIntent.contactInfo;
              if (!session.partialContactInfo || JSON.stringify(session.partialContactInfo) !== JSON.stringify(accumulatedPartialInfo)) {
-                  await updateSessionData(sessionId, { partialContactInfo: accumulatedPartialInfo }); // Storing raw PII in session - review if needed
-                  session.partialContactInfo = accumulatedPartialInfo; // Update local state
-                  // console.log('[Controller] Updated partialContactInfo in session:', accumulatedPartialInfo); // Potential PII - Removed
-             } else {
-                  // console.log('[Controller] Partial info detected, but session already has the same accumulated data.'); // Debug - Removed
+                  await updateSessionData(sessionId, { partialContactInfo: accumulatedPartialInfo });
+                  session.partialContactInfo = accumulatedPartialInfo;
              }
         } else if (classifiedIntent?.type === 'CONTACT_INFO_PROVIDED'){
              // If complete info was provided, ensure partial info is cleared later during lead saving 
-             // (which already happens in _handleLeadSavingIfNeeded)
-             // console.log('[Controller] Complete contact info provided.'); // Debug - Removed
         } else if (session.partialContactInfo) {
              // If we have partial info in session, but classifier didn't detect partial/complete this turn
-             // console.log(`[Controller] Classifier did not detect partial/complete info this turn (type: ${classifiedIntent?.type}). Keeping existing partial info in session:`, session.partialContactInfo); // Potential PII - Removed
         }
         // --- END Store/Update Partial Contact Info --- 
 
         // Track problem description if needed 
         await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type, classifiedIntent?.type);
 
-        // Save Lead if contact info provided (AI classifier way)
-        const originalClassificationForLeadCheck = classifiedIntent; 
-        const leadWasSavedByAI = await _handleLeadSavingIfNeeded(finalResponse, session, originalClassificationForLeadCheck);
+        // --- Only use fallback: Always save lead if message contains all info (for button-based flow) ---
+        const contactInfo = extractContactInfo(message);
+        const extraDetails = extractExtraDetails(message);
+        if (contactInfo && contactInfo.name && contactInfo.phone && (extraDetails.concern || extraDetails.timing)) {
+            // Check for existing lead
+            const existingLead = await Lead.findOne({
+                businessId,
+                $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
+            });
 
-        // --- Fallback: Always save lead if message contains all info (for button-based flow) ---
-        if (!leadWasSavedByAI) {
-            const contactInfo = extractContactInfo(message);
-            const extraDetails = extractExtraDetails(message);
-            if (contactInfo && contactInfo.name && contactInfo.phone && (extraDetails.concern || extraDetails.timing)) {
-                // Check for existing lead
-                const existingLead = await Lead.findOne({
-                    businessId,
-                    $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
+            const leadContext = {
+                businessId,
+                name: contactInfo.name,
+                phone: contactInfo.phone,
+                email: contactInfo.email,
+                serviceInterest: extraDetails.concern || 'Dental Consultation',
+                problemDescription: extraDetails.concern || 'User provided contact details after chatbot interaction.',
+                messageHistory: session.messages,
+                details: extraDetails
+            };
+
+            if (existingLead) {
+                // Update existing lead with new details
+                existingLead.name = contactInfo.name;
+                existingLead.phone = contactInfo.phone;
+                existingLead.email = contactInfo.email || existingLead.email;
+                existingLead.service = leadContext.serviceInterest;
+                existingLead.reason = `Patient's Concern: ${leadContext.problemDescription}`;
+                existingLead.details = extraDetails;
+                existingLead.lastContactedAt = new Date();
+                existingLead.status = 'new';
+                existingLead.interactions.push({
+                    type: 'chatbot',
+                    status: 'Re-engaged via Chatbot',
+                    message: `User re-engaged via chatbot. Concern: ${leadContext.problemDescription}`,
+                    service: leadContext.serviceInterest
                 });
-
-                const leadContext = {
-                    businessId,
-                    name: contactInfo.name,
-                    phone: contactInfo.phone,
-                    email: contactInfo.email,
-                    serviceInterest: extraDetails.concern || 'Dental Consultation',
-                    problemDescription: extraDetails.concern || 'User provided contact details after chatbot interaction.',
-                    messageHistory: session.messages,
-                    details: extraDetails
-                };
-
-                if (existingLead) {
-                    // Update existing lead with new details
-                    existingLead.name = contactInfo.name;
-                    existingLead.phone = contactInfo.phone;
-                    existingLead.email = contactInfo.email || existingLead.email;
-                    existingLead.service = leadContext.serviceInterest;
-                    existingLead.reason = `Patient's Concern: ${leadContext.problemDescription}`;
-                    existingLead.details = extraDetails;
-                    existingLead.lastContactedAt = new Date();
-                    existingLead.status = 'new';
-                    existingLead.interactions.push({
-                        type: 'chatbot',
-                        status: 'Re-engaged via Chatbot',
-                        message: `User re-engaged via chatbot. Concern: ${leadContext.problemDescription}`,
-                        service: leadContext.serviceInterest
-                    });
-                    await existingLead.save();
-                    console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
-                } else {
-                    // Create new lead
-                    console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
-                    await saveLead(leadContext);
-                }
+                await existingLead.save();
+                console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
+            } else {
+                // Create new lead
+                console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
+                await saveLead(leadContext);
             }
         }
 
         // Track conversation end
         await _trackConversationCompletionIfNeeded(finalResponse, session);
-        
         // Log messages (use detected user type)
-        const userMessageType = userMessageTypes.length > 0 ? userMessageTypes.join('/') : 'UNKNOWN'; // Or use classifiedIntent?.type if preferred
-        await _logInteractionMessages(sessionId, message, userMessageType, finalResponse); // This handles redaction for DB logs
-
-        // Update session last bot response type
+        const userMessageType = userMessageTypes.length > 0 ? userMessageTypes.join('/') : 'UNKNOWN';
+        await _logInteractionMessages(sessionId, message, userMessageType, finalResponse);
         if (finalResponse.type) {
             await updateSessionData(sessionId, { lastBotResponseType: finalResponse.type });
-            // console.log("[Session Update] Stored lastBotResponseType:", finalResponse.type); // Debug - Removed
         }
-
-        // Return only the string response object expected by caller
         return {
-             response: escapeHtml(finalResponse.response), // Return unredacted response for UI
+             response: escapeHtml(finalResponse.response),
              type: finalResponse.type,
-             sessionId // Include sessionId if needed by caller (e.g. WebSocket handler)
+             sessionId
         };
     } catch (error) {
-        console.error("Error processing message:", error); // Keep essential error log
-         // Return error structure expected by caller
+        console.error("Error processing message:", error);
          return {
              response: escapeHtml(RESPONSE_TEMPLATES.ERROR()),
              type: 'ERROR',
-             sessionId: sessionId || 'unknown' // Include sessionId if possible
+             sessionId: sessionId || 'unknown'
          };
     }
 };
