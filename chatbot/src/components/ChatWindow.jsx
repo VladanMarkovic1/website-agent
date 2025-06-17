@@ -100,6 +100,8 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const handleBack = () => {
     if (step === 2) {
       setStep(1);
+      setSelectedConcern(null);
+      setFreeChat(false); // Reset freeChat when going back to first step
       setAppointmentTimeframe(null);
     } else if (step === 3) {
       if (appointmentTimeframe === 'Now') {
@@ -379,15 +381,16 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
+                placeholder="Click other to unlock chat..."
                 className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
                 ref={inputRef}
+                disabled={!freeChat}
               />
               <button
                 type="submit"
                 className="p-2 text-white rounded-lg transition-colors"
                 style={{ backgroundColor: primaryColor }}
-                disabled={!input.trim()}
+                disabled={!input.trim() || !freeChat}
               >
                 <FaPaperPlane />
               </button>
