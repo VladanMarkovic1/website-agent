@@ -388,6 +388,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
             });
 
+            // Only use the concern as the problemDescription, never concatenate with name
             const leadContext = {
                 businessId,
                 name: contactInfo.name,
