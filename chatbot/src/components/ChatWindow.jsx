@@ -304,33 +304,41 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         {/* Step 4: Best Days */}
         {step === 4 && (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <div className="mb-4 text-center font-semibold">What days work the best?</div>
-            <div className="grid grid-cols-2 gap-2 w-full max-w-xs mb-4">
+            <div className="mb-6 text-center font-bold text-lg">What days work the best?</div>
+            <div className="grid grid-cols-3 gap-3 w-full max-w-xs mb-8">
               {dayOptions.map((day) => (
                 <button
                   key={day}
-                  className={`py-2 px-3 rounded-lg border ${bestDays.includes(day) ? 'bg-blue-200 border-blue-400' : 'bg-gray-50 border-gray-300'} text-gray-800 font-medium focus:outline-none`}
+                  className={`py-3 rounded-xl font-medium text-base transition-all duration-150 shadow-sm focus:outline-none
+                    ${bestDays.includes(day)
+                      ? `bg-[${primaryColor}] text-white scale-105`
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  style={bestDays.includes(day) ? { backgroundColor: primaryColor, color: '#fff' } : {}}
                   onClick={() => handleDayToggle(day)}
                 >
                   {day}
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={handleBack}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
-            >
-              <FaArrowLeft className="w-3 h-3" />
-              Back
-            </button>
-            <button
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
-              disabled={bestDays.length === 0}
-              onClick={() => setStep(5)}
-            >
-              Next
-            </button>
+            <div className="flex flex-row justify-between w-full max-w-xs mt-2 gap-4">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex-1 flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none"
+              >
+                <FaArrowLeft className="w-4 h-4" />
+                Back
+              </button>
+              <button
+                type="button"
+                className="flex-1 flex items-center justify-center px-4 py-2 rounded-full text-white text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none"
+                style={{ backgroundColor: bestDays.length > 0 ? primaryColor : '#ccc', cursor: bestDays.length > 0 ? 'pointer' : 'not-allowed' }}
+                disabled={bestDays.length === 0}
+                onClick={() => setStep(5)}
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
         {/* Step 5: Morning/Afternoon */}
