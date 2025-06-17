@@ -371,8 +371,8 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             </button>
           </div>
         )}
-        {/* Disabled input at bottom - Only show if freeChat is true */}
-        {freeChat && (
+        {/* Input form - Show initially and when Other is selected, hide when specific concern is selected */}
+        {(!selectedConcern || freeChat) && (
           <form className="p-4 border-t" onSubmit={handleSubmit}>
             <div className="flex gap-2">
               <input
@@ -476,27 +476,29 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         )}
         <div ref={messagesEndRef} />
       </div>
-      {/* Input form for free chat mode */}
-      <form className="p-4 border-t" onSubmit={handleSubmit}>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
-            ref={inputRef}
-          />
-          <button
-            type="submit"
-            className="p-2 text-white rounded-lg transition-colors"
-            style={{ backgroundColor: primaryColor }}
-            disabled={!input.trim()}
-          >
-            <FaPaperPlane />
-          </button>
-        </div>
-      </form>
+      {/* Input form - Show initially and when Other is selected, hide when specific concern is selected */}
+      {(!selectedConcern || freeChat) && (
+        <form className="p-4 border-t" onSubmit={handleSubmit}>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message..."
+              className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
+              ref={inputRef}
+            />
+            <button
+              type="submit"
+              className="p-2 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: primaryColor }}
+              disabled={!input.trim()}
+            >
+              <FaPaperPlane />
+            </button>
+          </div>
+        </form>
+      )}
       <div style={{ textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }}>
         <a
           href="/privacy.html"
