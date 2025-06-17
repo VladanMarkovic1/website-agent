@@ -535,12 +535,12 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
+              className="flex-1 p-2 rounded-lg focus:outline-none focus:border-blue-500 border-0"
               ref={inputRef}
             />
             <button
               type="submit"
-              className="p-2 text-white rounded-lg transition-colors"
+              className="p-2 text-white rounded-lg transition-colors border-0 shadow-none focus:outline-none"
               style={{ backgroundColor: primaryColor }}
               disabled={!input.trim()}
             >
