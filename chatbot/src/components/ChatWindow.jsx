@@ -528,7 +528,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </div>
       {/* Input form - Show initially and when Other is selected, hide when specific concern is selected */}
       {(!selectedConcern || freeChat) && (
-        <form className="p-4 border-t" onSubmit={handleSubmit}>
+        <form className="p-2 border-t" onSubmit={handleSubmit}>
           <div className="flex gap-2">
             <input
               type="text"
@@ -549,7 +549,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           </div>
         </form>
       )}
-      <div className="w-full text-center pt-1 pb-2">
+      <div className="w-full text-center pt-0 pb-1">
         <a
           href="/privacy.html"
           target="_blank"
