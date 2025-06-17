@@ -373,22 +373,22 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             </button>
           </div>
         )}
-        {/* Input form - Show initially and when Other is selected, hide when specific concern is selected */}
-        <div className="mt-auto">
+        {/* Bottom section with input and privacy policy */}
+        <div className="w-full mt-auto">
           {(!selectedConcern || freeChat) && (
-            <form className="p-3 border-t" onSubmit={handleSubmit}>
-              <div className="flex gap-2">
+            <div className="px-4 py-2 border-t">
+              <div className="flex gap-2 mb-1">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Click other to unlock chat..."
-                  className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm bg-gray-50"
                   ref={inputRef}
                   disabled={!freeChat}
                 />
                 <button
-                  type="submit"
+                  onClick={handleSubmit}
                   className="p-2 text-white rounded-lg transition-colors"
                   style={{ backgroundColor: primaryColor }}
                   disabled={!input.trim() || !freeChat}
@@ -396,22 +396,22 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
                   <FaPaperPlane className="w-4 h-4" />
                 </button>
               </div>
-            </form>
+              <div className="text-center text-[11px] text-gray-500">
+                <a
+                  href="/privacy.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-gray-700"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.open("/privacy.html", "_blank");
+                  }}
+                >
+                  Privacy Policy
+                </a>
+              </div>
+            </div>
           )}
-          <div className="text-center py-1 text-[11px] text-gray-500">
-            <a
-              href="/privacy.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-gray-700"
-              onClick={(e) => {
-                e.preventDefault();
-                window.open("/privacy.html", "_blank");
-              }}
-            >
-              Privacy Policy
-            </a>
-          </div>
         </div>
       </div>
     );
