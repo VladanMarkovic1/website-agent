@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaTimes, FaPaperPlane, FaArrowLeft } from 'react-icons/fa';
+import { FaTimes, FaPaperPlane, FaArrowLeft, FaCheckCircle } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 
 const getSubmissionMessage = () => {
@@ -223,56 +223,62 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         {/* Step 3: Collect Name, Phone, Email */}
         {step === 3 && (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <div className="mb-4 text-center font-semibold">Please enter your details so we can book your appointment:</div>
-            <input
-              type="text"
-              name="name"
-              value={userDetails.name}
-              onChange={handleUserDetailChange}
-              placeholder="Your Name"
-              className="mb-2 p-2 border rounded-lg w-full max-w-xs"
-              autoComplete="name"
-            />
-            <input
-              type="tel"
-              name="phone"
-              value={userDetails.phone}
-              onChange={handleUserDetailChange}
-              placeholder="Phone Number"
-              className="mb-2 p-2 border rounded-lg w-full max-w-xs"
-              autoComplete="tel"
-            />
-            <input
-              type="email"
-              name="email"
-              value={userDetails.email}
-              onChange={handleUserDetailChange}
-              placeholder="Email Address"
-              className="mb-2 p-2 border rounded-lg w-full max-w-xs"
-              autoComplete="email"
-            />
-            <button
-              type="button"
-              onClick={handleBack}
-              className="flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none mt-2 mb-2"
-            >
-              <FaArrowLeft className="w-4 h-4" />
-              Back
-            </button>
-            <button
-              className="mt-4 px-4 py-2 text-white rounded-lg disabled:opacity-50 transition-colors duration-150"
-              style={{ backgroundColor: (userDetails.name && userDetails.phone && userDetails.email) ? primaryColor : '#ccc', border: 'none' }}
-              disabled={!(userDetails.name && userDetails.phone && userDetails.email)}
-              onClick={handleSubmitDetails}
-            >
-              Submit
-            </button>
-            {submitStatus === 'success' && (
-              <div className="mt-4 text-green-600 text-base font-medium text-left w-full max-w-xs">
-                {getSubmissionMessage()}
+            {submitStatus === 'success' ? (
+              <div className="flex flex-col items-center justify-center w-full">
+                <FaCheckCircle className="text-green-500 mb-3" style={{ fontSize: 56 }} />
+                <div className="text-green-700 text-base font-semibold text-center mb-2">
+                  {getSubmissionMessage()}
+                </div>
               </div>
+            ) : (
+              <>
+                <div className="mb-4 text-center font-semibold">Please enter your details so we can book your appointment:</div>
+                <input
+                  type="text"
+                  name="name"
+                  value={userDetails.name}
+                  onChange={handleUserDetailChange}
+                  placeholder="Your Name"
+                  className="mb-2 p-2 border rounded-lg w-full max-w-xs"
+                  autoComplete="name"
+                />
+                <input
+                  type="tel"
+                  name="phone"
+                  value={userDetails.phone}
+                  onChange={handleUserDetailChange}
+                  placeholder="Phone Number"
+                  className="mb-2 p-2 border rounded-lg w-full max-w-xs"
+                  autoComplete="tel"
+                />
+                <input
+                  type="email"
+                  name="email"
+                  value={userDetails.email}
+                  onChange={handleUserDetailChange}
+                  placeholder="Email Address"
+                  className="mb-2 p-2 border rounded-lg w-full max-w-xs"
+                  autoComplete="email"
+                />
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none mt-2 mb-2"
+                >
+                  <FaArrowLeft className="w-4 h-4" />
+                  Back
+                </button>
+                <button
+                  className="mt-4 px-4 py-2 text-white rounded-lg disabled:opacity-50 transition-colors duration-150"
+                  style={{ backgroundColor: (userDetails.name && userDetails.phone && userDetails.email) ? primaryColor : '#ccc', border: 'none' }}
+                  disabled={!(userDetails.name && userDetails.phone && userDetails.email)}
+                  onClick={handleSubmitDetails}
+                >
+                  Submit
+                </button>
+                {submitStatus === 'error' && <div className="mt-2 text-red-600">There was an error submitting your request. Please try again.</div>}
+              </>
             )}
-            {submitStatus === 'error' && <div className="mt-2 text-red-600">There was an error submitting your request. Please try again.</div>}
           </div>
         )}
         {/* Step 4: Best Days */}
