@@ -390,7 +390,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
                 <button
                   onClick={handleSubmit}
                   className="p-2.5 text-white rounded-lg transition-colors"
-                  style={{ backgroundColor: '#0088CC' }}
+                  style={{ backgroundColor: primaryColor }}
                   disabled={!input.trim() || !freeChat}
                 >
                   <FaPaperPlane className="w-4 h-4" />
