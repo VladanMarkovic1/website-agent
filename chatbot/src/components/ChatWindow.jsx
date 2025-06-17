@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaTimes, FaPaperPlane } from 'react-icons/fa';
+import { FaTimes, FaPaperPlane, FaArrowLeft } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 
 const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5' }) => {
@@ -242,9 +242,11 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               ))}
             </div>
             <button
-              className="mt-2 text-blue-600 underline text-sm"
+              type="button"
               onClick={handleBack}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
             >
+              <FaArrowLeft className="w-3 h-3" />
               Back
             </button>
           </div>
@@ -281,9 +283,11 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               autoComplete="email"
             />
             <button
-              className="mt-2 text-blue-600 underline text-sm"
+              type="button"
               onClick={handleBack}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
             >
+              <FaArrowLeft className="w-3 h-3" />
               Back
             </button>
             <button
@@ -313,9 +317,11 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               ))}
             </div>
             <button
-              className="mt-2 text-blue-600 underline text-sm"
+              type="button"
               onClick={handleBack}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
             >
+              <FaArrowLeft className="w-3 h-3" />
               Back
             </button>
             <button
@@ -343,9 +349,11 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               ))}
             </div>
             <button
-              className="mt-2 text-blue-600 underline text-sm"
+              type="button"
               onClick={handleBack}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
             >
+              <FaArrowLeft className="w-3 h-3" />
               Back
             </button>
           </div>
@@ -366,9 +374,11 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               ))}
             </div>
             <button
-              className="mt-2 text-blue-600 underline text-sm"
+              type="button"
               onClick={handleBack}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
             >
+              <FaArrowLeft className="w-3 h-3" />
               Back
             </button>
           </div>
@@ -438,15 +448,17 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </div>
       {/* Back button for free chat mode */}
       <button
-        className="text-blue-600 underline text-sm mx-4 my-2 self-start"
+        type="button"
         onClick={() => {
           setFreeChat(false);
           setStep(1);
           setSelectedConcern(null);
           setAppointmentTimeframe(null);
         }}
+        className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
       >
-        ← Back
+        <FaArrowLeft className="w-3 h-3" />
+        Back
       </button>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
