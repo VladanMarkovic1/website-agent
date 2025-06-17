@@ -376,29 +376,27 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         {/* Bottom section with input and privacy policy */}
         <div className="w-full">
           {(!selectedConcern || freeChat) && (
-            <>
-              <div className="px-4 pt-3 pb-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Click other to unlock chat..."
-                    className="flex-1 px-4 py-2.5 rounded-lg bg-white shadow-sm border-0 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    ref={inputRef}
-                    disabled={!freeChat}
-                  />
-                  <button
-                    onClick={handleSubmit}
-                    className="p-2.5 text-white rounded-lg transition-colors"
-                    style={{ backgroundColor: '#0088CC' }}
-                    disabled={!input.trim() || !freeChat}
-                  >
-                    <FaPaperPlane className="w-4 h-4" />
-                  </button>
-                </div>
+            <div className="px-4 pt-3 pb-2">
+              <div className="flex gap-2 mb-1">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Click other to unlock chat..."
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-white shadow-sm border-0 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  ref={inputRef}
+                  disabled={!freeChat}
+                />
+                <button
+                  onClick={handleSubmit}
+                  className="p-2.5 text-white rounded-lg transition-colors"
+                  style={{ backgroundColor: '#0088CC' }}
+                  disabled={!input.trim() || !freeChat}
+                >
+                  <FaPaperPlane className="w-4 h-4" />
+                </button>
               </div>
-              <div className="text-center pb-3">
+              <div className="text-center pt-1 pb-1">
                 <a
                   href="/privacy.html"
                   target="_blank"
@@ -412,7 +410,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
                   Privacy Policy
                 </a>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
