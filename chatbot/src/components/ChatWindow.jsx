@@ -554,7 +554,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           href="/privacy.html"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[13px] text-black font-medium hover:underline"
+          className="text-[13px] text-black font-medium underline-offset-2 hover:underline"
           onClick={(e) => {
             e.preventDefault();
             window.open("/privacy.html", "_blank");
