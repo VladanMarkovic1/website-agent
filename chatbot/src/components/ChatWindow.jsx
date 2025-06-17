@@ -495,24 +495,23 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       </button>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`mb-4 w-full flex ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
+        {messages.map((message, index) => {
+          const isUser = message.role === "user" || message.type === "user";
+          return (
             <div
-              className={`inline-block p-3 rounded-lg max-w-[80%] break-words ${
-                message.role === "user"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-100 text-gray-800"
-              }`}
+              key={index}
+              className={`mb-4 w-full flex ${isUser ? "justify-end" : "justify-start"}`}
             >
-              <ReactMarkdown>{message.content}</ReactMarkdown>
+              <div
+                className={`inline-block p-3 rounded-lg max-w-[80%] break-words ${
+                  isUser ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {isLoading && (
           <div className="text-left">
             <div className="inline-block p-3 rounded-lg bg-gray-100 text-gray-800">
