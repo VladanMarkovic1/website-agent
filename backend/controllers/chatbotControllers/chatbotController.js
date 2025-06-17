@@ -214,15 +214,9 @@ async function _determineLeadProblemContext(session, businessData) {
 }
 
 async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedIntent) {
-    // Check the original classified intent type
     if (!(classifiedIntent && classifiedIntent.type === 'CONTACT_INFO_PROVIDED' && classifiedIntent.contactInfo)) {
-        // if (finalResponse.type !== 'ERROR') { // Reduce noise
-            // console.log(`[Controller] Original classified type (${classifiedIntent?.type}) is not CONTACT_INFO_PROVIDED or contactInfo missing. Not saving lead.`);
-        // }
-        return; // Only proceed if original classification was complete contact info
+        return false; // No lead saved
     }
-
-    // console.log('[Controller] Original classification CONTACT_INFO_PROVIDED detected. Attempting to save lead...'); // Debug - Removed
     try {
         // --- Get Business Data (Needed for context determination) --- 
         const businessData = await _getBusinessData(session.businessId);
@@ -255,23 +249,17 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
             details: extraDetails // <-- Save extra details here
         };
         console.log('[DEBUG] leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
-        
-        // console.log(`[Controller] Attempting to call saveLead for session: ${session.sessionId}`); // REMOVED LOG
         await saveLead(leadContext);
-        // console.log(`[Controller] Successfully returned from saveLead for session: ${session.sessionId}`); // REMOVED LOG
         console.log(`[Controller] Lead saved successfully for session: ${session.sessionId}`); // Keep success log
-        
         await updateSessionData(session.sessionId, { contactInfo: leadPii });
         session.contactInfo = leadPii;
-
-        // console.log('[Controller] Clearing partialContactInfo from session after successful lead save.'); // Debug - Removed
         await updateSessionData(session.sessionId, { partialContactInfo: null });
         session.partialContactInfo = null; 
-        
         await trackChatEvent(session.businessId, 'LEAD_GENERATED', { service: leadContext.serviceInterest });
-
+        return true; // Lead was saved
     } catch (error) {
          console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack); // Keep essential error log
+         return false;
     }
 }
 
@@ -398,51 +386,53 @@ const processChatMessage = async (message, sessionId, businessId) => {
 
         // Save Lead if contact info provided (AI classifier way)
         const originalClassificationForLeadCheck = classifiedIntent; 
-        await _handleLeadSavingIfNeeded(finalResponse, session, originalClassificationForLeadCheck);
+        const leadWasSavedByAI = await _handleLeadSavingIfNeeded(finalResponse, session, originalClassificationForLeadCheck);
 
         // --- Fallback: Always save lead if message contains all info (for button-based flow) ---
-        const contactInfo = extractContactInfo(message);
-        const extraDetails = extractExtraDetails(message);
-        if (contactInfo && contactInfo.name && contactInfo.phone && (extraDetails.concern || extraDetails.timing)) {
-            // Check for existing lead
-            const existingLead = await Lead.findOne({
-                businessId,
-                $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
-            });
-
-            const leadContext = {
-                businessId,
-                name: contactInfo.name,
-                phone: contactInfo.phone,
-                email: contactInfo.email,
-                serviceInterest: extraDetails.concern || 'Dental Consultation',
-                problemDescription: extraDetails.concern || 'User provided contact details after chatbot interaction.',
-                messageHistory: session.messages,
-                details: extraDetails
-            };
-
-            if (existingLead) {
-                // Update existing lead with new details
-                existingLead.name = contactInfo.name;
-                existingLead.phone = contactInfo.phone;
-                existingLead.email = contactInfo.email || existingLead.email;
-                existingLead.service = leadContext.serviceInterest;
-                existingLead.reason = `Patient's Concern: ${leadContext.problemDescription}`;
-                existingLead.details = extraDetails;
-                existingLead.lastContactedAt = new Date();
-                existingLead.status = 'new';
-                existingLead.interactions.push({
-                    type: 'chatbot',
-                    status: 'Re-engaged via Chatbot',
-                    message: `User re-engaged via chatbot. Concern: ${leadContext.problemDescription}`,
-                    service: leadContext.serviceInterest
+        if (!leadWasSavedByAI) {
+            const contactInfo = extractContactInfo(message);
+            const extraDetails = extractExtraDetails(message);
+            if (contactInfo && contactInfo.name && contactInfo.phone && (extraDetails.concern || extraDetails.timing)) {
+                // Check for existing lead
+                const existingLead = await Lead.findOne({
+                    businessId,
+                    $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
                 });
-                await existingLead.save();
-                console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
-            } else {
-                // Create new lead
-                console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
-                await saveLead(leadContext);
+
+                const leadContext = {
+                    businessId,
+                    name: contactInfo.name,
+                    phone: contactInfo.phone,
+                    email: contactInfo.email,
+                    serviceInterest: extraDetails.concern || 'Dental Consultation',
+                    problemDescription: extraDetails.concern || 'User provided contact details after chatbot interaction.',
+                    messageHistory: session.messages,
+                    details: extraDetails
+                };
+
+                if (existingLead) {
+                    // Update existing lead with new details
+                    existingLead.name = contactInfo.name;
+                    existingLead.phone = contactInfo.phone;
+                    existingLead.email = contactInfo.email || existingLead.email;
+                    existingLead.service = leadContext.serviceInterest;
+                    existingLead.reason = `Patient's Concern: ${leadContext.problemDescription}`;
+                    existingLead.details = extraDetails;
+                    existingLead.lastContactedAt = new Date();
+                    existingLead.status = 'new';
+                    existingLead.interactions.push({
+                        type: 'chatbot',
+                        status: 'Re-engaged via Chatbot',
+                        message: `User re-engaged via chatbot. Concern: ${leadContext.problemDescription}`,
+                        service: leadContext.serviceInterest
+                    });
+                    await existingLead.save();
+                    console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
+                } else {
+                    // Create new lead
+                    console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
+                    await saveLead(leadContext);
+                }
             }
         }
 
