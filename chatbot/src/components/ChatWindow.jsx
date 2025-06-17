@@ -20,6 +20,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const inputRef = useRef(null);
 
   // New state for button-based flow
+  //new state for button-based flow
   
   const [step, setStep] = useState(1); // 1: concern, 2: timing, 'chat': free chat
   const [selectedConcern, setSelectedConcern] = useState(null);
