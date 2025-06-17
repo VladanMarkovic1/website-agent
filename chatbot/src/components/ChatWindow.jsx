@@ -186,7 +186,8 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
                 <button
                   key={option}
                   onClick={() => handleConcernClick(option)}
-                  className={`${option === 'Other' ? 'col-span-2' : ''} flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-[#D2A89E] hover:bg-[#c49a90] transition-all duration-200 font-semibold text-white`}
+                  className={`${option === 'Other' ? 'col-span-2' : ''} flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-[#D2A89E] hover:bg-[#c49a90] transition-all duration-200 font-semibold !text-white`}
+                  style={{ color: '#fff' }}
                 >
                   {option === 'Other' ? 'Other Concerns' : option}
                 </button>
