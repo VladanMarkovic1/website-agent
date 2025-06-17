@@ -87,8 +87,8 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     }
   };
 
-  const handleDayToggle = (day) => {
-    setBestDays((prev) => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  const handleDaySelect = (day) => {
+    setBestDays([day]);
   };
 
   const handleTimeSelect = (time) => {
@@ -327,7 +327,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
                       ? 'text-white scale-105'
                       : 'text-gray-700'} bg-gray-100 hover:bg-gray-200`}
                   style={bestDays.includes(day) ? { backgroundColor: primaryColor, color: '#fff', border: 'none' } : { border: 'none' }}
-                  onClick={() => handleDayToggle(day)}
+                  onClick={() => handleDaySelect(day)}
                 >
                   {day}
                 </button>
@@ -345,8 +345,8 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               <button
                 type="button"
                 className="flex-1 flex items-center justify-center px-4 py-2 rounded-full text-white text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none"
-                style={{ backgroundColor: bestDays.length > 0 ? primaryColor : '#ccc', cursor: bestDays.length > 0 ? 'pointer' : 'not-allowed' }}
-                disabled={bestDays.length === 0}
+                style={{ backgroundColor: bestDays.length === 1 ? primaryColor : '#ccc', cursor: bestDays.length === 1 ? 'pointer' : 'not-allowed' }}
+                disabled={bestDays.length !== 1}
                 onClick={() => setStep(5)}
               >
                 Next
