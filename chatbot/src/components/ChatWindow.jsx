@@ -504,8 +504,9 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
             >
               <div
                 className={`inline-block p-3 rounded-lg max-w-[80%] break-words ${
-                  isUser ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"
+                  isUser ? "text-white" : "bg-gray-100 text-gray-800"
                 }`}
+                style={isUser ? { backgroundColor: primaryColor } : {}}
               >
                 <ReactMarkdown>{message.content}</ReactMarkdown>
               </div>
