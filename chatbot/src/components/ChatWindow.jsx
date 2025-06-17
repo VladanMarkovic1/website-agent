@@ -432,19 +432,19 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
                 />
                 <button
                   onClick={handleSubmit}
-                  className="p-2.5 text-white rounded-lg transition-colors focus:outline-none focus:ring-0 border-0 shadow-none"
+                  className="p-2.5 text-white rounded-lg transition-colors focus:outline-none border-0 shadow-none"
                   style={{ backgroundColor: primaryColor }}
                   disabled={!input.trim() || !freeChat}
                 >
                   <FaPaperPlane className="w-4 h-4" />
                 </button>
               </div>
-              <div className="text-center pt-1 pb-1">
+              <div className="text-center pt-1 pb-2">
                 <a
                   href="/privacy.html"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-gray-400 hover:text-gray-600"
+                  className="text-[13px] text-black font-medium underline-offset-2 hover:underline"
                   onClick={(e) => {
                     e.preventDefault();
                     window.open("/privacy.html", "_blank");
@@ -498,12 +498,12 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`mb-4 ${
-              message.role === "user" ? "text-right" : "text-left"
+            className={`mb-4 w-full flex ${
+              message.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
             <div
-              className={`inline-block p-3 rounded-lg ${
+              className={`inline-block p-3 rounded-lg max-w-[80%] break-words ${
                 message.role === "user"
                   ? "bg-blue-500 text-white"
                   : "bg-gray-100 text-gray-800"
@@ -549,7 +549,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           </div>
         </form>
       )}
-      <div className="w-full text-center py-2">
+      <div className="w-full text-center pt-1 pb-2">
         <a
           href="/privacy.html"
           target="_blank"
