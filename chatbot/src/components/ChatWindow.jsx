@@ -181,24 +181,24 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               <h3 className="text-lg font-semibold mb-1">How can we serve you?</h3>
               <p className="text-sm text-gray-600">Select your dental concern</p>
             </div>
-            <div className="grid grid-cols-2 gap-5 w-full max-w-xs mb-4">
+            <div className="grid grid-cols-2 gap-3 w-full max-w-xs mb-4">
               <button
                 onClick={() => handleConcernClick('Pain')}
-                className="flex flex-col items-center py-4 text-lg rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
+                className="flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 font-semibold text-gray-800"
               >
-                <span className="font-semibold text-gray-800">Pain</span>
+                Pain
               </button>
               <button
                 onClick={() => handleConcernClick('Broken teeth')}
-                className="flex flex-col items-center py-4 text-lg rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
+                className="flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 font-semibold text-gray-800"
               >
-                <span className="font-semibold text-gray-800">Broken teeth</span>
+                Broken teeth
               </button>
               <button
                 onClick={() => handleConcernClick('Implants')}
-                className="flex flex-col items-center py-4 text-lg rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
+                className="flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 font-semibold text-gray-800"
               >
-                <span className="font-semibold text-gray-800">Implants</span>
+                Implants
               </button>
               <button
                 onClick={() => handleConcernClick('Regular care')}
