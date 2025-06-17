@@ -32,15 +32,17 @@ export function extractContactInfo(message) {
 
     // Handle structured format (name: xxx, phone: xxx, email: xxx)
     const structuredMatch = {
-        name: message.match(/name:\s*([^,]+?)(?=\s*,|\s*phone|\s*email|$)/i)?.[1]?.trim(),
-        phone: message.match(/phone:\s*([^,]+?)(?=\s*,|\s*email|\s*name|$)/i)?.[1]?.trim(),
-        email: message.match(/(?:email|mail):\s*([^,]+?)(?=\s*,|\s*phone|\s*name|$)/i)?.[1]?.trim()
+        name: message.match(/name:\s*([^,]+?)(?=\s*,|\s*phone|\s*email|\s*concern|\s*timing|$)/i)?.[1]?.trim(),
+        phone: message.match(/phone:\s*([^,]+?)(?=\s*,|\s*email|\s*name|\s*concern|\s*timing|$)/i)?.[1]?.trim(),
+        email: message.match(/(?:email|mail):\s*([^,]+?)(?=\s*,|\s*phone|\s*name|\s*concern|\s*timing|$)/i)?.[1]?.trim()
     };
 
     if (structuredMatch.name && structuredMatch.phone) {
         const cleanedPhone = structuredMatch.phone.replace(/\D/g, '');
+        // Ensure name doesn't contain concern or timing info
+        const cleanedName = structuredMatch.name.split(/concern:|timing:/i)[0].trim();
         const result = {
-            name: structuredMatch.name,
+            name: cleanedName,
             phone: cleanedPhone
         };
         
@@ -116,20 +118,44 @@ export function extractContactInfo(message) {
 
 export function extractExtraDetails(message) {
     const details = {};
+    
+    // Extract days
     const daysMatch = message.match(/Days:\s*([A-Za-z,\s]+)/i);
     if (daysMatch) details.days = daysMatch[1].split(',').map(d => d.trim()).filter(Boolean);
 
+    // Extract time
     const timeMatch = message.match(/Time:\s*([A-Za-z0-9\-: ]+)/i);
     if (timeMatch) details.time = timeMatch[1].trim();
 
+    // Extract insurance
     const insuranceMatch = message.match(/Insurance:\s*(Yes|No)/i);
     if (insuranceMatch) details.insurance = insuranceMatch[1];
 
-    const concernMatch = message.match(/Concern:\s*([A-Za-z ]+)/i);
-    if (concernMatch) details.concern = concernMatch[1].trim();
+    // Extract concern - improved to handle button-based flow
+    const concernMatch = message.match(/Concern:\s*([^,\n]+)/i);
+    if (concernMatch) {
+        const rawConcern = concernMatch[1].trim();
+        // Clean up the concern - remove any name or contact info that might have gotten mixed in
+        const cleanedConcern = rawConcern
+            .replace(/name:\s*[^,]+/i, '')
+            .replace(/phone:\s*[^,]+/i, '')
+            .replace(/email:\s*[^,]+/i, '')
+            .trim();
+        details.concern = cleanedConcern;
+    }
 
-    const timingMatch = message.match(/Timing:\s*([A-Za-z0-9\- ]+)/i);
-    if (timingMatch) details.timing = timingMatch[1].trim();
+    // Extract timing - improved to handle button-based flow
+    const timingMatch = message.match(/Timing:\s*([^,\n]+)/i);
+    if (timingMatch) {
+        const rawTiming = timingMatch[1].trim();
+        // Clean up the timing - remove any name or contact info that might have gotten mixed in
+        const cleanedTiming = rawTiming
+            .replace(/name:\s*[^,]+/i, '')
+            .replace(/phone:\s*[^,]+/i, '')
+            .replace(/email:\s*[^,]+/i, '')
+            .trim();
+        details.timing = cleanedTiming;
+    }
 
     return details;
 }

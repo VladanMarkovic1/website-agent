@@ -388,16 +388,22 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
             });
 
-            // Only use the concern as the problemDescription, never concatenate with name
+            // Ensure we have a valid concern
+            const concern = extraDetails.concern || session.serviceInterest || 'Dental Consultation';
+            
+            // Create lead context with proper separation of name and concern
             const leadContext = {
                 businessId,
                 name: contactInfo.name,
                 phone: contactInfo.phone,
                 email: contactInfo.email,
-                serviceInterest: extraDetails.concern || 'Dental Consultation',
-                problemDescription: extraDetails.concern || 'User provided contact details after chatbot interaction.',
+                serviceInterest: concern,
+                problemDescription: concern,
                 messageHistory: session.messages,
-                details: extraDetails
+                details: {
+                    ...extraDetails,
+                    concern: concern
+                }
             };
 
             if (existingLead) {
@@ -405,16 +411,19 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 existingLead.name = contactInfo.name;
                 existingLead.phone = contactInfo.phone;
                 existingLead.email = contactInfo.email || existingLead.email;
-                existingLead.service = leadContext.serviceInterest;
-                existingLead.reason = `Patient's Concern: ${leadContext.problemDescription}`;
-                existingLead.details = extraDetails;
+                existingLead.service = concern;
+                existingLead.reason = `Patient's Concern: ${concern}`;
+                existingLead.details = {
+                    ...extraDetails,
+                    concern: concern
+                };
                 existingLead.lastContactedAt = new Date();
                 existingLead.status = 'new';
                 existingLead.interactions.push({
                     type: 'chatbot',
                     status: 'Re-engaged via Chatbot',
-                    message: `User re-engaged via chatbot. Concern: ${leadContext.problemDescription}`,
-                    service: leadContext.serviceInterest
+                    message: `User re-engaged via chatbot. Concern: ${concern}`,
+                    service: concern
                 });
                 await existingLead.save();
                 console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
