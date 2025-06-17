@@ -145,19 +145,29 @@ async function _trackProblemDescriptionIfNeeded(session, message, botNextRespons
         'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES', 'CONFIRMATION_NO', 
         'SMALLTALK', 'GREETING', 'GOODBYE', 
         'CONTACT_INFO', 'PARTIAL_CONTACT_INFO_PROVIDED', 'CONTACT_INFO_PROVIDED',
-        'REQUEST_HUMAN_AGENT', 'THANKS' // Added more types that are generally not new primary concerns
+        'REQUEST_HUMAN_AGENT', 'THANKS'
     ];
 
     if (session.problemDescription && 
         userMessageIntentType && nonOverwritingUserIntentTypes.includes(userMessageIntentType.toUpperCase())) {
-        // If a problem description exists, and the current user message is a simple affirmation, contact info, etc.,
-        // do NOT overwrite the existing problem description.
-        // console.log(`[Session Update] User message type '${userMessageIntentType}' will not overwrite existing problemDescription: "${session.problemDescription}"`);
         return; 
     }
 
+    // Improved name detection regex patterns
+    const namePatterns = [
+        /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/,  // Basic name pattern (e.g., "John Smith")
+        /^[A-Z][a-z]+$/,                      // Single name (e.g., "John")
+        /^(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/,  // Names with titles
+        /^[A-Z][a-z]+(?:\s+(?:van|de|der|den|dos|das|do|da|von|el|al|bin|ibn)\s+[A-Z][a-z]+)*$/  // Names with particles
+    ];
+
+    // Check if the message looks like just a name
+    const isLikelyName = namePatterns.some(pattern => pattern.test(message.trim()));
+    if (isLikelyName) {
+        return; // Skip storing if it looks like just a name
+    }
+
     // Original logic for setting problemDescription based on bot's next response type and message content
-    // This uses BOT's next response type (botNextResponseType)
     const isPotentiallyRelevant = 
         !['CONTACT_INFO', 'CONTACT_INFO_PROVIDED', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES'].includes(botNextResponseType) &&
         (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => message.toLowerCase().includes(keyword)) || message.split(' ').length > 3);
@@ -167,12 +177,8 @@ async function _trackProblemDescriptionIfNeeded(session, message, botNextRespons
         // Only update if it's different or new, or if no problemDescription was set yet
         if (!session.problemDescription || session.problemDescription !== redactedMessage) {
             await updateSessionData(session.sessionId, { problemDescription: redactedMessage }); 
-            session.problemDescription = redactedMessage; // Update local session object with redacted
-            // console.log(`[Session Update] Updated relevant problemDescription to: "${redactedMessage}"`); 
+            session.problemDescription = redactedMessage;
         }
-    } else {
-        // Optional: Log if message wasn't relevant (can be noisy)
-        // console.log(`[Session Update] Message "${redactPII(message)}" (type: ${botNextResponseType}) not deemed relevant for updating problemDescription.`);
     }
 }
 
