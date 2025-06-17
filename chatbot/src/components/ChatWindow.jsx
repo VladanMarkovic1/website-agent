@@ -182,48 +182,15 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               <p className="text-sm text-gray-600">Select your dental concern</p>
             </div>
             <div className="grid grid-cols-2 gap-3 w-full max-w-xs mb-4">
-              <button
-                onClick={() => handleConcernClick('Pain')}
-                className="flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 font-semibold text-gray-800"
-              >
-                Pain
-              </button>
-              <button
-                onClick={() => handleConcernClick('Broken teeth')}
-                className="flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 font-semibold text-gray-800"
-              >
-                Broken teeth
-              </button>
-              <button
-                onClick={() => handleConcernClick('Implants')}
-                className="flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 font-semibold text-gray-800"
-              >
-                Implants
-              </button>
-              <button
-                onClick={() => handleConcernClick('Regular care')}
-                className="flex flex-col items-center py-4 text-lg rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
-              >
-                <span className="font-semibold text-gray-800">Regular care</span>
-              </button>
-              <button
-                onClick={() => handleConcernClick('Whitening')}
-                className="flex flex-col items-center py-4 text-lg rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
-              >
-                <span className="font-semibold text-gray-800">Whitening</span>
-              </button>
-              <button
-                onClick={() => handleConcernClick('Invisalign')}
-                className="flex flex-col items-center py-4 text-lg rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
-              >
-                <span className="font-semibold text-gray-800">Invisalign</span>
-              </button>
-              <button
-                onClick={() => handleConcernClick('Other')}
-                className="col-span-2 flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 font-semibold text-gray-800"
-              >
-                Other Concerns
-              </button>
+              {concernOptions.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => handleConcernClick(option)}
+                  className={`$${option === 'Other' ? 'col-span-2' : ''} flex flex-col items-center py-4 text-lg rounded-xl border border-gray-200 bg-[#D2A89E] hover:bg-[#c49a90] transition-all duration-200 font-semibold text-white`}
+                >
+                  {option === 'Other' ? 'Other Concerns' : option}
+                </button>
+              ))}
             </div>
           </div>
         )}
