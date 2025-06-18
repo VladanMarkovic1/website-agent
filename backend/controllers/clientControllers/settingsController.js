@@ -81,4 +81,27 @@ export const getBusinessOptions = async (req, res) => {
         console.error(`Error fetching business options for ${clientId}:`, error);
         res.status(500).json({ error: 'Failed to fetch business options.' });
     }
+};
+
+// Controller to update featured services for chatbot
+export const updateFeaturedServices = async (req, res) => {
+    const { clientId } = req.params; // businessId
+    const { featuredServices } = req.body;
+    if (!Array.isArray(featuredServices) || featuredServices.length > 7) {
+        return res.status(400).json({ error: 'featuredServices must be an array with at most 7 items.' });
+    }
+    try {
+        const extraInfo = await ExtraInfo.findOneAndUpdate(
+            { businessId: clientId },
+            { $set: { featuredServices } },
+            { new: true, upsert: true }
+        );
+        res.status(200).json({
+            message: 'Featured services updated successfully.',
+            featuredServices: extraInfo.featuredServices
+        });
+    } catch (error) {
+        console.error(`Error updating featured services for ${clientId}:`, error);
+        res.status(500).json({ error: 'Failed to update featured services.' });
+    }
 }; 
