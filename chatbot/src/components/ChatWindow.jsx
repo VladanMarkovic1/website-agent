@@ -33,20 +33,37 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'error'
 
   // Concern options (services)
-  let concerns = (concernOptions && concernOptions.length > 0)
-    ? concernOptions.map(s => (typeof s === 'string' ? { name: s } : s))
-    : [
-        { name: 'Pain' },
-        { name: 'Broken teeth' },
-        { name: 'Implants' },
-        { name: 'Regular care' },
-        { name: 'Whitening' },
-        { name: 'Invisalign' }
-      ];
-  // Always add 'Other' button at the end, but only once
+  let concerns = [];
+  if (concernOptions && concernOptions.length > 0) {
+    // Use a Set to track unique service names
+    const uniqueNames = new Set();
+    concerns = concernOptions
+      .filter(s => {
+        const name = typeof s === 'string' ? s : s.name;
+        if (!name || typeof name !== 'string' || uniqueNames.has(name.toLowerCase())) {
+          return false;
+        }
+        uniqueNames.add(name.toLowerCase());
+        return true;
+      })
+      .map(s => (typeof s === 'string' ? { name: s } : s));
+  } else {
+    // Only use default concerns if no concerns are provided
+    concerns = [
+      { name: 'Pain' },
+      { name: 'Broken teeth' },
+      { name: 'Implants' },
+      { name: 'Regular care' },
+      { name: 'Whitening' },
+      { name: 'Invisalign' }
+    ];
+  }
+  
+  // Always add 'Other' button at the end if not already present
   if (!concerns.some(c => c.name === 'Other')) {
     concerns.push({ name: 'Other' });
   }
+
   // Defensive log and filter
   console.log('Concerns for buttons:', concerns);
   concerns = concerns.filter(option => option && typeof option.name === 'string' && option.name.length > 0);
