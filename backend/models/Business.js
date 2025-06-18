@@ -5,6 +5,7 @@ const BusinessSchema = new mongoose.Schema({
     businessId: { type: String, required: true, unique: true },
     businessName: { type: String, required: true },
     websiteUrl: { type: String, required: true },
+    notificationEmail: { type: String }, // Add notification email field
     apiKeyHash: { type: String, select: false }, // Store hashed key, don't select by default
     // Add chatbot config fields later
     widgetConfig: {

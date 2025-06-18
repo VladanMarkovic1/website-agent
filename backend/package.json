@@ -32,7 +32,7 @@
     "moment-timezone": "^0.5.45",
     "mongoose": "^8.3.2",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^6.9.13",
+    "nodemailer": "^6.10.1",
     "openai": "^4.85.4",
     "playwright": "^1.44.0",
     "socket.io": "^4.7.5",

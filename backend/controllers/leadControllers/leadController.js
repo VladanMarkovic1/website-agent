@@ -2,6 +2,7 @@ import Lead from "../../models/Lead.js";
 import Business from "../../models/Business.js";
 import Service from "../../models/Service.js";
 import { trackChatEvent } from "../analyticsControllers/trackEventService.js";
+import { sendLeadNotification } from "../../utils/emailService.js";
 
 /**
  * Function to capture and store leads in MongoDB.
@@ -94,6 +95,8 @@ export const saveLead = async (leadContext) => {
             $or: [{ phone }, ...(email ? [{ email }] : [])] 
         });
 
+        let savedLead;
+
         if (existingLead) {
             console.log("📝 Updating existing lead:", existingLead._id);
             
@@ -117,41 +120,49 @@ export const saveLead = async (leadContext) => {
             });
             
             console.log('[DEBUG] Updating existing lead with details:', existingLead.details);
-            await existingLead.save();
+            savedLead = await existingLead.save();
             console.log("✅ Existing lead updated successfully (Status reset to 'new')");
-            return `Thank you, ${name}. I've updated your information with us.`
+        } else {
+            console.log("➕ Creating new lead...");
+            // Remove service from details to avoid duplication
+            const { concern, ...otherDetails } = details || {};
+            const lead = new Lead({
+                businessId: business.businessId,
+                name,
+                phone,
+                email,
+                service: finalService,
+                reason: formattedContext.reason,
+                source: 'chatbot',
+                status: 'new',
+                lastContactedAt: new Date(),
+                details: otherDetails,
+                interactions: [{
+                     type: 'chatbot',
+                     status: 'Lead Created',
+                     message: `Initial contact via chatbot. Concern: ${problemDescription}`,
+                     service: finalService
+                }],
+            });
+            console.log('[DEBUG] Creating new lead with details:', lead.details);
+
+            savedLead = await lead.save();
+            console.log("✅ New lead saved successfully");
         }
 
-        console.log("➕ Creating new lead...");
-        // Remove service from details to avoid duplication
-        const { concern, ...otherDetails } = details || {};
-        const lead = new Lead({
-            businessId: business.businessId,
-            name,
-            phone,
-            email,
-            service: finalService,
-            reason: formattedContext.reason,
-            source: 'chatbot',
-            status: 'new',
-            lastContactedAt: new Date(),
-            details: otherDetails,
-            interactions: [{
-                 type: 'chatbot',
-                 status: 'Lead Created',
-                 message: `Initial contact via chatbot. Concern: ${problemDescription}`,
-                 service: finalService
-            }],
-        });
-        console.log('[DEBUG] Creating new lead with details:', lead.details);
+        // Send email notification if business has notification email set up
+        if (business.notificationEmail) {
+            await sendLeadNotification(business.notificationEmail, {
+                name,
+                phone,
+                email,
+                service: finalService,
+                reason: formattedContext.reason,
+                details: details || {}
+            });
+        }
 
-        // console.log("Creating new lead with data:", { /* ... */ });
-
-        await lead.save();
-        console.log("✅ New lead saved successfully");
-
-        // console.log(`[LeadController] About to call trackChatEvent for NEW_LEAD. BusinessId: ${businessId}, Service: ${finalService}`);
-        await trackChatEvent(businessId, 'NEW_LEAD', { service: finalService });
+        await trackChatEvent(businessId, existingLead ? 'LEAD_UPDATED' : 'NEW_LEAD', { service: finalService });
 
         return `✅ Thank you ${name}! I've noted your concern: "${problemDescription}". Our specialist for ${finalService} will contact you at ${phone} soon.`;
 
