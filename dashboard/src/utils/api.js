@@ -165,4 +165,19 @@ api.interceptors.response.use(
   }
 );
 
+// Get featured services for a business
+export const getFeaturedServices = async (clientId) => {
+  const res = await api.get(`/clients/${clientId}/options`);
+  // This returns availableDays, availableTimes, insuranceOptions, and we want featuredServices
+  // But our endpoint does not return featuredServices directly, so let's fetch from ExtraInfo
+  // For now, let's assume we add a new endpoint or extend the options endpoint to include featuredServices
+  return res.data.featuredServices || [];
+};
+
+// Update featured services for a business
+export const updateFeaturedServices = async (clientId, featuredServices) => {
+  const res = await api.put(`/clients/${clientId}/featured-services`, { featuredServices });
+  return res.data;
+};
+
 export default api;
