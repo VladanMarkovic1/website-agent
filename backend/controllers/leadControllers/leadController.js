@@ -104,7 +104,10 @@ export const saveLead = async (leadContext) => {
             existingLead.reason = formattedContext.reason;
             existingLead.lastContactedAt = new Date();
             existingLead.status = 'new'; 
-            existingLead.details = details || {};
+
+            // Remove service from details to avoid duplication
+            const { concern, ...otherDetails } = details || {};
+            existingLead.details = otherDetails;
             
             existingLead.interactions.push({
                 type: 'chatbot',
@@ -120,7 +123,8 @@ export const saveLead = async (leadContext) => {
         }
 
         console.log("➕ Creating new lead...");
-        // console.log("[Lead Creation Check] Values before new Lead():", { name, phone, email });
+        // Remove service from details to avoid duplication
+        const { concern, ...otherDetails } = details || {};
         const lead = new Lead({
             businessId: business.businessId,
             name,
@@ -131,7 +135,7 @@ export const saveLead = async (leadContext) => {
             source: 'chatbot',
             status: 'new',
             lastContactedAt: new Date(),
-            details: details || {},
+            details: otherDetails,
             interactions: [{
                  type: 'chatbot',
                  status: 'Lead Created',

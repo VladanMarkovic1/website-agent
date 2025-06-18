@@ -244,15 +244,21 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
             console.log('[DEBUG] No last user message found for extraDetails extraction.');
         }
 
+        // Determine service interest
+        const serviceInterest = extraDetails.concern || session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation';
+        
+        // Remove service/concern from extraDetails to avoid duplication
+        const { concern, ...otherDetails } = extraDetails;
+
         const leadContext = {
             businessId: session.businessId,
             name: leadPii.name, 
             phone: leadPii.phone,
             email: leadPii.email,
-            serviceInterest: extraDetails.concern || session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation',
+            serviceInterest: serviceInterest,
             problemDescription: leadProblemContext,
             messageHistory: session.messages,
-            details: extraDetails // <-- Save extra details here
+            details: otherDetails // Only include other details, not the service
         };
         console.log('[DEBUG] leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
         await saveLead(leadContext);
@@ -261,7 +267,7 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
         session.contactInfo = leadPii;
         await updateSessionData(session.sessionId, { partialContactInfo: null });
         session.partialContactInfo = null; 
-        await trackChatEvent(session.businessId, 'LEAD_GENERATED', { service: leadContext.serviceInterest });
+        await trackChatEvent(session.businessId, 'LEAD_GENERATED', { service: serviceInterest });
         return true; // Lead was saved
     } catch (error) {
          console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack); // Keep essential error log
@@ -391,6 +397,9 @@ const processChatMessage = async (message, sessionId, businessId) => {
             // Ensure we have a valid concern
             const concern = extraDetails.concern || session.serviceInterest || 'Dental Consultation';
             
+            // Remove service/concern from extraDetails to avoid duplication
+            const { concern: _, ...otherDetails } = extraDetails;
+            
             // Create lead context with proper separation of name and concern
             const leadContext = {
                 businessId,
@@ -400,10 +409,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 serviceInterest: concern,
                 problemDescription: concern,
                 messageHistory: session.messages,
-                details: {
-                    ...extraDetails,
-                    concern: concern
-                }
+                details: otherDetails // Only include other details, not the service
             };
 
             if (existingLead) {
@@ -413,10 +419,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
                 existingLead.email = contactInfo.email || existingLead.email;
                 existingLead.service = concern;
                 existingLead.reason = `Patient's Concern: ${concern}`;
-                existingLead.details = {
-                    ...extraDetails,
-                    concern: concern
-                };
+                existingLead.details = otherDetails;
                 existingLead.lastContactedAt = new Date();
                 existingLead.status = 'new';
                 existingLead.interactions.push({
