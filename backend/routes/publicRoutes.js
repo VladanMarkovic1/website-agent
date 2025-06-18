@@ -1,6 +1,6 @@
 import express from 'express';
 import { param, validationResult } from 'express-validator';
-import { getPublicWidgetConfig } from '../controllers/public/publicSettingsController.js';
+import { getPublicWidgetConfig, getPublicBusinessOptions } from '../controllers/public/publicSettingsController.js';
 import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
@@ -35,6 +35,15 @@ router.get(
     businessIdParamValidation,
     handleValidationErrors,
     getPublicWidgetConfig
+);
+
+// Public-safe business options endpoint
+router.get(
+    '/options/:businessId',
+    configLimiter,
+    businessIdParamValidation,
+    handleValidationErrors,
+    getPublicBusinessOptions
 );
 
 export default router; 
