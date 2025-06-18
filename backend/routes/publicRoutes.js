@@ -19,19 +19,19 @@ const businessIdParamValidation = [
     param('businessId', 'Business ID parameter is required').notEmpty().trim().escape()
 ];
 
-// Rate limiter for public config endpoint
-const configLimiter = rateLimit({
-	windowMs: 5 * 60 * 1000, // 5 minutes
-	max: 100, // Limit each IP to 100 requests per windowMs
-	message: 'Too many requests for configuration, please try again later.',
-    standardHeaders: true,
-    legacyHeaders: false,
+// Rate limiter for public endpoints
+const publicLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again after 15 minutes'
 });
+
+// Apply rate limiter to all routes in this file
+router.use(publicLimiter);
 
 // Public route - NO AUTH NEEDED
 router.get(
     '/widget-config/:businessId',
-    configLimiter, // Apply rate limiting
     businessIdParamValidation,
     handleValidationErrors,
     getPublicWidgetConfig
@@ -40,7 +40,6 @@ router.get(
 // Public-safe business options endpoint
 router.get(
     '/options/:businessId',
-    configLimiter,
     businessIdParamValidation,
     handleValidationErrors,
     getPublicBusinessOptions
