@@ -3,10 +3,10 @@ import { authenticateToken } from '../middleware/auth.js';
 import { checkBusinessOwner } from '../middleware/checkBusinessOwner.js';
 import { 
     getWidgetSettings,
-    updateWidgetSettings
+    updateWidgetSettings,
+    getBusinessOptions
 } from '../controllers/clientControllers/settingsController.js';
 import { body, param, validationResult } from 'express-validator';
-import { getBusinessOptions } from '../controllers/clientControllers/optionsController.js';
 
 const router = express.Router();
 
