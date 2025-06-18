@@ -37,7 +37,8 @@ const updateSettingsValidationRules = [
 // Validation rules for updating featured services
 const updateFeaturedServicesValidation = [
     body('featuredServices').isArray({ max: 7 }).withMessage('featuredServices must be an array with at most 7 items'),
-    body('featuredServices.*').isString().trim().notEmpty().withMessage('Each featured service must be a non-empty string')
+    body('featuredServices.*.originalName').isString().trim().notEmpty().withMessage('Each featured service must have an originalName'),
+    body('featuredServices.*.displayName').isString().trim().notEmpty().withMessage('Each featured service must have a displayName')
 ];
 
 // --- Widget Settings Routes --- (Business Owner Access)
