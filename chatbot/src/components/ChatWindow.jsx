@@ -53,7 +53,8 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
 
   // Day and time options
   const days = dayOptions.length > 0 ? dayOptions : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const times = timeOptions.length > 0 ? timeOptions : ['7am-12pm', '1pm-4pm'];
+  // Remove timeOptions from backend, use static options for time selection
+  const times = ['Morning', 'Afternoon'];
   const insuranceOptions = ['Yes', 'No'];
   // Add timingOptions for appointment step
   const timingOptions = ['Now', 'This week', 'Next week'];
