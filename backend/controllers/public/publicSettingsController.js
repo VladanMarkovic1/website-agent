@@ -45,13 +45,27 @@ export const getPublicBusinessOptions = async (req, res) => {
         const defaultDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
         const defaultTimes = ["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"];
 
+        // --- Featured services logic ---
+        let allServices = serviceData?.services || [];
+        let featuredServiceNames = extraInfo?.featuredServices || [];
+        let featuredServices = [];
+        if (featuredServiceNames.length > 0) {
+            // Only include services that match the featured names (by name)
+            featuredServices = allServices.filter(s => featuredServiceNames.includes(s.name));
+        } else {
+            // Fallback: first 6 services
+            featuredServices = allServices.slice(0, 6);
+        }
+        // Always map to name/description objects
+        featuredServices = featuredServices.map(service => ({
+            name: service.name,
+            description: service.description
+        }));
+
         const response = {
             availableDays: extraInfo?.availableDays || defaultDays,
             availableTimes: extraInfo?.availableTimes || defaultTimes,
-            services: serviceData?.services?.map(service => ({
-                name: service.name,
-                description: service.description
-            })) || []
+            services: featuredServices
         };
 
         res.json(response);
