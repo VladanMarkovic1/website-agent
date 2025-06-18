@@ -4,7 +4,8 @@ import { checkBusinessOwner } from '../middleware/checkBusinessOwner.js';
 import { 
     getWidgetSettings,
     updateWidgetSettings,
-    getBusinessOptions
+    getBusinessOptions,
+    updateFeaturedServices
 } from '../controllers/clientControllers/settingsController.js';
 import { body, param, validationResult } from 'express-validator';
 
@@ -31,6 +32,12 @@ const updateSettingsValidationRules = [
     body('widgetConfig.primaryColor').optional().isHexColor().withMessage('Invalid primary color hex code'),
     body('widgetConfig.position').optional().isIn(['bottom-right', 'bottom-left']).withMessage('Invalid position'),
     body('widgetConfig.welcomeMessage').optional().trim().escape()
+];
+
+// Validation rules for updating featured services
+const updateFeaturedServicesValidation = [
+    body('featuredServices').isArray({ max: 7 }).withMessage('featuredServices must be an array with at most 7 items'),
+    body('featuredServices.*').isString().trim().notEmpty().withMessage('Each featured service must be a non-empty string')
 ];
 
 // --- Widget Settings Routes --- (Business Owner Access)
@@ -64,6 +71,17 @@ router.get(
     handleValidationErrors,
     checkBusinessOwner, // Ensures user owns this clientId
     getBusinessOptions
+);
+
+// PUT /api/v1/clients/:clientId/featured-services - Update featured services for chatbot
+router.put(
+    '/:clientId/featured-services',
+    authenticateToken,
+    clientIdParamValidation,
+    updateFeaturedServicesValidation,
+    handleValidationErrors,
+    checkBusinessOwner,
+    updateFeaturedServices
 );
 
 export default router; 
