@@ -69,9 +69,16 @@ const Settings = () => {
         const res = await apiClient.get(`/services/${businessId}`);
         setAllServices(res.data || []);
         // Fetch featured services (from ExtraInfo)
-        const optionsRes = await apiClient.get(`/clients/${businessId}/options`);
-        setFeaturedServices(optionsRes.data.featuredServices || []);
+        const optionsRes = await apiClient.get(`/clients/${businessId}/featured-services`);
+        const featuredServicesData = optionsRes.data || [];
+        // Ensure each featured service has both originalName and displayName
+        const formattedFeaturedServices = featuredServicesData.map(service => ({
+          originalName: service.originalName || service.name || service,
+          displayName: service.displayName || service.name || service
+        }));
+        setFeaturedServices(formattedFeaturedServices);
       } catch (err) {
+        console.error('Error loading services:', err);
         setFsError('Failed to load services.');
       } finally {
         setFsLoading(false);
@@ -116,20 +123,28 @@ const Settings = () => {
 
   // Handler for toggling featured service selection
   const handleToggleFeatured = (serviceName) => {
-    if (featuredServices.some(fs => fs.originalName === serviceName)) {
-      setFeaturedServices(featuredServices.filter(fs => fs.originalName !== serviceName));
-    } else {
-      if (featuredServices.length < 7) {
-        setFeaturedServices([...featuredServices, { originalName: serviceName, displayName: serviceName }]);
+    setFeaturedServices(prevServices => {
+      const isCurrentlySelected = prevServices.some(fs => fs.originalName === serviceName);
+      if (isCurrentlySelected) {
+        return prevServices.filter(fs => fs.originalName !== serviceName);
+      } else {
+        if (prevServices.length < 7) {
+          return [...prevServices, { originalName: serviceName, displayName: serviceName }];
+        }
+        return prevServices;
       }
-    }
+    });
   };
 
   // Handler for changing display name
   const handleDisplayNameChange = (serviceName, newDisplayName) => {
-    setFeaturedServices(featuredServices.map(fs =>
-      fs.originalName === serviceName ? { ...fs, displayName: newDisplayName } : fs
-    ));
+    setFeaturedServices(prevServices => 
+      prevServices.map(fs =>
+        fs.originalName === serviceName 
+          ? { ...fs, displayName: newDisplayName || serviceName }
+          : fs
+      )
+    );
   };
 
   // Handler for saving featured services
@@ -139,10 +154,26 @@ const Settings = () => {
     setFsError('');
     setFsSuccess('');
     try {
-      await updateFeaturedServices(businessId, featuredServices);
+      await apiClient.put(`/clients/${businessId}/featured-services`, { 
+        featuredServices: featuredServices.map(fs => ({
+          originalName: fs.originalName,
+          displayName: fs.displayName || fs.originalName
+        }))
+      });
       setFsSuccess('Featured services updated!');
+      
+      // Refetch services to ensure we have the latest data
+      const optionsRes = await apiClient.get(`/clients/${businessId}/featured-services`);
+      const featuredServicesData = optionsRes.data || [];
+      const formattedFeaturedServices = featuredServicesData.map(service => ({
+        originalName: service.originalName || service.name || service,
+        displayName: service.displayName || service.name || service
+      }));
+      setFeaturedServices(formattedFeaturedServices);
+      
       setTimeout(() => setFsSuccess(''), 3000);
     } catch (err) {
+      console.error('Error saving featured services:', err);
       setFsError('Failed to update featured services.');
     } finally {
       setFsLoading(false);
