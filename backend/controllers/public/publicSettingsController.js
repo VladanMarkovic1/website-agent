@@ -47,25 +47,26 @@ export const getPublicBusinessOptions = async (req, res) => {
 
         // --- Featured services logic ---
         let allServices = serviceData?.services || [];
-        let featuredServiceNames = extraInfo?.featuredServices || [];
-        let featuredServices = [];
-        if (featuredServiceNames.length > 0) {
-            // Only include services that match the featured names (by name)
-            featuredServices = allServices.filter(s => featuredServiceNames.includes(s.name));
+        let featuredServices = extraInfo?.featuredServices || [];
+        let featuredForFrontend = [];
+        if (featuredServices.length > 0) {
+            // Use the stored display names
+            featuredForFrontend = featuredServices.map(fs => ({
+                name: fs.displayName,
+                description: (allServices.find(s => s.name === fs.originalName)?.description) || ''
+            }));
         } else {
-            // Fallback: first 6 services
-            featuredServices = allServices.slice(0, 6);
+            // Fallback: first 6 services, use their name as displayName
+            featuredForFrontend = allServices.slice(0, 6).map(service => ({
+                name: service.name,
+                description: service.description
+            }));
         }
-        // Always map to name/description objects
-        featuredServices = featuredServices.map(service => ({
-            name: service.name,
-            description: service.description
-        }));
 
         const response = {
             availableDays: extraInfo?.availableDays || defaultDays,
             availableTimes: extraInfo?.availableTimes || defaultTimes,
-            services: featuredServices
+            services: featuredForFrontend
         };
 
         res.json(response);

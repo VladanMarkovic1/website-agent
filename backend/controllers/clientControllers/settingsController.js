@@ -90,6 +90,12 @@ export const updateFeaturedServices = async (req, res) => {
     if (!Array.isArray(featuredServices) || featuredServices.length > 7) {
         return res.status(400).json({ error: 'featuredServices must be an array with at most 7 items.' });
     }
+    // Validate each item
+    for (const fs of featuredServices) {
+        if (!fs.originalName || !fs.displayName) {
+            return res.status(400).json({ error: 'Each featured service must have originalName and displayName.' });
+        }
+    }
     try {
         const extraInfo = await ExtraInfo.findOneAndUpdate(
             { businessId: clientId },

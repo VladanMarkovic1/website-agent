@@ -116,13 +116,20 @@ const Settings = () => {
 
   // Handler for toggling featured service selection
   const handleToggleFeatured = (serviceName) => {
-    if (featuredServices.includes(serviceName)) {
-      setFeaturedServices(featuredServices.filter(s => s !== serviceName));
+    if (featuredServices.some(fs => fs.originalName === serviceName)) {
+      setFeaturedServices(featuredServices.filter(fs => fs.originalName !== serviceName));
     } else {
       if (featuredServices.length < 7) {
-        setFeaturedServices([...featuredServices, serviceName]);
+        setFeaturedServices([...featuredServices, { originalName: serviceName, displayName: serviceName }]);
       }
     }
+  };
+
+  // Handler for changing display name
+  const handleDisplayNameChange = (serviceName, newDisplayName) => {
+    setFeaturedServices(featuredServices.map(fs =>
+      fs.originalName === serviceName ? { ...fs, displayName: newDisplayName } : fs
+    ));
   };
 
   // Handler for saving featured services
@@ -250,17 +257,33 @@ const Settings = () => {
         ) : (
           <form onSubmit={handleSaveFeatured} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {allServices.map(service => (
-                <label key={service.name} className={`flex items-center gap-2 p-2 rounded border cursor-pointer ${featuredServices.includes(service.name) ? 'bg-blue-100 border-blue-400' : 'bg-gray-50 border-gray-200'}`}>
-                  <input
-                    type="checkbox"
-                    checked={featuredServices.includes(service.name)}
-                    onChange={() => handleToggleFeatured(service.name)}
-                    disabled={!featuredServices.includes(service.name) && featuredServices.length >= 7}
-                  />
-                  <span className="font-medium">{service.name}</span>
-                </label>
-              ))}
+              {allServices.map(service => {
+                const selected = featuredServices.some(fs => fs.originalName === service.name);
+                const displayName = featuredServices.find(fs => fs.originalName === service.name)?.displayName || service.name;
+                return (
+                  <div key={service.name} className="flex flex-col gap-1 p-2 rounded border bg-gray-50 border-gray-200">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => handleToggleFeatured(service.name)}
+                        disabled={!selected && featuredServices.length >= 7}
+                      />
+                      <span className="font-medium">{service.name}</span>
+                    </label>
+                    {selected && (
+                      <input
+                        type="text"
+                        className="mt-1 p-1 border rounded text-sm"
+                        value={displayName}
+                        maxLength={32}
+                        onChange={e => handleDisplayNameChange(service.name, e.target.value)}
+                        placeholder="Button label"
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <div className="pt-2">
               <Button type="submit" disabled={fsLoading || featuredServices.length === 0} className="w-full md:w-auto">
