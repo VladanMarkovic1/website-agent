@@ -33,7 +33,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'error'
 
   // Concern options (services)
-  const concerns = (concernOptions && concernOptions.length > 0)
+  let concerns = (concernOptions && concernOptions.length > 0)
     ? concernOptions.map(s => (typeof s === 'string' ? { name: s } : s))
     : [
         { name: 'Pain' },
@@ -41,9 +41,12 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         { name: 'Implants' },
         { name: 'Regular care' },
         { name: 'Whitening' },
-        { name: 'Invisalign' },
-        { name: 'Other' }
+        { name: 'Invisalign' }
       ];
+  // Always add 'Other' button at the end, but only once
+  if (!concerns.some(c => c.name === 'Other')) {
+    concerns.push({ name: 'Other' });
+  }
 
   // Day and time options
   const days = dayOptions.length > 0 ? dayOptions : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
