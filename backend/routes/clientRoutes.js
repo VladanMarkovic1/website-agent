@@ -5,7 +5,8 @@ import {
     getWidgetSettings,
     updateWidgetSettings,
     getBusinessOptions,
-    updateFeaturedServices
+    updateFeaturedServices,
+    getFeaturedServices
 } from '../controllers/clientControllers/settingsController.js';
 import { body, param, validationResult } from 'express-validator';
 
@@ -72,6 +73,16 @@ router.get(
     handleValidationErrors,
     checkBusinessOwner, // Ensures user owns this clientId
     getBusinessOptions
+);
+
+// GET /api/v1/clients/:clientId/featured-services - Get featured services for chatbot
+router.get(
+    '/:clientId/featured-services',
+    authenticateToken,
+    clientIdParamValidation,
+    handleValidationErrors,
+    checkBusinessOwner,
+    getFeaturedServices
 );
 
 // PUT /api/v1/clients/:clientId/featured-services - Update featured services for chatbot

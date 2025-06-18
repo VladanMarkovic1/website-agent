@@ -68,14 +68,17 @@ const Settings = () => {
         // Fetch all services
         const res = await apiClient.get(`/services/${businessId}`);
         setAllServices(res.data || []);
-        // Fetch featured services (from ExtraInfo)
-        const optionsRes = await apiClient.get(`/clients/${businessId}/featured-services`);
-        const featuredServicesData = optionsRes.data || [];
-        // Ensure each featured service has both originalName and displayName
+        
+        // Fetch featured services
+        const featuredRes = await apiClient.get(`/clients/${businessId}/featured-services`);
+        const featuredServicesData = featuredRes.data || [];
+        
+        // Map the featured services, preserving display names
         const formattedFeaturedServices = featuredServicesData.map(service => ({
-          originalName: service.originalName || service.name || service,
-          displayName: service.displayName || service.name || service
+          originalName: service.originalName,
+          displayName: service.displayName
         }));
+        
         setFeaturedServices(formattedFeaturedServices);
       } catch (err) {
         console.error('Error loading services:', err);
@@ -129,6 +132,7 @@ const Settings = () => {
         return prevServices.filter(fs => fs.originalName !== serviceName);
       } else {
         if (prevServices.length < 7) {
+          // When adding a new service, set displayName same as originalName initially
           return [...prevServices, { originalName: serviceName, displayName: serviceName }];
         }
         return prevServices;
@@ -154,22 +158,16 @@ const Settings = () => {
     setFsError('');
     setFsSuccess('');
     try {
+      // Save the featured services
       await apiClient.put(`/clients/${businessId}/featured-services`, { 
-        featuredServices: featuredServices.map(fs => ({
-          originalName: fs.originalName,
-          displayName: fs.displayName || fs.originalName
-        }))
+        featuredServices: featuredServices
       });
       setFsSuccess('Featured services updated!');
       
-      // Refetch services to ensure we have the latest data
-      const optionsRes = await apiClient.get(`/clients/${businessId}/featured-services`);
-      const featuredServicesData = optionsRes.data || [];
-      const formattedFeaturedServices = featuredServicesData.map(service => ({
-        originalName: service.originalName || service.name || service,
-        displayName: service.displayName || service.name || service
-      }));
-      setFeaturedServices(formattedFeaturedServices);
+      // Refetch to ensure we have the latest data
+      const featuredRes = await apiClient.get(`/clients/${businessId}/featured-services`);
+      const featuredServicesData = featuredRes.data || [];
+      setFeaturedServices(featuredServicesData);
       
       setTimeout(() => setFsSuccess(''), 3000);
     } catch (err) {

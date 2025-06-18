@@ -83,6 +83,21 @@ export const getBusinessOptions = async (req, res) => {
     }
 };
 
+// Controller to get featured services for chatbot
+export const getFeaturedServices = async (req, res) => {
+    const { clientId } = req.params; // businessId
+    try {
+        const extraInfo = await ExtraInfo.findOne({ businessId: clientId });
+        if (!extraInfo) {
+            return res.status(200).json([]); // Return empty array if no featured services set
+        }
+        res.status(200).json(extraInfo.featuredServices || []);
+    } catch (error) {
+        console.error(`Error fetching featured services for ${clientId}:`, error);
+        res.status(500).json({ error: 'Failed to fetch featured services.' });
+    }
+};
+
 // Controller to update featured services for chatbot
 export const updateFeaturedServices = async (req, res) => {
     const { clientId } = req.params; // businessId
