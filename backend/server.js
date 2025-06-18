@@ -18,6 +18,7 @@ import loginRoutes from "./routes/loginRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
+import publicRoutes from './routes/publicRoutes.js';
 
 // Phase 3: Call Tracking System Routes
 import voiceWebhookRoutes from './routes/voiceWebhookRoutes.js';
@@ -127,18 +128,19 @@ const startServer = async () => {
         
         // Auth routes first
         app.use("/api/v1/auth", authLimiter, registrationRoutes);
-        app.use("/api/v1/auth", authLimiter, loginRoutes);
+app.use("/api/v1/auth", authLimiter, loginRoutes);
 
-        app.use(generalLimiter);
+app.use(generalLimiter);
 
-        // ALL API Routes
-        app.use("/api/v1/scraper", scraperRoutes);
-        app.use("/api/v1/services", serviceRoutes);
-        app.use("/api/v1/chatbot", chatbotRoutes);
-        app.use('/api/v1/leads', leadRoutes);
-        app.use("/api/v1/admin", adminLimiter, adminRoutes);
-        app.use('/api/v1/analytics', analyticsRoutes);
-        app.use('/api/v1/clients', clientRoutes);
+// ALL API Routes
+app.use("/api/v1/scraper", scraperRoutes);
+app.use("/api/v1/services", serviceRoutes);
+app.use("/api/v1/chatbot", chatbotRoutes);
+app.use('/api/v1/leads', leadRoutes);
+app.use("/api/v1/admin", adminLimiter, adminRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/clients', clientRoutes);
+app.use('/api/v1/public', publicRoutes);
 
         // Phase 3: Call Tracking System Routes
         app.use('/api/webhooks/voice', voiceWebhookRoutes);
