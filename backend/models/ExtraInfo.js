@@ -10,6 +10,9 @@ const ExtraInfoSchema = new mongoose.Schema({
         }
     ],
     operatingHours: { type: String },
+    availableDays: [{ type: String }],
+    availableTimes: [{ type: String }],
+    insuranceOptions: [{ type: String }],
 });
 
 export default mongoose.model("ExtraInfo", ExtraInfoSchema);
