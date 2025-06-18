@@ -6,6 +6,7 @@ import {
     updateWidgetSettings
 } from '../controllers/clientControllers/settingsController.js';
 import { body, param, validationResult } from 'express-validator';
+import { getBusinessOptions } from '../controllers/clientControllers/optionsController.js';
 
 const router = express.Router();
 
@@ -53,6 +54,16 @@ router.put(
     handleValidationErrors,
     checkBusinessOwner, // Ensures user owns this clientId
     updateWidgetSettings
+);
+
+// GET /api/v1/clients/:clientId/options - Get business options (days, times, insurance)
+router.get(
+    '/:clientId/options',
+    authenticateToken,
+    clientIdParamValidation,
+    handleValidationErrors,
+    checkBusinessOwner, // Ensures user owns this clientId
+    getBusinessOptions
 );
 
 export default router; 
