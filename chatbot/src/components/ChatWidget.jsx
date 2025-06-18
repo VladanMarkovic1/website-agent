@@ -29,6 +29,9 @@ const ChatWidget = ({
     });
     const [configError, setConfigError] = useState(null);
 
+    // State for dynamic options
+    const [options, setOptions] = useState({ availableDays: [], availableTimes: [], services: [] });
+
     // Function to fetch dynamic config
     const fetchWidgetConfig = useCallback(async () => {
         if (!businessId || !backendUrl) return;
@@ -58,6 +61,24 @@ const ChatWidget = ({
         }
     }, [businessId, backendUrl, initialPrimaryColor, initialPosition]);
 
+    // Fetch public options (days, times, services) for the business
+    const fetchOptions = useCallback(async () => {
+        if (!businessId || !backendUrl) return;
+        try {
+            const response = await fetch(`${backendUrl}/api/v1/public/options/${businessId}`);
+            if (!response.ok) throw new Error('Failed to fetch options');
+            const data = await response.json();
+            setOptions({
+                availableDays: data.availableDays || [],
+                availableTimes: data.availableTimes || [],
+                services: data.services || []
+            });
+        } catch (error) {
+            console.error('[ChatWidget] Error fetching options:', error);
+            setOptions({ availableDays: [], availableTimes: [], services: [] });
+        }
+    }, [businessId, backendUrl]);
+
     // Initialize Session, Config, and Socket Connection
     useEffect(() => {
         // Generate or retrieve session ID
@@ -71,6 +92,9 @@ const ChatWidget = ({
 
         // Fetch dynamic configuration
         fetchWidgetConfig();
+
+        // Fetch public options
+        fetchOptions();
 
         if (!businessId || !apiKey || !currentSessionId || !backendUrl) {
             console.error('[ChatWidget] Missing required info for WebSocket connection (businessId, apiKey, sessionId, backendUrl).');
@@ -121,7 +145,7 @@ const ChatWidget = ({
             }
             localStorage.removeItem(`chatbot_session_${businessId}`); // Clear session on unmount?
         };
-    }, [businessId, apiKey, backendUrl, fetchWidgetConfig]); // Removed 'messages' dependency
+    }, [businessId, apiKey, backendUrl, fetchWidgetConfig, fetchOptions]); // Removed 'messages' dependency
 
     const handleSendMessage = (text) => {
         if (!text.trim() || !socketRef.current || !socketRef.current.connected) return;
@@ -160,6 +184,9 @@ const ChatWidget = ({
                     primaryColor={widgetConfig.primaryColor}
                     welcomeMessage={widgetConfig.welcomeMessage}
                     isLoading={isLoading}
+                    dayOptions={options.availableDays}
+                    timeOptions={options.availableTimes}
+                    concernOptions={options.services}
                 />
             ) : (
                 <ChatButton 

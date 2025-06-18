@@ -10,7 +10,7 @@ const getSubmissionMessage = () => {
   return 'Our team will get back to you within 2 hours with more information.';
 };
 
-const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5' }) => {
+const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5', dayOptions = [], timeOptions = [], concernOptions = [] }) => {
   // Add console log here
   console.log('[ChatWindow] Rendering with messages:', messages);
 
@@ -32,17 +32,22 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const [hasInsurance, setHasInsurance] = useState('');
   const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'error'
 
-  // Button options
-  const concernOptions = [
-    'Pain', 'Broken teeth', 'Implants', 'Regular care', 'Whitening', 'Invisalign', 'Other'
-  ];
-  const timingOptions = [
-    'Now', '1-3 weeks', '1-3 months'
-  ];
+  // Concern options (services)
+  const concerns = (concernOptions && concernOptions.length > 0)
+    ? concernOptions.map(s => (typeof s === 'string' ? { name: s } : s))
+    : [
+        { name: 'Pain' },
+        { name: 'Broken teeth' },
+        { name: 'Implants' },
+        { name: 'Regular care' },
+        { name: 'Whitening' },
+        { name: 'Invisalign' },
+        { name: 'Other' }
+      ];
 
   // Day and time options
-  const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const timeOptions = ['7am-12pm', '1pm-4pm'];
+  const days = dayOptions.length > 0 ? dayOptions : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const times = timeOptions.length > 0 ? timeOptions : ['7am-12pm', '1pm-4pm'];
   const insuranceOptions = ['Yes', 'No'];
 
   // Update header title based on service mentions in messages
@@ -184,14 +189,14 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
               <p className="text-sm text-gray-600">Select your dental concern</p>
             </div>
             <div className="grid grid-cols-2 gap-3 w-full max-w-xs mb-4">
-              {concernOptions.map((option) => (
+              {concerns.map((option) => (
                 <button
-                  key={option}
-                  onClick={() => handleConcernClick(option)}
-                  className={`${option === 'Other' ? 'col-span-2' : ''} flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-[#D2A89E] hover:bg-[#c49a90] transition-all duration-200 font-semibold !text-white`}
+                  key={option.name}
+                  onClick={() => handleConcernClick(option.name)}
+                  className={`${option.name === 'Other' ? 'col-span-2' : ''} flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-[#D2A89E] hover:bg-[#c49a90] transition-all duration-200 font-semibold !text-white`}
                   style={{ color: '#fff' }}
                 >
-                  {option === 'Other' ? 'Other Concerns' : option}
+                  {option.name === 'Other' ? 'Other Concerns' : option.name}
                 </button>
               ))}
             </div>
@@ -288,7 +293,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           <div className="flex-1 flex flex-col items-center p-4">
             <div className="w-full pt-6 pb-7 text-center font-bold text-lg">What days work the best?</div>
             <div className="grid grid-cols-3 gap-3 w-full max-w-xs mb-8">
-              {dayOptions.map((day) => (
+              {days.map((day) => (
                 <button
                   key={day}
                   className={`py-3 rounded-xl font-medium text-base transition-all duration-150 shadow-sm focus:outline-none
@@ -328,7 +333,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           <div className="flex-1 flex flex-col items-center p-4">
             <div className="w-full pt-6 pb-7 text-center font-bold text-lg">Do you prefer morning or afternoon appointment?</div>
             <div className="flex flex-row justify-center gap-4 w-full max-w-xs mb-8">
-              {timeOptions.map((time) => (
+              {times.map((time) => (
                 <button
                   key={time}
                   className={`flex-1 py-3 rounded-xl font-medium text-base transition-all duration-150 shadow-sm focus:outline-none
