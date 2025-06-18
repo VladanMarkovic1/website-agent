@@ -5,6 +5,7 @@ import Button from '../layout/SubmitButton'; // Re-use Button
 import { HiSave } from 'react-icons/hi'; // Icon for save button
 import { useAuth } from '../../context/AuthContext.jsx'; // Import useAuth
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { getFeaturedServices, updateFeaturedServices } from '../../utils/api';
 
 const Settings = () => {
   const { user } = useAuth(); // Get user from context
@@ -19,6 +20,13 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // State for featured services
+  const [allServices, setAllServices] = useState([]);
+  const [featuredServices, setFeaturedServices] = useState([]);
+  const [fsLoading, setFsLoading] = useState(true);
+  const [fsError, setFsError] = useState('');
+  const [fsSuccess, setFsSuccess] = useState('');
 
   // Fetch current settings on mount
   useEffect(() => {
@@ -49,6 +57,28 @@ const Settings = () => {
 
     fetchSettings();
   }, [businessId, navigate]); // Re-run if businessId changes (though unlikely here)
+
+  // Fetch all services and featured services
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!businessId) return;
+      setFsLoading(true);
+      setFsError('');
+      try {
+        // Fetch all services
+        const res = await apiClient.get(`/services/${businessId}`);
+        setAllServices(res.data || []);
+        // Fetch featured services (from ExtraInfo)
+        const optionsRes = await apiClient.get(`/clients/${businessId}/options`);
+        setFeaturedServices(optionsRes.data.featuredServices || []);
+      } catch (err) {
+        setFsError('Failed to load services.');
+      } finally {
+        setFsLoading(false);
+      }
+    };
+    fetchServices();
+  }, [businessId]);
 
   const handleSaveSettings = async (e) => {
     e.preventDefault(); // Prevent default form submission
@@ -81,6 +111,34 @@ const Settings = () => {
         setLoading(false); // End loading state
         // Clear success message after a delay
         setTimeout(() => setSuccessMessage(''), 3000);
+    }
+  };
+
+  // Handler for toggling featured service selection
+  const handleToggleFeatured = (serviceName) => {
+    if (featuredServices.includes(serviceName)) {
+      setFeaturedServices(featuredServices.filter(s => s !== serviceName));
+    } else {
+      if (featuredServices.length < 7) {
+        setFeaturedServices([...featuredServices, serviceName]);
+      }
+    }
+  };
+
+  // Handler for saving featured services
+  const handleSaveFeatured = async (e) => {
+    e.preventDefault();
+    setFsLoading(true);
+    setFsError('');
+    setFsSuccess('');
+    try {
+      await updateFeaturedServices(businessId, featuredServices);
+      setFsSuccess('Featured services updated!');
+      setTimeout(() => setFsSuccess(''), 3000);
+    } catch (err) {
+      setFsError('Failed to update featured services.');
+    } finally {
+      setFsLoading(false);
     }
   };
 
@@ -179,6 +237,39 @@ const Settings = () => {
                 </div>
             </form>
           )}
+      </div>
+
+      {/* Featured Services Section */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium mb-4">Chatbot Featured Services</h3>
+        <p className="text-sm text-gray-600 mb-2">Select up to 7 services to show as quick buttons in the chatbot. "Other" will always be shown.</p>
+        {fsError && <p className="text-red-500 text-sm mb-2">{fsError}</p>}
+        {fsSuccess && <p className="text-green-500 text-sm mb-2">{fsSuccess}</p>}
+        {fsLoading ? (
+          <p>Loading services...</p>
+        ) : (
+          <form onSubmit={handleSaveFeatured} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {allServices.map(service => (
+                <label key={service.name} className={`flex items-center gap-2 p-2 rounded border cursor-pointer ${featuredServices.includes(service.name) ? 'bg-blue-100 border-blue-400' : 'bg-gray-50 border-gray-200'}`}>
+                  <input
+                    type="checkbox"
+                    checked={featuredServices.includes(service.name)}
+                    onChange={() => handleToggleFeatured(service.name)}
+                    disabled={!featuredServices.includes(service.name) && featuredServices.length >= 7}
+                  />
+                  <span className="font-medium">{service.name}</span>
+                </label>
+              ))}
+            </div>
+            <div className="pt-2">
+              <Button type="submit" disabled={fsLoading || featuredServices.length === 0} className="w-full md:w-auto">
+                <HiSave className="-ml-1 mr-2 h-5 w-5" />
+                {fsLoading ? 'Saving...' : 'Save Featured Services'}
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
 
     </div>
