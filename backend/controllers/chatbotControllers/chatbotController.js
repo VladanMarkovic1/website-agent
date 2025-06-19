@@ -249,14 +249,24 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
         // Extract PII to be sent to saveLead (which handles encryption)
         const leadPii = classifiedIntent.contactInfo; 
 
-        // Extract extra details from the last user message in the session
-        const lastUserMessage = (session.messages || []).slice().reverse().find(m => m.role === 'user');
+        // Extract extra details from the entire conversation history (for button flow)
         let extraDetails = {};
-        if (lastUserMessage && lastUserMessage.content) {
-            extraDetails = extractExtraDetails(lastUserMessage.content);
-            console.log('[DEBUG] Extracted extraDetails from last user message:', extraDetails);
+        if (session.messages && session.messages.length > 0) {
+            // Go through all user messages to collect extra details
+            for (const msg of session.messages) {
+                if (msg.role === 'user' && msg.content) {
+                    const messageDetails = extractExtraDetails(msg.content);
+                    // Merge details, prioritizing non-empty values
+                    if (messageDetails.concern && !extraDetails.concern) extraDetails.concern = messageDetails.concern;
+                    if (messageDetails.timing && !extraDetails.timing) extraDetails.timing = messageDetails.timing;
+                    if (messageDetails.days && !extraDetails.days) extraDetails.days = messageDetails.days;
+                    if (messageDetails.time && !extraDetails.time) extraDetails.time = messageDetails.time;
+                    if (messageDetails.insurance && !extraDetails.insurance) extraDetails.insurance = messageDetails.insurance;
+                }
+            }
+            console.log('[DEBUG] Extracted extraDetails from conversation history:', extraDetails);
         } else {
-            console.log('[DEBUG] No last user message found for extraDetails extraction.');
+            console.log('[DEBUG] No conversation history found for extraDetails extraction.');
         }
 
         // Determine service interest

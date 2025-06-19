@@ -129,21 +129,56 @@ export function extractContactInfo(message) {
 }
 
 export function extractExtraDetails(message) {
+    console.log('[DEBUG] extractExtraDetails - Input message:', message);
     const details = {};
     
-    // Extract days
+    // Extract days - enhanced to handle natural language
     const daysMatch = message.match(/Days:\s*([A-Za-z,\s]+)/i);
-    if (daysMatch) details.days = daysMatch[1].split(',').map(d => d.trim()).filter(Boolean);
+    if (daysMatch) {
+        details.days = daysMatch[1].split(',').map(d => d.trim()).filter(Boolean);
+        console.log('[DEBUG] extractExtraDetails - Found days:', details.days);
+    } else {
+        // Handle natural language like "I prefer Monday for my appointment"
+        const naturalDaysMatch = message.match(/(?:prefer|like|want|choose)\s+([A-Za-z]+)\s+(?:for|on|my)/i);
+        if (naturalDaysMatch) {
+            const day = naturalDaysMatch[1];
+            if (['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].includes(day.toLowerCase())) {
+                details.days = [day];
+                console.log('[DEBUG] extractExtraDetails - Found days from natural language:', details.days);
+            }
+        }
+    }
 
-    // Extract time
+    // Extract time - enhanced to handle natural language
     const timeMatch = message.match(/Time:\s*([A-Za-z0-9\-: ]+)/i);
-    if (timeMatch) details.time = timeMatch[1].trim();
+    if (timeMatch) {
+        details.time = timeMatch[1].trim();
+        console.log('[DEBUG] extractExtraDetails - Found time:', details.time);
+    } else {
+        // Handle natural language like "I prefer morning appointments"
+        const naturalTimeMatch = message.match(/(?:prefer|like|want)\s+(morning|afternoon|evening)/i);
+        if (naturalTimeMatch) {
+            details.time = naturalTimeMatch[1];
+            console.log('[DEBUG] extractExtraDetails - Found time from natural language:', details.time);
+        }
+    }
 
-    // Extract insurance
+    // Extract insurance - enhanced to handle natural language
     const insuranceMatch = message.match(/Insurance:\s*(Yes|No)/i);
-    if (insuranceMatch) details.insurance = insuranceMatch[1];
+    if (insuranceMatch) {
+        details.insurance = insuranceMatch[1];
+        console.log('[DEBUG] extractExtraDetails - Found insurance:', details.insurance);
+    } else {
+        // Handle natural language like "I have dental insurance" or "I do not have dental insurance"
+        const naturalInsuranceMatch = message.match(/(?:have|do not have|don't have)\s+(?:dental\s+)?insurance/i);
+        if (naturalInsuranceMatch) {
+            const hasInsurance = message.toLowerCase().includes('have') && !message.toLowerCase().includes('do not have') && !message.toLowerCase().includes("don't have");
+            details.insurance = hasInsurance ? 'Yes' : 'No';
+            console.log('[DEBUG] extractExtraDetails - Found insurance from natural language:', details.insurance);
+        }
+    }
 
-    // Extract concern - improved to handle button-based flow
+    // Extract concern - enhanced to handle natural language
     const concernMatch = message.match(/Concern:\s*([^,\n]+)/i);
     if (concernMatch) {
         const rawConcern = concernMatch[1].trim();
@@ -154,9 +189,23 @@ export function extractExtraDetails(message) {
             .replace(/email:\s*[^,]+/i, '')
             .trim();
         details.concern = cleanedConcern;
+        console.log('[DEBUG] extractExtraDetails - Found concern:', details.concern);
+    } else {
+        // Handle natural language like "I'm interested in Pain" or "I want to know about Implants"
+        const naturalConcernMatch = message.match(/(?:interested in|want to know about|need help with|looking for)\s+([A-Za-z\s]+)/i);
+        if (naturalConcernMatch) {
+            const concern = naturalConcernMatch[1].trim();
+            // Filter out common words that aren't concerns
+            const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+            const concernWords = concern.split(' ').filter(word => !commonWords.includes(word.toLowerCase()));
+            if (concernWords.length > 0) {
+                details.concern = concernWords.join(' ');
+                console.log('[DEBUG] extractExtraDetails - Found concern from natural language:', details.concern);
+            }
+        }
     }
 
-    // Extract timing - improved to handle button-based flow
+    // Extract timing - enhanced to handle natural language
     const timingMatch = message.match(/Timing:\s*([^,\n]+)/i);
     if (timingMatch) {
         const rawTiming = timingMatch[1].trim();
@@ -167,8 +216,17 @@ export function extractExtraDetails(message) {
             .replace(/email:\s*[^,]+/i, '')
             .trim();
         details.timing = cleanedTiming;
+        console.log('[DEBUG] extractExtraDetails - Found timing:', details.timing);
+    } else {
+        // Handle natural language like "I would like an appointment now" or "I would like an appointment this week"
+        const naturalTimingMatch = message.match(/(?:appointment|visit)\s+(now|this week|next week|soon|asap)/i);
+        if (naturalTimingMatch) {
+            details.timing = naturalTimingMatch[1];
+            console.log('[DEBUG] extractExtraDetails - Found timing from natural language:', details.timing);
+        }
     }
 
+    console.log('[DEBUG] extractExtraDetails - Final details object:', details);
     return details;
 }
 

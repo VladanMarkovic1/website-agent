@@ -107,12 +107,16 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
       setFreeChat(true);
       setStep('chat');
     } else {
+      // Send the concern selection to the backend immediately
+      onSendMessage(`I'm interested in ${option}`);
       setStep(2);
     }
   };
 
   const handleTimingClick = (option) => {
     setAppointmentTimeframe(option);
+    // Send the timing selection to the backend immediately
+    onSendMessage(`I would like an appointment ${option.toLowerCase()}`);
     if (option === 'Now') {
       setStep(3);
     } else {
@@ -122,15 +126,22 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
 
   const handleDaySelect = (day) => {
     setBestDays([day]);
+    // Send the day selection to the backend immediately
+    onSendMessage(`I prefer ${day} for my appointment`);
+    setStep(5);
   };
 
   const handleTimeSelect = (time) => {
     setPreferredTime(time);
+    // Send the time selection to the backend immediately
+    onSendMessage(`I prefer ${time} appointments`);
     setStep(6); // insurance step
   };
 
   const handleInsuranceSelect = (val) => {
     setHasInsurance(val);
+    // Send the insurance selection to the backend immediately
+    onSendMessage(`I ${val === 'Yes' ? 'have' : 'do not have'} dental insurance`);
     setStep(3); // go to name/phone/email form
   };
 
@@ -171,16 +182,8 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   };
 
   const handleSubmitDetails = async () => {
-    // Compose message string as in the old way, but only use the user's name
+    // Only send contact info since extra details are already sent through button clicks
     let message = `${userDetails.name}, ${userDetails.phone}, ${userDetails.email}`;
-    // Add extra details for context
-    const extras = [];
-    if (selectedConcern) extras.push(`Concern: ${selectedConcern}`);
-    if (appointmentTimeframe) extras.push(`Timing: ${appointmentTimeframe}`);
-    if (bestDays.length) extras.push(`Days: ${bestDays.join(', ')}`);
-    if (preferredTime) extras.push(`Time: ${preferredTime}`);
-    if (hasInsurance) extras.push(`Insurance: ${hasInsurance}`);
-    if (extras.length) message += '. ' + extras.join('. ');
     try {
       onSendMessage(message); // Use the same handler as classic chat
       setSubmitStatus('success');
