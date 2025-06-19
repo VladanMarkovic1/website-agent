@@ -4,6 +4,8 @@
  * @returns {Object|null} Extracted contact info or null
  */
 export function extractContactInfo(message) {
+    console.log('[DEBUG] extractContactInfo - Input message:', message);
+    
     // First, try the comma-separated format (most reliable)
     const commaParts = message.split(',').map(part => part.trim());
     if (commaParts.length === 3) {
@@ -21,12 +23,16 @@ export function extractContactInfo(message) {
         // Validate name (should not be empty and not just numbers)
         const nameValid = rawName && rawName.trim().length > 0 && !/^\d+$/.test(rawName.trim());
         
+        console.log('[DEBUG] extractContactInfo - Comma format validation:', { nameValid, phoneValid, emailValid, rawName, phoneDigits, rawEmail });
+        
         if (nameValid && phoneValid && emailValid) {
-            return {
+            const result = {
                 name: rawName.trim(),
                 phone: phoneDigits,
                 email: rawEmail.trim()
             };
+            console.log('[DEBUG] extractContactInfo - Comma format result:', result);
+            return result;
         }
     }
 
@@ -36,6 +42,8 @@ export function extractContactInfo(message) {
         phone: message.match(/phone:\s*([^,]+?)(?=\s*,|\s*email|\s*name|\s*concern|\s*timing|$)/i)?.[1]?.trim(),
         email: message.match(/(?:email|mail):\s*([^,]+?)(?=\s*,|\s*phone|\s*name|\s*concern|\s*timing|$)/i)?.[1]?.trim()
     };
+
+    console.log('[DEBUG] extractContactInfo - Structured format match:', structuredMatch);
 
     if (structuredMatch.name && structuredMatch.phone) {
         const cleanedPhone = structuredMatch.phone.replace(/\D/g, '');
@@ -50,6 +58,7 @@ export function extractContactInfo(message) {
             result.email = structuredMatch.email;
         }
         
+        console.log('[DEBUG] extractContactInfo - Structured format result:', result);
         return result;
     }
 
@@ -106,13 +115,16 @@ export function extractContactInfo(message) {
 
     // Return if we found something
     if (extractedEmail || extractedPhone || extractedName) {
-        return {
+        const result = {
             email: extractedEmail,
             phone: extractedPhone,
             name: extractedName
         };
+        console.log('[DEBUG] extractContactInfo - Natural format result:', result);
+        return result;
     }
     
+    console.log('[DEBUG] extractContactInfo - No contact info found');
     return null;
 }
 

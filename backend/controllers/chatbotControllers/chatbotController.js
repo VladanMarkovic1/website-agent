@@ -220,9 +220,24 @@ async function _determineLeadProblemContext(session, businessData) {
 }
 
 async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedIntent) {
-    if (!(classifiedIntent && classifiedIntent.type === 'CONTACT_INFO_PROVIDED' && classifiedIntent.contactInfo)) {
+    // Check for complete contact info (name + phone are required, email is optional)
+    const hasCompleteContactInfo = classifiedIntent && 
+        classifiedIntent.type === 'CONTACT_INFO_PROVIDED' && 
+        classifiedIntent.contactInfo &&
+        classifiedIntent.contactInfo.name && 
+        classifiedIntent.contactInfo.phone;
+    
+    // Also check for partial contact info that might be complete enough
+    const hasPartialContactInfo = classifiedIntent && 
+        classifiedIntent.type === 'PARTIAL_CONTACT_INFO_PROVIDED' && 
+        classifiedIntent.contactInfo &&
+        classifiedIntent.contactInfo.name && 
+        classifiedIntent.contactInfo.phone;
+    
+    if (!hasCompleteContactInfo && !hasPartialContactInfo) {
         return false; // No lead saved
     }
+    
     try {
         // --- Get Business Data (Needed for context determination) --- 
         const businessData = await _getBusinessData(session.businessId);
@@ -384,56 +399,72 @@ const processChatMessage = async (message, sessionId, businessId) => {
         // Track problem description if needed 
         await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type, classifiedIntent?.type);
 
-        // --- Only use fallback: Always save lead if message contains all info (for button-based flow) ---
-        const contactInfo = extractContactInfo(message);
-        const extraDetails = extractExtraDetails(message);
-        if (contactInfo && contactInfo.name && contactInfo.phone && (extraDetails.concern || extraDetails.timing)) {
-            // Check for existing lead
-            const existingLead = await Lead.findOne({
-                businessId,
-                $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
-            });
-
-            // Ensure we have a valid concern
-            const concern = extraDetails.concern || session.serviceInterest || 'Dental Consultation';
+        // --- Handle Lead Saving (Main Logic) ---
+        console.log('[DEBUG] Lead Saving - classifiedIntent:', JSON.stringify(classifiedIntent, null, 2));
+        console.log('[DEBUG] Lead Saving - session.serviceInterest:', session.serviceInterest);
+        const leadSaved = await _handleLeadSavingIfNeeded(finalResponse, session, classifiedIntent);
+        console.log('[DEBUG] Lead Saving - leadSaved result:', leadSaved);
+        
+        // --- Fallback: Always save lead if message contains all info (for button-based flow) ---
+        if (!leadSaved) { // Only run fallback if main lead saving didn't work
+            console.log('[DEBUG] Fallback Lead Saving - Running fallback logic');
+            const contactInfo = extractContactInfo(message);
+            const extraDetails = extractExtraDetails(message);
+            console.log('[DEBUG] Fallback Lead Saving - extracted contactInfo:', JSON.stringify(contactInfo, null, 2));
+            console.log('[DEBUG] Fallback Lead Saving - extracted extraDetails:', JSON.stringify(extraDetails, null, 2));
             
-            // Remove service/concern from extraDetails to avoid duplication
-            const { concern: _, ...otherDetails } = extraDetails;
-            
-            // Create lead context with proper separation of name and concern
-            const leadContext = {
-                businessId,
-                name: contactInfo.name,
-                phone: contactInfo.phone,
-                email: contactInfo.email,
-                serviceInterest: concern,
-                problemDescription: concern,
-                messageHistory: session.messages,
-                details: otherDetails // Only include other details, not the service
-            };
-
-            if (existingLead) {
-                // Update existing lead with new details
-                existingLead.name = contactInfo.name;
-                existingLead.phone = contactInfo.phone;
-                existingLead.email = contactInfo.email || existingLead.email;
-                existingLead.service = concern;
-                existingLead.reason = `Patient's Concern: ${concern}`;
-                existingLead.details = otherDetails;
-                existingLead.lastContactedAt = new Date();
-                existingLead.status = 'new';
-                existingLead.interactions.push({
-                    type: 'chatbot',
-                    status: 'Re-engaged via Chatbot',
-                    message: `User re-engaged via chatbot. Concern: ${concern}`,
-                    service: concern
+            // More flexible condition: require name and phone, but concern/timing can come from session
+            if (contactInfo && contactInfo.name && contactInfo.phone) {
+                console.log('[DEBUG] Fallback Lead Saving - Contact info validation passed, proceeding to save lead');
+                // Check for existing lead
+                const existingLead = await Lead.findOne({
+                    businessId,
+                    $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
                 });
-                await existingLead.save();
-                console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
+
+                // Ensure we have a valid concern (can come from session or current message)
+                const concern = extraDetails.concern || session.serviceInterest || 'Dental Consultation';
+                
+                // Remove service/concern from extraDetails to avoid duplication
+                const { concern: _, ...otherDetails } = extraDetails;
+                
+                // Create lead context with proper separation of name and concern
+                const leadContext = {
+                    businessId,
+                    name: contactInfo.name,
+                    phone: contactInfo.phone,
+                    email: contactInfo.email,
+                    serviceInterest: concern,
+                    problemDescription: concern,
+                    messageHistory: session.messages,
+                    details: otherDetails // Only include other details, not the service
+                };
+
+                if (existingLead) {
+                    // Update existing lead with new details
+                    existingLead.name = contactInfo.name;
+                    existingLead.phone = contactInfo.phone;
+                    existingLead.email = contactInfo.email || existingLead.email;
+                    existingLead.service = concern;
+                    existingLead.reason = `Patient's Concern: ${concern}`;
+                    existingLead.details = otherDetails;
+                    existingLead.lastContactedAt = new Date();
+                    existingLead.status = 'new';
+                    existingLead.interactions.push({
+                        type: 'chatbot',
+                        status: 'Re-engaged via Chatbot',
+                        message: `User re-engaged via chatbot. Concern: ${concern}`,
+                        service: concern
+                    });
+                    await existingLead.save();
+                    console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
+                } else {
+                    // Create new lead
+                    console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
+                    await saveLead(leadContext);
+                }
             } else {
-                // Create new lead
-                console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
-                await saveLead(leadContext);
+                console.log('[DEBUG] Fallback Lead Saving - Contact info validation failed: missing name or phone');
             }
         }
 

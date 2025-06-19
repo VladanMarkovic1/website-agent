@@ -224,8 +224,8 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
             }
         });
 
-        // Check if accumulated info is now complete
-        const isComplete = finalAccumulatedInfo.name && finalAccumulatedInfo.phone && finalAccumulatedInfo.email;
+        // Check if accumulated info is now complete (name + phone are required, email is optional)
+        const isComplete = finalAccumulatedInfo.name && finalAccumulatedInfo.phone;
 
         if (isComplete) {
             return {
@@ -252,7 +252,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
 
     // Check for complete contact info in the current message ONLY if bot didn't just ask
     const singleMessageContactInfo = extractContactInfo(message);
-    if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone && singleMessageContactInfo.email) {
+    if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone) {
         return {
             type: 'CONTACT_INFO_PROVIDED',
             contactInfo: singleMessageContactInfo,
