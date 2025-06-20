@@ -186,8 +186,18 @@ async function _trackProblemDescriptionIfNeeded(session, message, botNextRespons
 async function _determineLeadProblemContext(session, businessData) {
     const genericPlaceholders = ['your dental needs', 'dental consultation', 'general inquiry', null];
     const specificServiceInterest = session.serviceInterest && !genericPlaceholders.includes(session.serviceInterest.toLowerCase())
-                                    ? session.serviceInterest 
+                                    ? session.serviceInterest
                                     : null;
+
+    // More robust name detection patterns from _trackProblemDescriptionIfNeeded
+    const namePatterns = [
+        /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/,
+        /^[A-Z][a-z]+$/,
+        /^(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/,
+        /^[A-Z][a-z]+(?:\s+(?:van|de|der|den|dos|das|do|da|von|el|al|bin|ibn)\s+[A-Z][a-z]+)*$/
+    ];
+
+    const isJustName = (text) => namePatterns.some(pattern => pattern.test(text.trim()));
 
     // 1. Prioritize specific service interest
     if (specificServiceInterest) {
@@ -195,28 +205,38 @@ async function _determineLeadProblemContext(session, businessData) {
     }
 
     // 2. Prioritize explicitly tracked problem description
-    // Ensure problemDescription is not null/empty AND doesn't look like just a name
-    const nameRegex = /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/; // Basic name pattern
-    if (session.problemDescription && session.problemDescription.trim().length > 0 && !nameRegex.test(session.problemDescription.trim())) {
+    if (session.problemDescription && session.problemDescription.trim().length > 0 && !isJustName(session.problemDescription)) {
          return session.problemDescription; // Already redacted
     }
 
-    // 3. Fallback: Simple generic message (Avoid complex history search for now)
+    // 3. Fallback: Search backwards through message history for a meaningful user message.
+    if (session.messages && session.messages.length > 0) {
+        const trivialMessageTypes = [
+            'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES', 'CONFIRMATION_NO',
+            'SMALLTALK', 'GREETING', 'GOODBYE',
+            'CONTACT_INFO', 'PARTIAL_CONTACT_INFO_PROVIDED', 'CONTACT_INFO_PROVIDED',
+            'REQUEST_HUMAN_AGENT', 'THANKS'
+        ];
+
+        // Search from the end to the beginning to find the most recent, relevant message
+        for (let i = session.messages.length - 1; i >= 0; i--) {
+            const msg = session.messages[i];
+
+            if (msg.role === 'user' && msg.content) {
+                const messageTypes = msg.type ? msg.type.split('/') : ['UNKNOWN'];
+                // A message is trivial if ALL its classified types are in the trivial list.
+                const isTrivial = messageTypes.every(type => trivialMessageTypes.includes(type));
+
+                if (!isTrivial && !isJustName(msg.content) && msg.content.trim().length > 0) {
+                    console.log(`[Context Fallback] Found user concern in history: "${msg.content}"`);
+                    return msg.content; // Content is already redacted
+                }
+            }
+        }
+    }
+
+    // 4. Final Fallback: If no better context is found, use the generic message
     return "User provided contact details after chatbot interaction.";
-
-    /* // --- REMOVED History Search Logic --- 
-    // 3. Fallback: Search backwards for first non-trivial message if description wasn't captured
-    if (!leadProblemContext) {
-        // ... existing history search code ...
-    }
-
-    // 4. Final fallback: Generic message
-    if (!leadProblemContext) {
-        leadProblemContext = "User provided contact details after chatbot interaction.";
-    }
-    
-    return leadProblemContext;
-    */ // --- END REMOVED History Search --- 
 }
 
 async function _handleLeadSavingIfNeeded(message, finalResponse, session, classifiedIntent) {
