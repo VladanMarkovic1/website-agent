@@ -219,7 +219,7 @@ async function _determineLeadProblemContext(session, businessData) {
     */ // --- END REMOVED History Search --- 
 }
 
-async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedIntent) {
+async function _handleLeadSavingIfNeeded(message, finalResponse, session, classifiedIntent) {
     // Check for complete contact info (name + phone are required, email is optional)
     const hasCompleteContactInfo = classifiedIntent && 
         classifiedIntent.type === 'CONTACT_INFO_PROVIDED' && 
@@ -249,14 +249,17 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
         // Extract PII to be sent to saveLead (which handles encryption)
         const leadPii = classifiedIntent.contactInfo; 
 
-        // Extract extra details from the entire conversation history (for button flow)
-        let extraDetails = {};
+        // Extract details from the current message first, as it's the most relevant.
+        let extraDetails = extractExtraDetails(message);
+        console.log('[DEBUG] Extracted extraDetails from current message:', extraDetails);
+
+        // Then, go through history to fill in any details that might be missing.
         if (session.messages && session.messages.length > 0) {
-            // Go through all user messages to collect extra details
-            for (const msg of session.messages) {
+            // Go through all user messages to collect extra details, starting from the most recent
+            for (const msg of session.messages.slice().reverse()) {
                 if (msg.role === 'user' && msg.content) {
                     const messageDetails = extractExtraDetails(msg.content);
-                    // Merge details, prioritizing non-empty values
+                    // Merge details, filling in gaps from older messages
                     if (messageDetails.concern && !extraDetails.concern) extraDetails.concern = messageDetails.concern;
                     if (messageDetails.timing && !extraDetails.timing) extraDetails.timing = messageDetails.timing;
                     if (messageDetails.days && !extraDetails.days) extraDetails.days = messageDetails.days;
@@ -264,11 +267,9 @@ async function _handleLeadSavingIfNeeded(finalResponse, session, classifiedInten
                     if (messageDetails.insurance && !extraDetails.insurance) extraDetails.insurance = messageDetails.insurance;
                 }
             }
-            console.log('[DEBUG] Extracted extraDetails from conversation history:', extraDetails);
-        } else {
-            console.log('[DEBUG] No conversation history found for extraDetails extraction.');
         }
-
+        console.log('[DEBUG] Final merged extraDetails:', extraDetails);
+        
         // Determine service interest
         const serviceInterest = extraDetails.concern || session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation';
         
@@ -412,7 +413,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
         // --- Handle Lead Saving (Main Logic) ---
         console.log('[DEBUG] Lead Saving - classifiedIntent:', JSON.stringify(classifiedIntent, null, 2));
         console.log('[DEBUG] Lead Saving - session.serviceInterest:', session.serviceInterest);
-        const leadSaved = await _handleLeadSavingIfNeeded(finalResponse, session, classifiedIntent);
+        const leadSaved = await _handleLeadSavingIfNeeded(message, finalResponse, session, classifiedIntent);
         console.log('[DEBUG] Lead Saving - leadSaved result:', leadSaved);
         
         // --- Fallback: Always save lead if message contains all info (for button-based flow) ---
