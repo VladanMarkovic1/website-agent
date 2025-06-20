@@ -219,7 +219,7 @@ export function extractExtraDetails(message) {
         console.log('[DEBUG] extractExtraDetails - Found timing:', details.timing);
     } else {
         // Handle natural language like "I would like an appointment now" or "I would like an appointment this week"
-        const naturalTimingMatch = message.match(/(?:appointment|visit)\s+(now|this week|next week|soon|asap)/i);
+        const naturalTimingMatch = message.match(/(?:appointment|visit)\s+(now|this week|next week|1-3 weeks|1-3 months|soon|asap)/i);
         if (naturalTimingMatch) {
             details.timing = naturalTimingMatch[1];
             console.log('[DEBUG] extractExtraDetails - Found timing from natural language:', details.timing);

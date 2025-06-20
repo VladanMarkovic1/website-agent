@@ -74,7 +74,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const times = ['Morning', 'Afternoon'];
   const insuranceOptions = ['Yes', 'No'];
   // Add timingOptions for appointment step
-  const timingOptions = ['Now', 'This week', 'Next week'];
+  const timingOptions = ['Now', '1-3 weeks', '1-3 months'];
 
   // Update header title based on service mentions in messages
   useEffect(() => {
