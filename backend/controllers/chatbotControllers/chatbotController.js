@@ -53,7 +53,7 @@ async function _detectAndSetInitialServiceInterest(session, businessContext, mes
     if (session.serviceInterest) return; // Already set
 
     const messageLower = message.toLowerCase();
-    const services = businessContext.services?.services || [];
+    const services = businessContext.business.services?.services || [];
     
     const mentionedService = services.find(service => {
         if (!service || !service.name) return false;
