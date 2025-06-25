@@ -106,6 +106,8 @@ router.get(
                 businessName: business.businessName,
                 websiteUrl: business.websiteUrl,
                 notificationEmail: business.notificationEmail,
+                phone: business.phone,
+                email: business.email,
                 
                 // Enhanced business profile
                 businessDescription: business.businessDescription,
@@ -180,7 +182,8 @@ router.put(
                 'businessName', 'businessDescription', 'mission', 'vision',
                 'specializations', 'yearsInBusiness', 'certifications', 'awards',
                 'teamMembers', 'insurancePartners', 'paymentOptions', 'emergencyProtocol',
-                'businessTone', 'communicationStyle', 'timezone'
+                'businessTone', 'communicationStyle', 'timezone',
+                'phone', 'email'
             ];
 
             businessUpdateFields.forEach(field => {
