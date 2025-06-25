@@ -36,8 +36,6 @@ class SMSService {
     // Send missed call SMS
     async sendMissedCallSMS(businessId, callerNumber, callId = null) {
         try {
-            console.log(`📱 Preparing missed call SMS for business: ${businessId}, caller: ${callerNumber}`);
-
             // Get business phone settings
             const phoneSettings = await PhoneSettings.findOne({ businessId, status: 'active' });
             if (!phoneSettings) {
@@ -52,7 +50,6 @@ class SMSService {
 
             // Check if SMS is enabled
             if (!phoneSettings.smsEnabled) {
-                console.log(`📱 SMS disabled for business: ${businessId}`);
                 return { sent: false, reason: 'SMS disabled' };
             }
 
@@ -67,7 +64,6 @@ class SMSService {
             let conversation;
             if (existingConversation) {
                 conversation = existingConversation;
-                console.log(`📱 Using existing conversation: ${conversation.conversationId}`);
             } else {
                 // Create new conversation
                 conversation = new SMSConversation({
@@ -80,7 +76,6 @@ class SMSService {
                     consentGiven: true // Implied consent from calling first
                 });
                 await conversation.save();
-                console.log(`📱 Created new conversation: ${conversation.conversationId}`);
             }
 
             // Get appropriate SMS template
@@ -93,7 +88,6 @@ class SMSService {
             const delayMinutes = phoneSettings.responseSettings.missedCallDelayMinutes || 2;
             
             if (delayMinutes > 0) {
-                console.log(`📱 Scheduling SMS to be sent in ${delayMinutes} minutes`);
                 setTimeout(async () => {
                     await this.sendSMSMessage(conversation, processedMessage, true, callId);
                 }, delayMinutes * 60 * 1000);
@@ -110,7 +104,6 @@ class SMSService {
             }
 
         } catch (error) {
-            console.error('❌ Error sending missed call SMS:', error);
             throw error;
         }
     }
@@ -152,8 +145,6 @@ class SMSService {
             // Update phone settings analytics
             await phoneSettings.incrementAnalytic('smssSent');
 
-            console.log(`✅ SMS sent successfully: ${smsResult.sid}`);
-
             return {
                 sent: true,
                 messageSid: smsResult.sid,
@@ -163,7 +154,6 @@ class SMSService {
             };
 
         } catch (error) {
-            console.error('❌ Error sending SMS message:', error);
             
             // Log error in conversation if possible
             if (conversation) {
@@ -186,12 +176,9 @@ class SMSService {
     // Process incoming SMS
     async processIncomingSMS(from, to, body, messageSid) {
         try {
-            console.log(`📨 Processing incoming SMS from ${from} to ${to}: ${body}`);
-
             // Find phone settings by any number (supports porting)
             const phoneSettings = await PhoneSettings.findByAnyNumber(to);
             if (!phoneSettings) {
-                console.error(`❌ No phone settings found for number: ${to}`);
                 return { processed: false, reason: 'No phone settings found' };
             }
 
@@ -243,8 +230,6 @@ class SMSService {
                 await this.sendAutoResponse(conversation, phoneSettings);
             }
 
-            console.log(`✅ Incoming SMS processed successfully`);
-
             return {
                 processed: true,
                 conversationId: conversation.conversationId,
@@ -253,7 +238,6 @@ class SMSService {
             };
 
         } catch (error) {
-            console.error('❌ Error processing incoming SMS:', error);
             return { processed: false, error: error.message };
         }
     }
@@ -287,8 +271,6 @@ class SMSService {
             const confirmationMessage = "You have been unsubscribed from SMS messages. Reply START to opt back in.";
             await this.twilioService.sendSMS(phoneNumber, confirmationMessage);
 
-            console.log(`✅ User opted out: ${phoneNumber}`);
-
             return {
                 processed: true,
                 optedOut: true,
@@ -296,7 +278,6 @@ class SMSService {
             };
 
         } catch (error) {
-            console.error('❌ Error handling opt-out:', error);
             throw error;
         }
     }
@@ -316,10 +297,7 @@ class SMSService {
                 await this.sendSMSMessage(conversation, message, true);
             }, delaySeconds * 1000);
 
-            console.log(`📱 Auto-response scheduled for ${delaySeconds} seconds`);
-
         } catch (error) {
-            console.error('❌ Error sending auto-response:', error);
         }
     }
 
@@ -360,11 +338,9 @@ class SMSService {
             if (Object.keys(extractedInfo).length > 0) {
                 Object.assign(conversation.extractedInfo, extractedInfo);
                 await conversation.save();
-                console.log(`📋 Extracted info:`, extractedInfo);
             }
 
         } catch (error) {
-            console.error('❌ Error extracting information:', error);
         }
     }
 
@@ -398,7 +374,6 @@ class SMSService {
             return analytics;
 
         } catch (error) {
-            console.error('❌ Error getting conversation analytics:', error);
             throw error;
         }
     }

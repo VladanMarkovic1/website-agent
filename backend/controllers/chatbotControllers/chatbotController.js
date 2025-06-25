@@ -19,17 +19,9 @@ import util from 'util';
 // Fetch comprehensive business context using the enhanced builder
 async function _getBusinessContext(businessId, sessionId, message) {
     try {
-        console.log(`[ChatbotController] Building business context for ${businessId}`);
-        
-        console.log('[LOG][chatbotController] _getBusinessContext: businessId:', businessId, 'sessionId:', sessionId, 'message:', message);
         const businessContext = await businessContextBuilder.buildBusinessContext(businessId, sessionId, message);
-        console.log('[LOG][chatbotController] Built businessContext:', util.inspect(businessContext, { depth: 5 }));
-        
-        console.log(`[ChatbotController] Business context built successfully for ${businessId}`);
         return businessContext;
-        
     } catch (error) {
-        console.error(`[ChatbotController] Error building business context for ${businessId}:`, error);
         throw new Error(`Failed to build business context: ${error.message}`);
     }
 }
@@ -43,7 +35,7 @@ async function _initializeSessionAndTrackStart(sessionId, businessId) {
             await trackChatEvent(businessId, 'NEW_CONVERSATION');
             await updateSessionData(sessionId, { isFirstMessage: false }); 
         } catch (error) {
-            console.error("Error tracking new conversation:", error); // Keep essential error logs
+            // Keep essential error logs
         }
     }
     return { session, isNewSession };
@@ -64,17 +56,11 @@ async function _detectAndSetInitialServiceInterest(session, businessContext, mes
 
     if (mentionedService) {
         await updateSessionData(session.sessionId, { serviceInterest: mentionedService.name });
-        // console.log('[Controller] Detected service interest:', mentionedService.name); // Debug only - Removed
         session.serviceInterest = mentionedService.name; // Update local session object too
     }
 }
 
 async function _generateAndRefineResponse(message, businessContext, sessionMessages, isNewSession, session, previousPartialInfo) {
-    // console.log(`[AI Call Prep] Calling generateAIResponse. isNewSession=${isNewSession}. Message: "${redactPII(message)}". History length: ${sessionMessages?.length || 0}`); // Redacted message
-    // if (sessionMessages && sessionMessages.length > 0) { // Avoid logging message history in prod
-        // console.log(`[AI Call Prep] Last ${Math.min(3, sessionMessages.length)} messages:`, JSON.stringify(sessionMessages.slice(-3), null, 2)); // Requires deep redaction - Removed for prod
-    // }
-    
     // Map businessContext.business.businessHours to businessData.operatingHours (string)
     function getOperatingHoursString(businessHours) {
         if (!businessHours) return undefined;
@@ -95,7 +81,6 @@ async function _generateAndRefineResponse(message, businessContext, sessionMessa
     };
     
     // Pass session.serviceInterest as an argument
-    console.log('[LOG][chatbotController] Passing businessData to AI:', util.inspect(businessData, { depth: 5 }));
     const aiResult = await generateAIResponse(
         message, 
         businessData, 
@@ -107,13 +92,8 @@ async function _generateAndRefineResponse(message, businessContext, sessionMessa
     const classifiedIntent = aiResult.classifiedIntent; // Original classification
     const initialResponsePayload = aiResult.responsePayload; // Payload after internal logic/switch in generateAIResponse
     
-    // console.log(`[AI Response Log] Original Classified Intent:`, JSON.stringify(classifiedIntent, null, 2)); // Debug - Removed
-    // console.log(`[AI Response Log] Initial Response Payload from generateAIResponse:`, JSON.stringify(initialResponsePayload, null, 2)); // Debug - Removed
-
     // --- First Override Pass (Based on the response payload type from generateAIResponse) ---
-    // console.log("[Override Check 1] Applying overrides based on initial response payload type."); // Debug - Removed
     let responseAfterOverride1 = applyResponseOverrides(initialResponsePayload, [], session, businessContext);
-    // console.log("[Override Check 1] Response after first override pass:", JSON.stringify(responseAfterOverride1, null, 2)); // Debug - Removed
 
     // Update session interest if override specified it
     // --- MODIFIED LOGIC: Be more careful about overwriting existing specific interest ---
@@ -128,7 +108,6 @@ async function _generateAndRefineResponse(message, businessContext, sessionMessa
         (!currentServiceInterest || genericPlaceholders.includes(currentServiceInterest.toLowerCase())) && 
         !genericPlaceholders.includes(newServiceContext.toLowerCase())) 
     {
-        // console.log(`[Override Check 1] Updating session service interest from '${currentServiceInterest}' to '${newServiceContext}'`);
         await updateSessionData(session.sessionId, { serviceInterest: newServiceContext });
         session.serviceInterest = newServiceContext; // Update local session object
     }
@@ -247,7 +226,6 @@ async function _handleLeadSavingIfNeeded(message, finalResponse, session, classi
 
         // Extract details from the current message first, as it's the most relevant.
         let extraDetails = extractExtraDetails(message);
-        console.log('[DEBUG] Extracted extraDetails from current message:', extraDetails);
 
         // Then, go through history to fill in any details that might be missing.
         if (session.messages && session.messages.length > 0) {
@@ -264,7 +242,6 @@ async function _handleLeadSavingIfNeeded(message, finalResponse, session, classi
                 }
             }
         }
-        console.log('[DEBUG] Final merged extraDetails:', extraDetails);
         
         // Determine service interest
         const serviceInterest = extraDetails.concern || session.serviceInterest || finalResponse.serviceContext || 'Dental Consultation';
@@ -282,9 +259,7 @@ async function _handleLeadSavingIfNeeded(message, finalResponse, session, classi
             messageHistory: session.messages,
             details: otherDetails // Only include other details, not the service
         };
-        console.log('[DEBUG] leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
         await saveLead(leadContext);
-        console.log(`[Controller] Lead saved successfully for session: ${session.sessionId}`); // Keep success log
         await updateSessionData(session.sessionId, { contactInfo: leadPii });
         session.contactInfo = leadPii;
         await updateSessionData(session.sessionId, { partialContactInfo: null });
@@ -292,7 +267,7 @@ async function _handleLeadSavingIfNeeded(message, finalResponse, session, classi
         await trackChatEvent(session.businessId, 'LEAD_GENERATED', { service: serviceInterest });
         return true; // Lead was saved
     } catch (error) {
-         console.error('[Controller] Error occurred during saveLead call:', error.message, error.stack); // Keep essential error log
+         // Keep essential error log
          return false;
     }
 }
@@ -312,15 +287,12 @@ async function _logInteractionMessages(sessionId, userMessageContent, userMessag
         type: finalResponse.type,
         problemCategory: finalResponse.problemCategory || null
     };
-    // console.log('[Controller] Logging user message:', userMessageLog); // Redundant / Debug - Removed
-    // console.log('[Controller] Logging bot message:', botMessageLog); // Redundant / Debug - Removed
     await addMessagesToSession(sessionId, userMessageLog, botMessageLog);
     // Also store the last bot response type in the session for context checking
     try {
         await updateSessionData(sessionId, { lastBotResponseType: finalResponse.type });
-        // console.log(`[Session Update] Stored lastBotResponseType: ${finalResponse.type}`); // Debug - Removed
     } catch(err) {
-        console.error("[Session Update] Error storing lastBotResponseType:", err); // Keep essential error log
+        // Keep essential error log
     }
 }
 
@@ -329,7 +301,7 @@ async function _trackConversationCompletionIfNeeded(finalResponse, session) {
         try {
             await trackChatEvent(session.businessId, 'CONVERSATION_COMPLETED');
         } catch (error) {
-            console.error("Error tracking conversation completion:", error); // Keep essential error log
+            // Keep essential error log
         }
     }
 }
@@ -349,13 +321,8 @@ function escapeHtml(unsafe) {
 
 const processChatMessage = async (message, sessionId, businessId) => {
     try {
-        console.log('[DEBUG][chatbotController] processChatMessage called with:', { message, sessionId, businessId });
-        // Log before building context
-        console.log('[DEBUG][chatbotController] Calling buildBusinessContext with businessId:', businessId, 'sessionId:', sessionId);
         const { session, isNewSession } = await _initializeSessionAndTrackStart(sessionId, businessId);
         const businessContext = await _getBusinessContext(businessId, session.sessionId, message);
-        // Log after context is built
-        console.log('[DEBUG][chatbotController] businessContext returned:', businessContext);
 
         // Detect initial service interest (if not already set)
         await _detectAndSetInitialServiceInterest(session, businessContext, message);
@@ -363,15 +330,6 @@ const processChatMessage = async (message, sessionId, businessId) => {
         // Prepare message history (use session.messages)
         const sessionMessages = session.messages || [];
         const previousPartialInfo = session.partialContactInfo || { name: null, phone: null, email: null };
-        // Log what will be sent to AI
-        console.log('[DEBUG][chatbotController] About to call generateAIResponse with:', {
-            message,
-            businessContext,
-            sessionMessages,
-            isNewSession,
-            previousPartialInfo,
-            serviceInterest: session.serviceInterest
-        });
 
         // Generate response (AI + Overrides)
         const { classifiedIntent, responsePayload } = await _generateAndRefineResponse(
@@ -417,10 +375,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
         await _trackProblemDescriptionIfNeeded(session, message, finalResponse.type, classifiedIntent?.type);
 
         // --- Handle Lead Saving (Main Logic) ---
-        console.log('[DEBUG] Lead Saving - classifiedIntent:', JSON.stringify(classifiedIntent, null, 2));
-        console.log('[DEBUG] Lead Saving - session.serviceInterest:', session.serviceInterest);
         const leadSaved = await _handleLeadSavingIfNeeded(message, finalResponse, session, classifiedIntent);
-        console.log('[DEBUG] Lead Saving - leadSaved result:', leadSaved);
         
         // Track conversation end
         await _trackConversationCompletionIfNeeded(finalResponse, session);
@@ -436,8 +391,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
              sessionId
         };
     } catch (error) {
-        console.error("Error processing message:", error);
-         return {
+        return {
              response: escapeHtml("I apologize, but I'm having trouble processing your request right now. Please try again or contact our team directly."),
              type: 'ERROR',
              sessionId: sessionId || 'unknown'
@@ -457,7 +411,6 @@ export const handleChatMessage = async (req, res) => {
         const response = await processChatMessage(message, sessionId, businessId);
         res.json(response);
     } catch (error) {
-        console.error("Error handling chat message:", error); // Keep essential error log
         res.status(error.message === "Business not found" ? 404 : 500).json({ 
             error: error.message || "An error occurred while processing your message" 
         });
@@ -469,7 +422,6 @@ export const processWebSocketMessage = async (message, sessionId, businessId) =>
     try {
         return await processChatMessage(message, sessionId, businessId);
     } catch (error) {
-        console.error("Error processing WebSocket message:", error); // Keep essential error log
         return {
             type: "error",
             response: error.message || "An error occurred while processing your message"

@@ -14,7 +14,6 @@ const router = express.Router();
 const handleValidationErrors = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        console.error("Validation errors in businessRoutes:", errors.array());
         return res.status(400).json({ errors: errors.array() });
     }
     next();
@@ -147,7 +146,6 @@ router.get(
             res.json(profile);
             
         } catch (error) {
-            console.error('Error fetching business profile:', error);
             res.status(500).json({ error: 'Failed to fetch business profile' });
         }
     }
@@ -173,9 +171,6 @@ router.put(
             if (!business) {
                 return res.status(404).json({ error: 'Business not found' });
             }
-
-            console.log('[LOG][businessRoutes] Incoming PUT /:businessId/profile body:', req.body);
-            console.log('[LOG][businessRoutes] updateData:', updateData);
 
             // Update business fields
             const businessUpdateFields = [
@@ -216,11 +211,7 @@ router.put(
                 };
             }
 
-            console.log('[LOG][businessRoutes] business object before save:', business);
-
             await business.save();
-
-            console.log('[LOG][businessRoutes] business object after save:', business);
 
             res.json({ 
                 message: 'Business profile updated successfully',
@@ -234,7 +225,6 @@ router.put(
             });
             
         } catch (error) {
-            console.error('[LOG][businessRoutes] Error updating business profile:', error, error?.stack);
             res.status(500).json({ error: 'Failed to update business profile' });
         }
     }
@@ -286,7 +276,6 @@ router.get(
             res.json(context);
             
         } catch (error) {
-            console.error('Error fetching business context:', error);
             res.status(500).json({ error: 'Failed to fetch business context' });
         }
     }
@@ -311,7 +300,6 @@ router.get(
             res.json(validationResults);
             
         } catch (error) {
-            console.error('Error validating business data:', error);
             res.status(500).json({ error: 'Failed to validate business data' });
         }
     }
@@ -339,7 +327,6 @@ router.post(
             });
             
         } catch (error) {
-            console.error('Error populating business data:', error);
             res.status(500).json({ error: 'Failed to populate business data' });
         }
     }

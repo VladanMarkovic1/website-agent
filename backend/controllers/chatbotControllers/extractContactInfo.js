@@ -4,8 +4,6 @@
  * @returns {Object|null} Extracted contact info or null
  */
 export function extractContactInfo(message) {
-    console.log('[DEBUG] extractContactInfo - Input message:', message);
-    
     // First, try the comma-separated format (most reliable)
     const commaParts = message.split(',').map(part => part.trim());
     if (commaParts.length === 3) {
@@ -23,15 +21,12 @@ export function extractContactInfo(message) {
         // Validate name (should not be empty and not just numbers)
         const nameValid = rawName && rawName.trim().length > 0 && !/^\d+$/.test(rawName.trim());
         
-        console.log('[DEBUG] extractContactInfo - Comma format validation:', { nameValid, phoneValid, emailValid, rawName, phoneDigits, rawEmail });
-        
         if (nameValid && phoneValid && emailValid) {
             const result = {
                 name: rawName.trim(),
                 phone: phoneDigits,
                 email: rawEmail.trim()
             };
-            console.log('[DEBUG] extractContactInfo - Comma format result:', result);
             return result;
         }
     }
@@ -42,8 +37,6 @@ export function extractContactInfo(message) {
         phone: message.match(/phone:\s*([^,]+?)(?=\s*,|\s*email|\s*name|\s*concern|\s*timing|$)/i)?.[1]?.trim(),
         email: message.match(/(?:email|mail):\s*([^,]+?)(?=\s*,|\s*phone|\s*name|\s*concern|\s*timing|$)/i)?.[1]?.trim()
     };
-
-    console.log('[DEBUG] extractContactInfo - Structured format match:', structuredMatch);
 
     if (structuredMatch.name && structuredMatch.phone) {
         const cleanedPhone = structuredMatch.phone.replace(/\D/g, '');
@@ -58,7 +51,6 @@ export function extractContactInfo(message) {
             result.email = structuredMatch.email;
         }
         
-        console.log('[DEBUG] extractContactInfo - Structured format result:', result);
         return result;
     }
 
@@ -120,23 +112,19 @@ export function extractContactInfo(message) {
             phone: extractedPhone,
             name: extractedName
         };
-        console.log('[DEBUG] extractContactInfo - Natural format result:', result);
         return result;
     }
     
-    console.log('[DEBUG] extractContactInfo - No contact info found');
     return null;
 }
 
 export function extractExtraDetails(message) {
-    console.log('[DEBUG] extractExtraDetails - Input message:', message);
     const details = {};
     
     // Extract days - enhanced to handle natural language
     const daysMatch = message.match(/Days:\s*([A-Za-z,\s]+)/i);
     if (daysMatch) {
         details.days = daysMatch[1].split(',').map(d => d.trim()).filter(Boolean);
-        console.log('[DEBUG] extractExtraDetails - Found days:', details.days);
     } else {
         // Handle natural language like "I prefer Monday for my appointment"
         const naturalDaysMatch = message.match(/(?:prefer|like|want|choose)\s+([A-Za-z]+)\s+(?:for|on|my)/i);
@@ -144,7 +132,6 @@ export function extractExtraDetails(message) {
             const day = naturalDaysMatch[1];
             if (['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].includes(day.toLowerCase())) {
                 details.days = [day];
-                console.log('[DEBUG] extractExtraDetails - Found days from natural language:', details.days);
             }
         }
     }
@@ -153,13 +140,11 @@ export function extractExtraDetails(message) {
     const timeMatch = message.match(/Time:\s*([A-Za-z0-9\-: ]+)/i);
     if (timeMatch) {
         details.time = timeMatch[1].trim();
-        console.log('[DEBUG] extractExtraDetails - Found time:', details.time);
     } else {
         // Handle natural language like "I prefer morning appointments"
         const naturalTimeMatch = message.match(/(?:prefer|like|want)\s+(morning|afternoon|evening)/i);
         if (naturalTimeMatch) {
             details.time = naturalTimeMatch[1];
-            console.log('[DEBUG] extractExtraDetails - Found time from natural language:', details.time);
         }
     }
 
@@ -167,14 +152,12 @@ export function extractExtraDetails(message) {
     const insuranceMatch = message.match(/Insurance:\s*(Yes|No)/i);
     if (insuranceMatch) {
         details.insurance = insuranceMatch[1];
-        console.log('[DEBUG] extractExtraDetails - Found insurance:', details.insurance);
     } else {
         // Handle natural language like "I have dental insurance" or "I do not have dental insurance"
         const naturalInsuranceMatch = message.match(/(?:have|do not have|don't have)\s+(?:dental\s+)?insurance/i);
         if (naturalInsuranceMatch) {
             const hasInsurance = message.toLowerCase().includes('have') && !message.toLowerCase().includes('do not have') && !message.toLowerCase().includes("don't have");
             details.insurance = hasInsurance ? 'Yes' : 'No';
-            console.log('[DEBUG] extractExtraDetails - Found insurance from natural language:', details.insurance);
         }
     }
 
@@ -189,7 +172,6 @@ export function extractExtraDetails(message) {
             .replace(/email:\s*[^,]+/i, '')
             .trim();
         details.concern = cleanedConcern;
-        console.log('[DEBUG] extractExtraDetails - Found concern:', details.concern);
     } else {
         // Handle natural language like "I'm interested in Pain" or "I want to know about Implants"
         const naturalConcernMatch = message.match(/(?:interested in|want to know about|need help with|looking for)\s+([A-Za-z\s]+)/i);
@@ -200,7 +182,6 @@ export function extractExtraDetails(message) {
             const concernWords = concern.split(' ').filter(word => !commonWords.includes(word.toLowerCase()));
             if (concernWords.length > 0) {
                 details.concern = concernWords.join(' ');
-                console.log('[DEBUG] extractExtraDetails - Found concern from natural language:', details.concern);
             }
         }
     }
@@ -216,17 +197,14 @@ export function extractExtraDetails(message) {
             .replace(/email:\s*[^,]+/i, '')
             .trim();
         details.timing = cleanedTiming;
-        console.log('[DEBUG] extractExtraDetails - Found timing:', details.timing);
     } else {
         // Handle natural language like "I would like an appointment now" or "I would like an appointment this week"
         const naturalTimingMatch = message.match(/(?:appointment|visit)\s+(now|this week|next week|1-3 weeks|1-3 months|soon|asap)/i);
         if (naturalTimingMatch) {
             details.timing = naturalTimingMatch[1];
-            console.log('[DEBUG] extractExtraDetails - Found timing from natural language:', details.timing);
         }
     }
 
-    console.log('[DEBUG] extractExtraDetails - Final details object:', details);
     return details;
 }
 

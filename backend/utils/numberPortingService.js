@@ -10,8 +10,6 @@ class NumberPortingService {
     // Set up ported number for business (Option A)
     async setupPortedNumber(businessId, portedNumber, originalCarrier, forwardingNumber) {
         try {
-            console.log(`📞 Setting up ported number for business: ${businessId}`);
-
             // Validate inputs
             if (!businessId || !portedNumber || !forwardingNumber) {
                 throw new Error('Business ID, ported number, and forwarding number are required');
@@ -63,8 +61,6 @@ class NumberPortingService {
 
             await phoneSettings.save();
 
-            console.log(`✅ Ported number setup complete for: ${portedNumber}`);
-
             return {
                 success: true,
                 phoneSettingsId: phoneSettings._id,
@@ -79,7 +75,6 @@ class NumberPortingService {
             };
 
         } catch (error) {
-            console.error('❌ Error setting up ported number:', error);
             throw error;
         }
     }
@@ -87,8 +82,6 @@ class NumberPortingService {
     // Set up new tracking number for business (traditional approach)
     async setupTrackingNumber(businessId, forwardingNumber, preferredAreaCode = null) {
         try {
-            console.log(`📞 Setting up new tracking number for business: ${businessId}`);
-
             // Check if business exists
             const business = await Business.findOne({ businessId });
             if (!business) {
@@ -133,8 +126,6 @@ class NumberPortingService {
 
             await phoneSettings.save();
 
-            console.log(`✅ New tracking number setup complete: ${trackingNumber}`);
-
             return {
                 success: true,
                 phoneSettingsId: phoneSettings._id,
@@ -150,7 +141,6 @@ class NumberPortingService {
             };
 
         } catch (error) {
-            console.error('❌ Error setting up tracking number:', error);
             throw error;
         }
     }
@@ -158,8 +148,6 @@ class NumberPortingService {
     // Set up hybrid approach (Option C)
     async setupHybridNumbers(businessId, businessRealNumber, forwardingNumber, preferredAreaCode = null) {
         try {
-            console.log(`📞 Setting up hybrid numbers for business: ${businessId}`);
-
             // Check if business exists
             const business = await Business.findOne({ businessId });
             if (!business) {
@@ -204,8 +192,6 @@ class NumberPortingService {
 
             await phoneSettings.save();
 
-            console.log(`✅ Hybrid setup complete - Real: ${businessRealNumber}, Tracking: ${trackingNumber}`);
-
             return {
                 success: true,
                 phoneSettingsId: phoneSettings._id,
@@ -222,7 +208,6 @@ class NumberPortingService {
             };
 
         } catch (error) {
-            console.error('❌ Error setting up hybrid numbers:', error);
             throw error;
         }
     }
@@ -240,7 +225,6 @@ class NumberPortingService {
         try {
             // This would use Twilio API to purchase a real number
             // For now, return mock number
-            console.log('🔄 Purchasing Twilio number (mock mode)...');
             return this.generateMockTrackingNumber(preferredAreaCode);
             
             // Production implementation would be:
@@ -258,7 +242,6 @@ class NumberPortingService {
             // return number.phoneNumber;
 
         } catch (error) {
-            console.error('❌ Error purchasing Twilio number:', error);
             throw error;
         }
     }
@@ -286,7 +269,6 @@ class NumberPortingService {
             };
 
         } catch (error) {
-            console.error('❌ Error getting business number setup:', error);
             throw error;
         }
     }
@@ -351,7 +333,6 @@ class NumberPortingService {
             }));
 
         } catch (error) {
-            console.error('❌ Error listing business setups:', error);
             throw error;
         }
     }

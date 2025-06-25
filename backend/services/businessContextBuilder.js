@@ -1,4 +1,3 @@
-console.log('[DEBUG][businessContextBuilder] FILE LOADED');
 import Business from '../models/Business.js';
 import Service from '../models/Service.js';
 import ExtraInfo from '../models/ExtraInfo.js';
@@ -23,13 +22,11 @@ class BusinessContextBuilder {
      * @returns {Promise<Object>} Comprehensive business context
      */
     async buildBusinessContext(businessId, sessionId, userMessage) {
-        console.log('[DEBUG][businessContextBuilder] buildBusinessContext CALLED with:', businessId, sessionId, userMessage);
         try {
             console.log(`[BusinessContextBuilder] Building context for business: ${businessId}, session: ${sessionId}`);
             
             // Get all business data
             const business = await Business.findOne({ businessId });
-            console.log('[DEBUG][businessContextBuilder] Result of Business.findOne:', util.inspect(business, { depth: 5 }));
             if (!business) {
                 throw new Error(`Business not found: ${businessId}`);
             }
@@ -63,8 +60,6 @@ class BusinessContextBuilder {
                 state: business.locationDetails?.state,
                 zipCode: business.locationDetails?.zipCode
             };
-            
-            console.log('[LOG][businessContextBuilder] FINAL CONTEXT RETURNED TO AI:', util.inspect(context, { depth: 5 }));
             
             return context;
             

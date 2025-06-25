@@ -20,16 +20,8 @@ class LeadIntegrationService {
     // Create lead from call tracking data
     async createLeadFromCall(callLogId) {
         try {
-            console.log('👤 Creating lead from call log:', callLogId);
-
-            const callLog = await CallLog.findById(callLogId);
-            if (!callLog) {
-                throw new Error('Call log not found');
-            }
-
             // Don't create duplicate leads
             if (callLog.leadCreated) {
-                console.log('✅ Lead already exists for this call');
                 return { alreadyExists: true, callLogId };
             }
 
@@ -66,8 +58,6 @@ class LeadIntegrationService {
             callLog.leadId = lead._id;
             await callLog.save();
 
-            console.log(`✅ Lead created from call: ${lead._id}`);
-
             return {
                 success: true,
                 leadId: lead._id,
@@ -76,7 +66,6 @@ class LeadIntegrationService {
             };
 
         } catch (error) {
-            console.error('❌ Error creating lead from call:', error);
             throw error;
         }
     }
@@ -84,16 +73,8 @@ class LeadIntegrationService {
     // Create lead from SMS conversation
     async createLeadFromSMS(conversationId) {
         try {
-            console.log('👤 Creating lead from SMS conversation:', conversationId);
-
-            const conversation = await SMSConversation.findOne({ conversationId });
-            if (!conversation) {
-                throw new Error('SMS conversation not found');
-            }
-
             // Don't create duplicate leads
             if (conversation.leadCreated) {
-                console.log('✅ Lead already exists for this conversation');
                 return { alreadyExists: true, conversationId };
             }
 
@@ -139,8 +120,6 @@ class LeadIntegrationService {
                 });
             }
 
-            console.log(`✅ Lead created from SMS: ${lead._id}`);
-
             return {
                 success: true,
                 leadId: lead._id,
@@ -149,7 +128,6 @@ class LeadIntegrationService {
             };
 
         } catch (error) {
-            console.error('❌ Error creating lead from SMS:', error);
             throw error;
         }
     }
@@ -335,7 +313,6 @@ class LeadIntegrationService {
             };
 
         } catch (error) {
-            console.error('❌ Error enhancing lead:', error);
             throw error;
         }
     }
@@ -377,8 +354,6 @@ class LeadIntegrationService {
     // Bulk process leads from tracking data
     async bulkProcessLeads(businessId, timeframe = '24h') {
         try {
-            console.log(`🔄 Bulk processing leads for business: ${businessId}`);
-            
             const startDate = moment().subtract(parseInt(timeframe), timeframe.slice(-1)).toDate();
             
             // Find unprocessed call logs
@@ -438,12 +413,9 @@ class LeadIntegrationService {
                 }
             }
 
-            console.log(`✅ Bulk processing complete: ${results.callLeadsCreated} call leads, ${results.smsLeadsCreated} SMS leads`);
-
             return results;
 
         } catch (error) {
-            console.error('❌ Error in bulk lead processing:', error);
             throw error;
         }
     }
@@ -532,7 +504,6 @@ class LeadIntegrationService {
             return analytics;
 
         } catch (error) {
-            console.error('❌ Error generating lead analytics:', error);
             throw error;
         }
     }

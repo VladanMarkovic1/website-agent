@@ -49,21 +49,6 @@ export const logSecurityEvent = (eventType, level, details, req = null) => {
             })
         };
 
-        // Console logging
-        const logMessage = `[${timestamp}] ${level}: ${eventType} - ${JSON.stringify(details)}`;
-        
-        switch (level) {
-            case LOG_LEVELS.CRITICAL:
-            case LOG_LEVELS.ERROR:
-                console.error('🚨', logMessage);
-                break;
-            case LOG_LEVELS.WARN:
-                console.warn('⚠️', logMessage);
-                break;
-            default:
-                console.log('ℹ️', logMessage);
-        }
-
         // File logging (in production, consider using proper logging service)
         if (process.env.NODE_ENV === 'production') {
             writeToSecurityLog(logEntry);
