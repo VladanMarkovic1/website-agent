@@ -56,6 +56,12 @@ class BusinessContextBuilder {
                 websiteUrl: business.websiteUrl,
                 widgetConfig: business.widgetConfig || {},
                 aiConfig: business.aiConfig || {},
+                phone: business.phone,
+                email: business.email,
+                address: business.locationDetails?.address,
+                city: business.locationDetails?.city,
+                state: business.locationDetails?.state,
+                zipCode: business.locationDetails?.zipCode
             };
             
             console.log('[LOG][businessContextBuilder] FINAL CONTEXT RETURNED TO AI:', util.inspect(context, { depth: 5 }));

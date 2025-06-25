@@ -80,17 +80,27 @@ const buildBusinessContext = (businessData) => {
         context += ` ${businessData.businessDescription || businessData.description}`;
     }
 
-    if (businessData.services && businessData.services.length > 0) {
-        const serviceNames = businessData.services.map(s => s.name).join(', ');
-        context += ` Services offered include: ${serviceNames}.`;
+    if (businessData.phone) {
+        context += ` Phone: ${businessData.phone}.`;
+    }
+    if (businessData.email) {
+        context += ` Email: ${businessData.email}.`;
+    }
+    if (businessData.address) {
+        let address = businessData.address;
+        if (businessData.city) address += `, ${businessData.city}`;
+        if (businessData.state) address += `, ${businessData.state}`;
+        if (businessData.zipCode) address += ` ${businessData.zipCode}`;
+        context += ` Address: ${address}.`;
     }
 
-    if (businessData.businessPhoneNumber || businessData.phone) {
-        context += ` Phone: ${businessData.businessPhoneNumber || businessData.phone}.`;
+    if (businessData.services && businessData.services.length > 0) {
+        const serviceNames = businessData.services.map(s => s.name).join(', ');
+        context += ` Services: ${serviceNames}.`;
     }
 
     if (businessData.operatingHours) {
-        context += ` Operating hours: ${businessData.operatingHours}.`;
+        context += ` Operating hours: ${businessData.operatingHours}`;
     }
 
     return context;

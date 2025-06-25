@@ -25,7 +25,9 @@ const BusinessProfile = () => {
     emergencyProtocol: '',
     businessTone: 'professional',
     communicationStyle: 'empathetic',
-    timezone: 'America/New_York'
+    timezone: 'America/New_York',
+    phone: '',
+    email: ''
   });
 
   // Location details state
@@ -111,7 +113,9 @@ const BusinessProfile = () => {
             emergencyProtocol: data.emergencyProtocol || '',
             businessTone: data.businessTone || 'professional',
             communicationStyle: data.communicationStyle || 'empathetic',
-            timezone: data.timezone || 'America/New_York'
+            timezone: data.timezone || 'America/New_York',
+            phone: data.phone || '',
+            email: data.email || ''
           });
 
           setLocationDetails(data.locationDetails || {
@@ -278,6 +282,19 @@ const BusinessProfile = () => {
               value={businessProfile.businessName}
               onChange={(e) => setBusinessProfile(prev => ({ ...prev, businessName: e.target.value }))}
               required
+            />
+            <InputField
+              label="Business Phone"
+              value={businessProfile.phone || ''}
+              onChange={(e) => setBusinessProfile(prev => ({ ...prev, phone: e.target.value }))}
+              placeholder="e.g. (555) 123-4567"
+            />
+            <InputField
+              label="Business Email"
+              value={businessProfile.email || ''}
+              onChange={(e) => setBusinessProfile(prev => ({ ...prev, email: e.target.value }))}
+              placeholder="e.g. info@yourpractice.com"
+              type="email"
             />
             <InputField
               label="Years in Business"
@@ -507,9 +524,10 @@ const BusinessProfile = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField
-              label="Address"
+              label="Main Visiting Address"
               value={locationDetails.address}
               onChange={(e) => setLocationDetails(prev => ({ ...prev, address: e.target.value }))}
+              placeholder="Street address for patients to visit"
             />
             <InputField
               label="City"

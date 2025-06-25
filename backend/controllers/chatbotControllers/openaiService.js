@@ -334,8 +334,38 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 }
                 responsePayload = {
                     type: 'PAYMENT_PLAN_INQUIRY',
-                    response: `${combinedMsg} Would you like more details or to speak with our team about your specific situation?`
+                    response: `Yes, we offer flexible payment plans. ${combinedMsg} Would you like more details or to speak with our team about your specific situation?`
                 };
+                break;
+
+            case 'CONTACT_INQUIRY':
+            case 'VISIT_INQUIRY':
+                let contactDetails = [];
+                if (businessData.phone) {
+                    contactDetails.push(`Phone: ${businessData.phone}`);
+                }
+                if (businessData.email) {
+                    contactDetails.push(`Email: ${businessData.email}`);
+                }
+                if (businessData.address) {
+                    let address = businessData.address;
+                    if (businessData.city) address += `, ${businessData.city}`;
+                    if (businessData.state) address += `, ${businessData.state}`;
+                    if (businessData.zipCode) address += ` ${businessData.zipCode}`;
+                    contactDetails.push(`Address: ${address}`);
+                }
+                
+                if (contactDetails.length > 0) {
+                    responsePayload = {
+                        type: 'CONTACT_INQUIRY',
+                        response: `You can reach us at: ${contactDetails.join('. ')}. Feel free to call or email us with any questions!`
+                    };
+                } else {
+                    responsePayload = {
+                        type: 'CONTACT_INQUIRY',
+                        response: "You can contact us through our website or call our office directly. We'd be happy to help you with any questions!"
+                    };
+                }
                 break;
 
             case 'UNKNOWN':
