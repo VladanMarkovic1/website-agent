@@ -298,18 +298,16 @@ async function _handleLeadSavingIfNeeded(message, finalResponse, session, classi
 }
 
 async function _logInteractionMessages(sessionId, userMessageContent, userMessageType, finalResponse) {
-    const redactedUserMessageContent = redactPII(userMessageContent);
-    const redactedBotMessageContent = redactPII(finalResponse.response); // Redact bot response too
-    
-     const userMessageLog = {
+    // Only redact for logging, not for user-facing response
+    const userMessageLog = {
         role: 'user',
-        content: redactedUserMessageContent,
+        content: redactPII(userMessageContent),
         timestamp: Date.now(),
         type: userMessageType,
     };
     const botMessageLog = {
         role: 'assistant',
-        content: redactedBotMessageContent, // Use redacted content for logging
+        content: finalResponse.response, // Do NOT redact for user-facing response
         timestamp: Date.now(),
         type: finalResponse.type,
         problemCategory: finalResponse.problemCategory || null
