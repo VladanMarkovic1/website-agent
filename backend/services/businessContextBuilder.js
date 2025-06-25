@@ -72,7 +72,7 @@ class BusinessContextBuilder {
      * @param {Object} business - Business document
      * @returns {Object} Business context
      */
-    buildBusinessContext(business) {
+    buildBusinessContextFromDoc(business) {
         return {
             name: business.businessName,
             description: business.businessDescription,
