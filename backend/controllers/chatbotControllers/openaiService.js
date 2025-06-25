@@ -314,9 +314,15 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'PAYMENT_PLAN_INQUIRY':
+                let insuranceMsg = '';
+                if (businessData.insurancePartners && businessData.insurancePartners.length > 0) {
+                    insuranceMsg = `We accept the following insurance providers: ${businessData.insurancePartners.join(', ')}.`;
+                } else {
+                    insuranceMsg = 'We accept most major insurance providers.';
+                }
                 responsePayload = {
                     type: 'PAYMENT_PLAN_INQUIRY',
-                    response: "Yes, we offer flexible payment plans and accept most major insurance providers. Would you like more details or to speak with our team about your specific situation?"
+                    response: `Yes, we offer flexible payment plans. ${insuranceMsg} Would you like more details or to speak with our team about your specific situation?`
                 };
                 break;
 

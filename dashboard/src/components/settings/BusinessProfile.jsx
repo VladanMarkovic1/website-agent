@@ -354,6 +354,79 @@ const BusinessProfile = () => {
           </div>
         </div>
 
+        {/* Insurance Partners & Payment Options */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Insurance Partners & Payment Plans</h3>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Accepted Insurance Providers</label>
+            <div className="flex gap-2 mb-2">
+              <InputField
+                value={newInsurancePartner}
+                onChange={(e) => setNewInsurancePartner(e.target.value)}
+                placeholder="Add insurance provider..."
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                onClick={() => setNewInsurancePartner(addItem('insurancePartners', newInsurancePartner, 
+                  (value) => setBusinessProfile(prev => ({ ...prev, insurancePartners: [...prev.insurancePartners, value] }))))}
+                className="flex items-center"
+              >
+                <HiPlus className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {businessProfile.insurancePartners.map((ins, index) => (
+                <span key={index} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center">
+                  {ins}
+                  <button
+                    type="button"
+                    onClick={() => removeItem('insurancePartners', index, 
+                      (value) => setBusinessProfile(prev => ({ ...prev, insurancePartners: prev.insurancePartners.filter((_, i) => i !== index) })))}
+                    className="ml-2 text-green-600 hover:text-green-800"
+                  >
+                    <HiTrash className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Payment Plans / Options</label>
+            <div className="flex gap-2 mb-2">
+              <InputField
+                value={newPaymentOption}
+                onChange={(e) => setNewPaymentOption(e.target.value)}
+                placeholder="Add payment plan or option..."
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                onClick={() => setNewPaymentOption(addItem('paymentOptions', newPaymentOption, 
+                  (value) => setBusinessProfile(prev => ({ ...prev, paymentOptions: [...prev.paymentOptions, value] }))))}
+                className="flex items-center"
+              >
+                <HiPlus className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {businessProfile.paymentOptions.map((opt, index) => (
+                <span key={index} className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm flex items-center">
+                  {opt}
+                  <button
+                    type="button"
+                    onClick={() => removeItem('paymentOptions', index, 
+                      (value) => setBusinessProfile(prev => ({ ...prev, paymentOptions: prev.paymentOptions.filter((_, i) => i !== index) })))}
+                    className="ml-2 text-yellow-600 hover:text-yellow-800"
+                  >
+                    <HiTrash className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Team Members */}
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
