@@ -351,18 +351,29 @@ function escapeHtml(unsafe) {
 
 const processChatMessage = async (message, sessionId, businessId) => {
     try {
-        console.log('[LOG][chatbotController] processChatMessage: message:', message, 'sessionId:', sessionId, 'businessId:', businessId);
+        console.log('[DEBUG][chatbotController] processChatMessage called with:', { message, sessionId, businessId });
+        // Log before building context
+        console.log('[DEBUG][chatbotController] Calling buildBusinessContext with businessId:', businessId, 'sessionId:', sessionId);
         const { session, isNewSession } = await _initializeSessionAndTrackStart(sessionId, businessId);
         const businessContext = await _getBusinessContext(businessId, session.sessionId, message);
+        // Log after context is built
+        console.log('[DEBUG][chatbotController] businessContext returned:', businessContext);
 
         // Detect initial service interest (if not already set)
         await _detectAndSetInitialServiceInterest(session, businessContext, message);
 
         // Prepare message history (use session.messages)
         const sessionMessages = session.messages || [];
-
-        // Get previous partial info
         const previousPartialInfo = session.partialContactInfo || { name: null, phone: null, email: null };
+        // Log what will be sent to AI
+        console.log('[DEBUG][chatbotController] About to call generateAIResponse with:', {
+            message,
+            businessContext,
+            sessionMessages,
+            isNewSession,
+            previousPartialInfo,
+            serviceInterest: session.serviceInterest
+        });
 
         // Generate response (AI + Overrides)
         const { classifiedIntent, responsePayload } = await _generateAndRefineResponse(

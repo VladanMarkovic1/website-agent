@@ -27,6 +27,7 @@ class BusinessContextBuilder {
             
             // Get all business data
             const business = await Business.findOne({ businessId });
+            console.log('[DEBUG][businessContextBuilder] Result of Business.findOne:', util.inspect(business, { depth: 5 }));
             if (!business) {
                 throw new Error(`Business not found: ${businessId}`);
             }
