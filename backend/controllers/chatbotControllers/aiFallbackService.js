@@ -74,10 +74,10 @@ Please provide a helpful response that addresses the user's question or concern.
 const buildBusinessContext = (businessData) => {
     if (!businessData) return "You work for a dental office.";
 
-    let context = `You work for ${businessData.businessName || 'a dental office'}.`;
+    let context = `You work for ${businessData.name || businessData.businessName || 'a dental office'}.`;
 
-    if (businessData.businessDescription) {
-        context += ` ${businessData.businessDescription}`;
+    if (businessData.businessDescription || businessData.description) {
+        context += ` ${businessData.businessDescription || businessData.description}`;
     }
 
     if (businessData.services && businessData.services.length > 0) {
@@ -85,8 +85,8 @@ const buildBusinessContext = (businessData) => {
         context += ` Services offered include: ${serviceNames}.`;
     }
 
-    if (businessData.businessPhoneNumber) {
-        context += ` Phone: ${businessData.businessPhoneNumber}.`;
+    if (businessData.businessPhoneNumber || businessData.phone) {
+        context += ` Phone: ${businessData.businessPhoneNumber || businessData.phone}.`;
     }
 
     if (businessData.operatingHours) {
