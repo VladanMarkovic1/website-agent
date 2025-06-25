@@ -173,7 +173,11 @@ const BusinessProfile = () => {
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       console.error('Error saving business profile:', err);
-      setError(err.response?.data?.error || 'Failed to save business profile.');
+      if (err.response?.data?.errors) {
+        setError(err.response.data.errors.map(e => e.msg).join(' | '));
+      } else {
+        setError(err.response?.data?.error || 'Failed to save business profile.');
+      }
     } finally {
       setSaving(false);
     }
