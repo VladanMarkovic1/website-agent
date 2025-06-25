@@ -315,14 +315,26 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
             case 'PAYMENT_PLAN_INQUIRY':
                 let insuranceMsg = '';
+                let paymentMsg = '';
                 if (businessData.insurancePartners && businessData.insurancePartners.length > 0) {
                     insuranceMsg = `We accept the following insurance providers: ${businessData.insurancePartners.join(', ')}.`;
+                }
+                if (businessData.paymentOptions && businessData.paymentOptions.length > 0) {
+                    paymentMsg = `We offer these payment plans/options: ${businessData.paymentOptions.join(', ')}.`;
+                }
+                let combinedMsg = '';
+                if (insuranceMsg && paymentMsg) {
+                    combinedMsg = `${insuranceMsg} ${paymentMsg}`;
+                } else if (insuranceMsg) {
+                    combinedMsg = insuranceMsg;
+                } else if (paymentMsg) {
+                    combinedMsg = paymentMsg;
                 } else {
-                    insuranceMsg = 'We accept most major insurance providers.';
+                    combinedMsg = 'We accept most major insurance providers and offer flexible payment plans.';
                 }
                 responsePayload = {
                     type: 'PAYMENT_PLAN_INQUIRY',
-                    response: `Yes, we offer flexible payment plans. ${insuranceMsg} Would you like more details or to speak with our team about your specific situation?`
+                    response: `${combinedMsg} Would you like more details or to speak with our team about your specific situation?`
                 };
                 break;
 
