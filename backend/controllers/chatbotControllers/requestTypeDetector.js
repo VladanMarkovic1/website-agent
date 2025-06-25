@@ -1,13 +1,24 @@
-import {
-    BOOKING_KEYWORDS,
-    RESCHEDULE_KEYWORDS,
-    CANCEL_KEYWORDS,
-    URGENT_KEYWORDS,
-    ADVICE_KEYWORDS,
-    SPECIFIC_HEALTH_QUESTIONS,
-    PEDIATRIC_KEYWORDS,
-    SPECIFIC_SERVICE_QUESTION_KEYWORDS
-} from './chatbotConstants.js';
+// Simple keyword definitions to replace deleted constants
+const BOOKING_KEYWORDS = ['book', 'schedule', 'appointment', 'make appointment', 'set up', 'arrange'];
+
+const RESCHEDULE_KEYWORDS = ['reschedule', 'change', 'move', 'postpone', 'cancel'];
+
+const CANCEL_KEYWORDS = ['cancel', 'cancellation', 'stop', 'end'];
+
+const URGENT_KEYWORDS = ['emergency', 'urgent', 'severe', 'extreme', 'bad', 'terrible', 'awful', 'unbearable'];
+
+const ADVICE_KEYWORDS = ['advice', 'recommend', 'suggest', 'what should', 'how should', 'what do you think'];
+
+const SPECIFIC_HEALTH_QUESTIONS = [
+    { topic: 'toothache', keywords: ['toothache', 'tooth pain', 'dental pain'] },
+    { topic: 'cavity', keywords: ['cavity', 'cavities', 'decay', 'tooth decay'] },
+    { topic: 'gum disease', keywords: ['gum', 'gingivitis', 'periodontal'] },
+    { topic: 'whitening', keywords: ['whitening', 'white', 'stains', 'discolored'] }
+];
+
+const PEDIATRIC_KEYWORDS = ['child', 'children', 'kid', 'kids', 'baby', 'toddler', 'pediatric'];
+
+const SPECIFIC_SERVICE_QUESTION_KEYWORDS = ['options', 'best', 'recommend', 'suggest', 'which', 'what type'];
 
 /**
  * Checks if the message indicates a booking request.

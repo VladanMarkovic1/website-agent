@@ -3,12 +3,7 @@ import dotenv from "dotenv";
 import { classifyUserIntent, findServiceNameInMessage } from "./messageClassifier.js";
 import { handleServiceInquiry } from "./serviceMatcher.js";
 import { generateAIFallbackResponse } from "./aiFallbackService.js";
-import {
-    // CHATBOT_PERSONALITY, // Not needed directly here anymore
-    RESPONSE_TEMPLATES,
-    DENTAL_PROBLEMS,
-    TIME_PREFERENCE_KEYWORDS // Added TIME_PREFERENCE_KEYWORDS
-} from "./chatbotConstants.js";
+// Removed import of deleted constants
 import { extractContactInfo } from "./extractContactInfo.js"; // Only import extractContactInfo
 import { redactPII } from '../../utils/piiFilter.js'; // Added this import
 
@@ -18,6 +13,34 @@ dotenv.config();
 
 // Removed handleServiceInquiry (moved to serviceMatcher.js)
 // Removed _generateOpenAIFallback (moved to aiFallbackService.js)
+
+// Simple response templates to replace deleted constants
+const RESPONSE_TEMPLATES = {
+    contact_after_yes: "Great! To help you schedule an appointment, could you please provide your name, phone number, and email address?",
+    problem_followup_prefix: (category) => `I understand you're experiencing ${category}. Here are some services that might help:\n\n`,
+    problem_followup_suffix: "\n\nWould you like to schedule a consultation to discuss these options?",
+    problem_followup_fallback: (category) => `I understand you're experiencing ${category}. Let me connect you with our team to discuss your specific needs. Could you provide your contact information?`,
+    emergency: "This sounds like it might need immediate attention. Please call us right away or visit an emergency dental clinic if the pain is severe.",
+    visual_concern: "I understand you're concerned about the appearance of your teeth. Our cosmetic dentistry services can help improve your smile.",
+    acknowledge_symptom: (symptom) => `I understand you're experiencing ${symptom}. Let me help you schedule a consultation to address this properly.`,
+    service_list_prefix: "Here are the services we offer:\n\n",
+    service_list_suffix: "\n\nWhich service are you interested in?",
+    error_fallback: "I apologize, but I'm having trouble processing your request right now. Please try again or call us directly.",
+    OPERATING_HOURS_RESPONSE: (hours) => `Our operating hours are:\n${hours}`,
+    HOURS_UNAVAILABLE_FALLBACK: "I don't have our current operating hours available. Please call us directly for the most up-to-date information."
+};
+
+// Simple dental problems mapping to replace deleted constants
+const DENTAL_PROBLEMS = {
+    appearance: ['cosmetic', 'appearance', 'look', 'smile', 'teeth', 'whitening', 'straighten'],
+    pain: ['pain', 'hurt', 'ache', 'sore', 'discomfort'],
+    damage: ['broken', 'cracked', 'chipped', 'damaged', 'fractured'],
+    sensitivity: ['sensitive', 'sensitivity', 'cold', 'hot', 'temperature'],
+    emergency: ['emergency', 'urgent', 'severe', 'extreme']
+};
+
+// Simple time preference keywords to replace deleted constants
+const TIME_PREFERENCE_KEYWORDS = ['morning', 'afternoon', 'evening', 'weekend', 'saturday', 'sunday', 'today', 'tomorrow', 'asap', 'soon'];
 
 // Restore local definition of createMissingInfoPrompt
 const createMissingInfoPrompt = (missingFields, providedInfo) => {

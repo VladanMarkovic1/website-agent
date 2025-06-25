@@ -19,6 +19,7 @@ import leadRoutes from "./routes/leadRoutes.js";
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
+import businessRoutes from './routes/businessRoutes.js';
 
 // Phase 3: Call Tracking System Routes
 import voiceWebhookRoutes from './routes/voiceWebhookRoutes.js';
@@ -141,6 +142,7 @@ app.use("/api/v1/admin", adminLimiter, adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/clients', clientRoutes);
 app.use('/api/v1/public', publicRoutes);
+app.use('/api/v1/business', businessRoutes);
 
         // Phase 3: Call Tracking System Routes
         app.use('/api/webhooks/voice', voiceWebhookRoutes);

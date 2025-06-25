@@ -1,75 +1,97 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
-import {
-    CHATBOT_PERSONALITY,
-    RESPONSE_TEMPLATES
-} from "./chatbotConstants.js"; // Import necessary constants
 
 dotenv.config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 /**
- * Generates a response using the OpenAI API as a fallback.
- * 
- * @param {string} message - The user's current message.
- * @param {Array} messageHistory - The conversation history.
- * @param {Object} businessData - The data object for the current business.
- * @returns {Promise<Object>} An object containing the type ('AI_FALLBACK' or 'ERROR_FALLBACK') and the response string.
+ * Generates an AI-powered response when template-based responses are not sufficient
+ * @param {string} message - User's message
+ * @param {Array} messageHistory - Conversation history
+ * @param {Object} businessData - Business information
+ * @returns {Object} Response payload
  */
-export const generateAIFallbackResponse = async (message, messageHistory, businessData) => {
-    // console.log('Falling back to OpenAI generation.');
-    // Enhanced System Prompt V5 (Includes placeholders)
-    const systemPrompt = `You are a friendly and helpful dental office AI assistant for ${businessData?.businessName || 'the dental practice'}.\nPersona Traits: ${CHATBOT_PERSONALITY.traits.join(', ')}.\nRules: ${CHATBOT_PERSONALITY.rules.join(' ')} \nYour primary goals are: \n1. Answer basic questions about offered services.\n2. Collect contact information (full name, phone number, AND email address) to schedule consultations or appointments.\n\n**Contact Info Placeholders:** When providing the office's contact information, ALWAYS use these specific placeholders: use '[PHONE]' for the phone number and '[EMAIL]' for the email address. Example: 'You can contact us directly at [PHONE] or [EMAIL]'. Use '[BUSINESS_NAME]' if you need to refer to the practice name.\n\n**CRITICAL: Handling Booking Requests:**\n- **Identify:** Recognize if the user explicitly asks to book, schedule, or check an appointment. Keywords include "appointment", "book", "schedule", "check availability", etc.\n- **Acknowledge Details:** If booking is requested, **FIRST acknowledge the specific details** mentioned by the user (e.g., "Okay, I can help with scheduling an appointment with Dr. Conor for checking your implants."). Do NOT ignore these details or give generic advice about the mentioned topic if booking is the main goal.\n- **Proceed to Collect Info:** AFTER acknowledging, explain you need their full name, phone number, and email address to pass along to the scheduling team. Example: "To proceed with arranging that, could you please provide your full name, phone number, and email address? 📞"\n\n**Handling General Questions/Problems:** If the user asks a general question or describes a problem (like needing a check-up or mentioning an issue) WITHOUT explicitly asking to book: \n1. **Acknowledge empathetically:** Briefly acknowledge their specific concern (e.g., "Okay, I understand you'd like to get your implants checked.", "I hear you're having some sensitivity."). \n2. **State the need for a check-up:** Gently explain that a dentist needs to evaluate specific conditions in person.\n3. **Offer to Schedule:** Directly offer to help schedule an appointment. Example: "We can definitely schedule a time for you to come in."\n4. **Request Contact Info:** Proceed to ask for their full name, phone number, AND email address, explaining *why* it's needed. Example: "To get that set up, could you please provide your full name, phone number, and email address so our scheduling team can contact you to book that appointment? 🦷"\n\n**Contact Info Collection:** You MUST explicitly ask for the user's full name, phone number, AND email address when collecting contact information. Do not ask for generic 'contact details'.\n\nKeep responses concise, friendly, and always use appropriate emojis like 🦷, ✨, 😊, 📞.`;
-
-    const conversationHistory = messageHistory.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.content
-    }));
-
-    const messages = [
-        { role: "system", content: systemPrompt },
-        ...conversationHistory.slice(-4), // Include last 4 messages for context
-        { role: "user", content: message }
-    ];
-
+export const generateAIFallbackResponse = async (message, messageHistory = [], businessData = {}) => {
     try {
+        // Build context from business data
+        const businessContext = buildBusinessContext(businessData);
+        
+        // Build conversation history for context
+        const conversationHistory = messageHistory
+            .slice(-10) // Last 10 messages for context
+            .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+            .join('\n');
+
+        const systemPrompt = `You are a helpful dental office assistant. ${businessContext}
+
+Your role is to:
+- Be friendly and professional
+- Help patients with dental-related questions
+- Guide them toward scheduling appointments when appropriate
+- Provide accurate but general information (avoid giving specific medical advice)
+- Keep responses concise and helpful
+
+Current conversation context:
+${conversationHistory}
+
+User's current message: ${message}
+
+Please provide a helpful response that addresses the user's question or concern.`;
+
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 200,
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: message }
+            ],
+            max_tokens: 300,
+            temperature: 0.7
         });
 
-        const aiResponseContent = completion.choices[0]?.message?.content?.trim() || RESPONSE_TEMPLATES.understanding;
-        // console.log('OpenAI generated response:', aiResponseContent);
-
-        // --- Post-process the response to replace placeholders --- 
-        let finalResponse = aiResponseContent;
-        if (businessData) {
-            const phone = businessData.businessPhoneNumber || 'the office';
-            const email = businessData.businessEmail || 'the office';
-            const name = businessData.businessName || 'the dental practice';
-            const address = businessData.address || 'our office location';
-
-            finalResponse = finalResponse.replace(/\[phone number\]|\[PHONE\]/gi, phone);
-            finalResponse = finalResponse.replace(/\[email address\]|\[EMAIL\]/gi, email);
-            finalResponse = finalResponse.replace(/\[business name\]|\[BUSINESS_NAME\]/gi, name);
-            finalResponse = finalResponse.replace(/\[address\]|\[ADDRESS\]/gi, address);
-        }
-        // --- End Post-processing ---
+        const response = completion.choices[0]?.message?.content || 
+            "I apologize, but I'm having trouble processing your request right now. Please try again or call us directly.";
 
         return {
             type: 'AI_FALLBACK',
-            response: finalResponse // Return the processed response
+            response: response
         };
 
-    } catch (openaiError) {
-        console.error("OpenAI API call failed:", openaiError);
+    } catch (error) {
+        console.error("Error in generateAIFallbackResponse:", error);
         return {
-            type: 'ERROR_FALLBACK',
-            // Don't replace placeholders in the generic error template
-            response: RESPONSE_TEMPLATES.understanding 
+            type: 'AI_FALLBACK',
+            response: "I apologize, but I'm having trouble processing your request right now. Please try again or call us directly."
         };
     }
+};
+
+/**
+ * Builds business context for AI responses
+ * @param {Object} businessData - Business information
+ * @returns {string} Formatted business context
+ */
+const buildBusinessContext = (businessData) => {
+    if (!businessData) return "You work for a dental office.";
+
+    let context = `You work for ${businessData.businessName || 'a dental office'}.`;
+
+    if (businessData.businessDescription) {
+        context += ` ${businessData.businessDescription}`;
+    }
+
+    if (businessData.services && businessData.services.length > 0) {
+        const serviceNames = businessData.services.map(s => s.name).join(', ');
+        context += ` Services offered include: ${serviceNames}.`;
+    }
+
+    if (businessData.businessPhoneNumber) {
+        context += ` Phone: ${businessData.businessPhoneNumber}.`;
+    }
+
+    if (businessData.operatingHours) {
+        context += ` Operating hours: ${businessData.operatingHours}.`;
+    }
+
+    return context;
 }; 

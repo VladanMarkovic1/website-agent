@@ -10,51 +10,28 @@ import { generateAIResponse } from "./openaiService.js";
 import { getOrCreateSession, updateSessionData, addMessagesToSession } from "./sessionService.js";
 import { detectRequestTypes } from "./requestTypeDetector.js";
 import { applyResponseOverrides } from "./overrideService.js";
-import { DENTAL_KEYWORDS_FOR_TRACKING, RESPONSE_TEMPLATES } from "./chatbotConstants.js"; // Import RESPONSE_TEMPLATES too
 import { redactPII } from '../../utils/piiFilter.js';
 import { extractContactInfo, extractExtraDetails } from "./extractContactInfo.js";
-import Lead from '../../models/Lead.js'; // Add this import at the top if not present
+import Lead from '../../models/Lead.js';
+import businessContextBuilder from '../../services/businessContextBuilder.js';
 
 // Removed session map, timeout, cleanup (moved to sessionService)
 
-// Fetch business data (could be further extracted later)
-async function _getBusinessData(businessId) {
-    const [business, serviceData, contactData, extraInfoData, phoneSettings] = await Promise.all([
-        Business.findOne({ businessId }),
-        Service.findOne({ businessId }),
-        Contact.findOne({ businessId }),
-        ExtraInfo.findOne({ businessId }),
-        PhoneSettings.findOne({ businessId, status: 'active' })
-    ]);
-
-    if (!business) {
-        throw new Error("Business not found");
+// Fetch comprehensive business context using the enhanced builder
+async function _getBusinessContext(businessId, sessionId, message) {
+    try {
+        console.log(`[ChatbotController] Building business context for ${businessId}`);
+        
+        // Use the enhanced business context builder
+        const businessContext = await businessContextBuilder.buildBusinessContext(businessId, sessionId, message);
+        
+        console.log(`[ChatbotController] Business context built successfully for ${businessId}`);
+        return businessContext;
+        
+    } catch (error) {
+        console.error(`[ChatbotController] Error building business context for ${businessId}:`, error);
+        throw new Error(`Failed to build business context: ${error.message}`);
     }
-
-    const services = serviceData?.services?.map(service => ({
-        name: service.name,
-        description: service.description
-    })) || [];
-
-    // Use the real, scraped phone number from Contact, fallback to 'Not available'
-    const businessPhoneNumber = contactData?.phone || 'Not available';
-    const businessEmail = contactData?.email || 'Not available';
-    const businessAddress = contactData?.address || 'Not available';
-    console.log(`[DEBUG] BusinessId: ${businessId} | Contact phone from DB:`, contactData?.phone); // Debug log
-
-    const fullBusinessData = {
-        ...business.toObject(),
-        services: services,
-        businessPhoneNumber: businessPhoneNumber,
-        businessEmail: businessEmail,
-        address: businessAddress,
-        operatingHours: extraInfoData?.operatingHours || null,
-        aboutUsText: extraInfoData?.aboutUsText || null
-    };
-    console.log(`[DEBUG] BusinessId: ${businessId} | businessPhoneNumber passed to chatbot:`, businessPhoneNumber); // Debug log
-
-    // console.log("[Business Data Check] Fetched business data:", JSON.stringify(fullBusinessData, null, 2)); // Debug only - Removed
-    return fullBusinessData;
 }
 
 // --- Helper Functions --- 
@@ -72,11 +49,13 @@ async function _initializeSessionAndTrackStart(sessionId, businessId) {
     return { session, isNewSession };
 }
 
-async function _detectAndSetInitialServiceInterest(session, businessData, message) {
+async function _detectAndSetInitialServiceInterest(session, businessContext, message) {
     if (session.serviceInterest) return; // Already set
 
     const messageLower = message.toLowerCase();
-    const mentionedService = businessData.services.find(service => {
+    const services = businessContext.services?.services || [];
+    
+    const mentionedService = services.find(service => {
         if (!service || !service.name) return false;
         const serviceName = service.name.toLowerCase();
         return messageLower.includes(serviceName) || 
@@ -90,7 +69,7 @@ async function _detectAndSetInitialServiceInterest(session, businessData, messag
     }
 }
 
-async function _generateAndRefineResponse(message, businessData, sessionMessages, isNewSession, session, previousPartialInfo) {
+async function _generateAndRefineResponse(message, businessContext, sessionMessages, isNewSession, session, previousPartialInfo) {
     // console.log(`[AI Call Prep] Calling generateAIResponse. isNewSession=${isNewSession}. Message: "${redactPII(message)}". History length: ${sessionMessages?.length || 0}`); // Redacted message
     // if (sessionMessages && sessionMessages.length > 0) { // Avoid logging message history in prod
         // console.log(`[AI Call Prep] Last ${Math.min(3, sessionMessages.length)} messages:`, JSON.stringify(sessionMessages.slice(-3), null, 2)); // Requires deep redaction - Removed for prod
@@ -99,7 +78,7 @@ async function _generateAndRefineResponse(message, businessData, sessionMessages
     // Pass session.serviceInterest as an argument
     const aiResult = await generateAIResponse(
         message, 
-        businessData, 
+        businessContext, 
         sessionMessages, 
         isNewSession, 
         previousPartialInfo,
@@ -113,7 +92,7 @@ async function _generateAndRefineResponse(message, businessData, sessionMessages
 
     // --- First Override Pass (Based on the response payload type from generateAIResponse) ---
     // console.log("[Override Check 1] Applying overrides based on initial response payload type."); // Debug - Removed
-    let responseAfterOverride1 = applyResponseOverrides(initialResponsePayload, [], session, businessData);
+    let responseAfterOverride1 = applyResponseOverrides(initialResponsePayload, [], session, businessContext);
     // console.log("[Override Check 1] Response after first override pass:", JSON.stringify(responseAfterOverride1, null, 2)); // Debug - Removed
 
     // Update session interest if override specified it
@@ -170,7 +149,7 @@ async function _trackProblemDescriptionIfNeeded(session, message, botNextRespons
     // Original logic for setting problemDescription based on bot's next response type and message content
     const isPotentiallyRelevant = 
         !['CONTACT_INFO', 'CONTACT_INFO_PROVIDED', 'GREETING', 'SMALLTALK', 'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES'].includes(botNextResponseType) &&
-        (DENTAL_KEYWORDS_FOR_TRACKING.some(keyword => message.toLowerCase().includes(keyword)) || message.split(' ').length > 3);
+        (message.split(' ').length > 3);
 
     if (isPotentiallyRelevant) {
         const redactedMessage = redactPII(message);
@@ -183,7 +162,7 @@ async function _trackProblemDescriptionIfNeeded(session, message, botNextRespons
 }
 
 // Helper function to determine the lead problem context/concern
-async function _determineLeadProblemContext(session, businessData) {
+async function _determineLeadProblemContext(session, businessContext) {
     const genericPlaceholders = ['your dental needs', 'dental consultation', 'general inquiry', null];
     const specificServiceInterest = session.serviceInterest && !genericPlaceholders.includes(session.serviceInterest.toLowerCase())
                                     ? session.serviceInterest
@@ -199,44 +178,21 @@ async function _determineLeadProblemContext(session, businessData) {
 
     const isJustName = (text) => namePatterns.some(pattern => pattern.test(text.trim()));
 
-    // 1. Prioritize specific service interest
-    if (specificServiceInterest) {
-        return `Interest in: ${specificServiceInterest}`;
-    }
+    // Use business context for contact information
+    const contactInfo = businessContext.contact || {};
+    const businessPhone = contactInfo.phone;
+    const businessEmail = contactInfo.email;
+    const businessAddress = contactInfo.address;
 
-    // 2. Prioritize explicitly tracked problem description
-    if (session.problemDescription && session.problemDescription.trim().length > 0 && !isJustName(session.problemDescription)) {
-         return session.problemDescription; // Already redacted
-    }
-
-    // 3. Fallback: Search backwards through message history for a meaningful user message.
-    if (session.messages && session.messages.length > 0) {
-        const trivialMessageTypes = [
-            'AFFIRMATION', 'NEGATION', 'CONFIRMATION_YES', 'CONFIRMATION_NO',
-            'SMALLTALK', 'GREETING', 'GOODBYE',
-            'CONTACT_INFO', 'PARTIAL_CONTACT_INFO_PROVIDED', 'CONTACT_INFO_PROVIDED',
-            'REQUEST_HUMAN_AGENT', 'THANKS'
-        ];
-
-        // Search from the end to the beginning to find the most recent, relevant message
-        for (let i = session.messages.length - 1; i >= 0; i--) {
-            const msg = session.messages[i];
-
-            if (msg.role === 'user' && msg.content) {
-                const messageTypes = msg.type ? msg.type.split('/') : ['UNKNOWN'];
-                // A message is trivial if ALL its classified types are in the trivial list.
-                const isTrivial = messageTypes.every(type => trivialMessageTypes.includes(type));
-
-                if (!isTrivial && !isJustName(msg.content) && msg.content.trim().length > 0) {
-                    console.log(`[Context Fallback] Found user concern in history: "${msg.content}"`);
-                    return msg.content; // Content is already redacted
-                }
-            }
-        }
-    }
-
-    // 4. Final Fallback: If no better context is found, use the generic message
-    return "User provided contact details after chatbot interaction.";
+    return {
+        specificServiceInterest,
+        problemDescription: session.problemDescription && !isJustName(session.problemDescription) 
+                           ? session.problemDescription 
+                           : null,
+        businessPhone,
+        businessEmail,
+        businessAddress
+    };
 }
 
 async function _handleLeadSavingIfNeeded(message, finalResponse, session, classifiedIntent) {
@@ -260,11 +216,11 @@ async function _handleLeadSavingIfNeeded(message, finalResponse, session, classi
     
     try {
         // --- Get Business Data (Needed for context determination) --- 
-        const businessData = await _getBusinessData(session.businessId);
+        const businessContext = await _getBusinessContext(session.businessId, session.sessionId, message);
         // ----------------------------------------------------------
 
-        // Determine context using the revised function, passing businessData
-        const leadProblemContext = await _determineLeadProblemContext(session, businessData);
+        // Determine context using the revised function, passing businessContext
+        const leadProblemContext = await _determineLeadProblemContext(session, businessContext);
 
         // Extract PII to be sent to saveLead (which handles encryption)
         const leadPii = classifiedIntent.contactInfo; 
@@ -302,7 +258,7 @@ async function _handleLeadSavingIfNeeded(message, finalResponse, session, classi
             phone: leadPii.phone,
             email: leadPii.email,
             serviceInterest: serviceInterest,
-            problemDescription: leadProblemContext,
+            problemDescription: leadProblemContext.problemDescription,
             messageHistory: session.messages,
             details: otherDetails // Only include other details, not the service
         };
@@ -376,10 +332,10 @@ function escapeHtml(unsafe) {
 const processChatMessage = async (message, sessionId, businessId) => {
     try {
         const { session, isNewSession } = await _initializeSessionAndTrackStart(sessionId, businessId);
-        const businessData = await _getBusinessData(businessId);
+        const businessContext = await _getBusinessContext(businessId, session.sessionId, message);
 
         // Detect initial service interest (if not already set)
-        await _detectAndSetInitialServiceInterest(session, businessData, message);
+        await _detectAndSetInitialServiceInterest(session, businessContext, message);
 
         // Prepare message history (use session.messages)
         const sessionMessages = session.messages || [];
@@ -390,7 +346,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
         // Generate response (AI + Overrides)
         const { classifiedIntent, responsePayload } = await _generateAndRefineResponse(
             message, 
-            businessData, 
+            businessContext, 
             sessionMessages, 
             isNewSession, 
             session,
@@ -399,7 +355,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
 
         // --- Second Override Pass (Based on user message type) --- 
         const userMessageTypes = detectRequestTypes(message);
-        const finalResponse = applyResponseOverrides(responsePayload, userMessageTypes, session, businessData); 
+        const finalResponse = applyResponseOverrides(responsePayload, userMessageTypes, session, businessContext); 
 
         // Always use a single, natural message for appointment/booking/visit requests (after all overrides)
         const appointmentKeywords = [
@@ -436,69 +392,6 @@ const processChatMessage = async (message, sessionId, businessId) => {
         const leadSaved = await _handleLeadSavingIfNeeded(message, finalResponse, session, classifiedIntent);
         console.log('[DEBUG] Lead Saving - leadSaved result:', leadSaved);
         
-        // --- Fallback: Always save lead if message contains all info (for button-based flow) ---
-        if (!leadSaved) { // Only run fallback if main lead saving didn't work
-            console.log('[DEBUG] Fallback Lead Saving - Running fallback logic');
-            const contactInfo = extractContactInfo(message);
-            const extraDetails = extractExtraDetails(message);
-            console.log('[DEBUG] Fallback Lead Saving - extracted contactInfo:', JSON.stringify(contactInfo, null, 2));
-            console.log('[DEBUG] Fallback Lead Saving - extracted extraDetails:', JSON.stringify(extraDetails, null, 2));
-            
-            // More flexible condition: require name and phone, but concern/timing can come from session
-            if (contactInfo && contactInfo.name && contactInfo.phone) {
-                console.log('[DEBUG] Fallback Lead Saving - Contact info validation passed, proceeding to save lead');
-                // Check for existing lead
-                const existingLead = await Lead.findOne({
-                    businessId,
-                    $or: [{ phone: contactInfo.phone }, ...(contactInfo.email ? [{ email: contactInfo.email }] : [])]
-                });
-
-                // Ensure we have a valid concern (can come from session or current message)
-                const concern = extraDetails.concern || session.serviceInterest || 'Dental Consultation';
-                
-                // Remove service/concern from extraDetails to avoid duplication
-                const { concern: _, ...otherDetails } = extraDetails;
-                
-                // Create lead context with proper separation of name and concern
-                const leadContext = {
-                    businessId,
-                    name: contactInfo.name,
-                    phone: contactInfo.phone,
-                    email: contactInfo.email,
-                    serviceInterest: concern,
-                    problemDescription: concern,
-                    messageHistory: session.messages,
-                    details: otherDetails // Only include other details, not the service
-                };
-
-                if (existingLead) {
-                    // Update existing lead with new details
-                    existingLead.name = contactInfo.name;
-                    existingLead.phone = contactInfo.phone;
-                    existingLead.email = contactInfo.email || existingLead.email;
-                    existingLead.service = concern;
-                    existingLead.reason = `Patient's Concern: ${concern}`;
-                    existingLead.details = otherDetails;
-                    existingLead.lastContactedAt = new Date();
-                    existingLead.status = 'new';
-                    existingLead.interactions.push({
-                        type: 'chatbot',
-                        status: 'Re-engaged via Chatbot',
-                        message: `User re-engaged via chatbot. Concern: ${concern}`,
-                        service: concern
-                    });
-                    await existingLead.save();
-                    console.log('[DEBUG] Fallback: Updated existing lead with details:', existingLead.details);
-                } else {
-                    // Create new lead
-                    console.log('[DEBUG] (Fallback) leadContext being sent to saveLead:', JSON.stringify(leadContext, null, 2));
-                    await saveLead(leadContext);
-                }
-            } else {
-                console.log('[DEBUG] Fallback Lead Saving - Contact info validation failed: missing name or phone');
-            }
-        }
-
         // Track conversation end
         await _trackConversationCompletionIfNeeded(finalResponse, session);
         // Log messages (use detected user type)
@@ -515,7 +408,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
     } catch (error) {
         console.error("Error processing message:", error);
          return {
-             response: escapeHtml(RESPONSE_TEMPLATES.ERROR()),
+             response: escapeHtml("I apologize, but I'm having trouble processing your request right now. Please try again or contact our team directly."),
              type: 'ERROR',
              sessionId: sessionId || 'unknown'
          };

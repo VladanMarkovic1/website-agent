@@ -1,5 +1,37 @@
-import { GREETINGS, DENTAL_PROBLEMS, URGENT_KEYWORDS, RESPONSE_TEMPLATES, SERVICE_FAQ_KEYWORDS, SPECIFIC_SERVICE_QUESTION_KEYWORDS, OPERATING_HOURS_KEYWORDS, RESCHEDULE_KEYWORDS, CANCEL_KEYWORDS, CONFIRMATION_KEYWORDS } from './chatbotConstants.js';
 import { extractContactInfo } from './extractContactInfo.js';
+
+// Simple keyword definitions to replace deleted constants
+const GREETINGS = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'greetings'];
+
+const DENTAL_PROBLEMS = {
+    appearance: ['cosmetic', 'appearance', 'look', 'smile', 'teeth', 'whitening', 'straighten'],
+    pain: ['pain', 'hurt', 'ache', 'sore', 'discomfort'],
+    damage: ['broken', 'cracked', 'chipped', 'damaged', 'fractured'],
+    sensitivity: ['sensitive', 'sensitivity', 'cold', 'hot', 'temperature'],
+    emergency: ['emergency', 'urgent', 'severe', 'extreme']
+};
+
+const URGENT_KEYWORDS = ['emergency', 'urgent', 'severe', 'extreme', 'bad', 'terrible', 'awful', 'unbearable'];
+
+const RESPONSE_TEMPLATES = {
+    contact_after_yes: "Great! To help you schedule an appointment, could you please provide your name, phone number, and email address?"
+};
+
+const SERVICE_FAQ_KEYWORDS = {
+    pain: ['painful', 'hurt', 'ache', 'sore'],
+    duration: ['long', 'time', 'duration', 'how long'],
+    cost: ['cost', 'price', 'expensive', 'cheap', 'affordable', 'how much']
+};
+
+const SPECIFIC_SERVICE_QUESTION_KEYWORDS = ['options', 'best', 'recommend', 'suggest', 'which', 'what type'];
+
+const OPERATING_HOURS_KEYWORDS = ['hours', 'open', 'close', 'available', 'when', 'time', 'schedule'];
+
+const RESCHEDULE_KEYWORDS = ['reschedule', 'change', 'move', 'postpone', 'cancel'];
+
+const CANCEL_KEYWORDS = ['cancel', 'cancellation', 'stop', 'end'];
+
+const CONFIRMATION_KEYWORDS = ['yes', 'yeah', 'yep', 'sure', 'okay', 'ok', 'alright', 'absolutely', 'definitely'];
 
 const isGreeting = (normalizedMsg) => {
     return GREETINGS.some(greeting => normalizedMsg.includes(greeting)) && normalizedMsg.length < 20;
