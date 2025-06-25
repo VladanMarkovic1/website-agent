@@ -23,6 +23,7 @@ class BusinessContextBuilder {
      * @returns {Promise<Object>} Comprehensive business context
      */
     async buildBusinessContext(businessId, sessionId, userMessage) {
+        console.log('[DEBUG][businessContextBuilder] buildBusinessContext CALLED with:', businessId, sessionId, userMessage);
         try {
             console.log(`[BusinessContextBuilder] Building context for business: ${businessId}, session: ${sessionId}`);
             
