@@ -89,8 +89,8 @@ async function _generateAndRefineResponse(message, businessContext, sessionMessa
     }
 
     const businessData = {
-        ...businessContext.business,
-        operatingHours: getOperatingHoursString(businessContext.business.businessHours),
+        ...businessContext,
+        operatingHours: getOperatingHoursString(businessContext.businessHours),
         // add other mappings as needed
     };
     

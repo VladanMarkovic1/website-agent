@@ -40,28 +40,26 @@ class BusinessContextBuilder {
             // After fetching business:
             console.log('[LOG][businessContextBuilder] Raw business doc:', util.inspect(business, { depth: 5 }));
             
-            // Build context using ONLY Business model for profile fields
+            // Build context with all business profile fields at the top level
             const context = {
-                business: {
-                    name: business.businessName,
-                    description: business.businessDescription,
-                    mission: business.mission,
-                    vision: business.vision,
-                    specializations: business.specializations,
-                    yearsInBusiness: business.yearsInBusiness,
-                    teamMembers: business.teamMembers,
-                    businessHours: business.businessHours,
-                    locationDetails: business.locationDetails,
-                    certifications: business.certifications,
-                    awards: business.awards,
-                    insurancePartners: business.insurancePartners,
-                    paymentOptions: business.paymentOptions,
-                    emergencyProtocol: business.emergencyProtocol,
-                    businessTone: business.businessTone,
-                    communicationStyle: business.communicationStyle,
-                    timezone: business.timezone,
-                    websiteUrl: business.websiteUrl
-                },
+                name: business.businessName,
+                description: business.businessDescription,
+                mission: business.mission,
+                vision: business.vision,
+                specializations: business.specializations,
+                yearsInBusiness: business.yearsInBusiness,
+                teamMembers: business.teamMembers,
+                businessHours: business.businessHours,
+                locationDetails: business.locationDetails,
+                certifications: business.certifications,
+                awards: business.awards,
+                insurancePartners: business.insurancePartners,
+                paymentOptions: business.paymentOptions,
+                emergencyProtocol: business.emergencyProtocol,
+                businessTone: business.businessTone,
+                communicationStyle: business.communicationStyle,
+                timezone: business.timezone,
+                websiteUrl: business.websiteUrl,
                 services: this.buildServicesContext(services),
                 knowledge: this.buildKnowledgeContext(knowledge),
                 contact: this.buildContactContext(contact),
