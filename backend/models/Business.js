@@ -68,7 +68,7 @@ const LocationDetailsSchema = new mongoose.Schema({
 const BusinessSchema = new mongoose.Schema({
     businessId: { type: String, required: true, unique: true },
     businessName: { type: String, required: true },
-    websiteUrl: { type: String, required: true },
+    websiteUrl: { type: String },
     notificationEmail: { type: String },
     apiKeyHash: { type: String, select: false },
     
