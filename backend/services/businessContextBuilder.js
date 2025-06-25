@@ -27,6 +27,10 @@ class BusinessContextBuilder {
             
             // Get all business data
             const business = await Business.findOne({ businessId });
+            const services = await Service.findOne({ businessId });
+            const knowledge = await BusinessKnowledge.findOne({ businessId });
+            const contact = await Contact.findOne({ businessId });
+            const extraInfo = await ExtraInfo.findOne({ businessId });
             // NOTE: Only fetch services, knowledge, contact, etc. for non-profile data
             // All business profile data (hours, location, etc.) comes ONLY from Business model
             if (!business) {
@@ -57,8 +61,11 @@ class BusinessContextBuilder {
                     communicationStyle: business.communicationStyle,
                     timezone: business.timezone,
                     websiteUrl: business.websiteUrl
-                }
-                // Add other context fields (services, knowledge, etc.) as needed, but NOT profile data
+                },
+                services: this.buildServicesContext(services),
+                knowledge: this.buildKnowledgeContext(knowledge),
+                contact: this.buildContactContext(contact),
+                extraInfo: this.buildExtraInfoContext(extraInfo)
             };
             
             // Add dynamic context based on user message
