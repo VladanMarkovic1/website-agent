@@ -16,7 +16,7 @@ class EnhancedDataPopulator {
             processed: 0,
             successful: 0,
             failed: 0,
-            errors: []
+            errorLogs: []
         };
     }
     
@@ -47,7 +47,7 @@ class EnhancedDataPopulator {
                 } catch (error) {
                     console.error(`[EnhancedDataPopulator] Error processing business ${business.businessId}:`, error.message);
                     this.stats.failed++;
-                    this.stats.errors.push({
+                    this.stats.errorLogs.push({
                         businessId: business.businessId,
                         error: error.message
                     });
@@ -541,7 +541,7 @@ class EnhancedDataPopulator {
                 failed: this.stats.failed,
                 successRate: Math.round((this.stats.successful / this.stats.processed) * 100)
             },
-            errors: this.stats.errors,
+            errorLogs: this.stats.errorLogs,
             recommendations: this.generateRecommendations()
         };
     }

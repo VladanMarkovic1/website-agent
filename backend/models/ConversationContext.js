@@ -186,7 +186,7 @@ const ConversationContextSchema = new mongoose.Schema({
     },
     
     // Error Tracking
-    errors: [
+    errorLogs: [
         {
             timestamp: { type: Date, default: Date.now },
             error: { type: String },

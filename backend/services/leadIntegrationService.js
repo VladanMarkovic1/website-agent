@@ -400,7 +400,7 @@ class LeadIntegrationService {
             const results = {
                 callLeadsCreated: 0,
                 smsLeadsCreated: 0,
-                errors: []
+                errorLogs: []
             };
 
             // Process calls
@@ -411,7 +411,7 @@ class LeadIntegrationService {
                         results.callLeadsCreated++;
                     }
                 } catch (error) {
-                    results.errors.push({
+                    results.errorLogs.push({
                         type: 'call',
                         id: callLog._id,
                         error: error.message
@@ -429,7 +429,7 @@ class LeadIntegrationService {
                             results.smsLeadsCreated++;
                         }
                     } catch (error) {
-                        results.errors.push({
+                        results.errorLogs.push({
                             type: 'sms',
                             id: conversation.conversationId,
                             error: error.message

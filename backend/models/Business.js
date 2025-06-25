@@ -70,6 +70,8 @@ const BusinessSchema = new mongoose.Schema({
     businessName: { type: String, required: true },
     websiteUrl: { type: String },
     notificationEmail: { type: String },
+    phone: { type: String },
+    email: { type: String },
     apiKeyHash: { type: String, select: false },
     
     // Enhanced Business Profile Fields
