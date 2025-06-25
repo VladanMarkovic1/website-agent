@@ -41,6 +41,8 @@ class BusinessContextBuilder {
                 business: {
                     name: business.businessName,
                     description: business.businessDescription,
+                    mission: business.mission,
+                    vision: business.vision,
                     specializations: business.specializations,
                     yearsInBusiness: business.yearsInBusiness,
                     teamMembers: business.teamMembers,

@@ -75,11 +75,30 @@ async function _generateAndRefineResponse(message, businessContext, sessionMessa
         // console.log(`[AI Call Prep] Last ${Math.min(3, sessionMessages.length)} messages:`, JSON.stringify(sessionMessages.slice(-3), null, 2)); // Requires deep redaction - Removed for prod
     // }
     
+    // Map businessContext.business.businessHours to businessData.operatingHours (string)
+    function getOperatingHoursString(businessHours) {
+        if (!businessHours) return undefined;
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        return days.map((day, i) => {
+            const h = businessHours[day];
+            if (!h) return `${dayNames[i]}: Closed`;
+            if (h.closed) return `${dayNames[i]}: Closed`;
+            return `${dayNames[i]}: ${h.open} - ${h.close}`;
+        }).join('\n');
+    }
+
+    const businessData = {
+        ...businessContext.business,
+        operatingHours: getOperatingHoursString(businessContext.business.businessHours),
+        // add other mappings as needed
+    };
+    
     // Pass session.serviceInterest as an argument
-    console.log('[LOG][chatbotController] Passing businessContext to AI:', util.inspect(businessContext, { depth: 5 }));
+    console.log('[LOG][chatbotController] Passing businessData to AI:', util.inspect(businessData, { depth: 5 }));
     const aiResult = await generateAIResponse(
         message, 
-        businessContext, 
+        businessData, 
         sessionMessages, 
         isNewSession, 
         previousPartialInfo,
