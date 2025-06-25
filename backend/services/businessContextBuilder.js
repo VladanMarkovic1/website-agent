@@ -1,3 +1,4 @@
+console.log('[DEBUG][businessContextBuilder] FILE LOADED');
 import Business from '../models/Business.js';
 import Service from '../models/Service.js';
 import ExtraInfo from '../models/ExtraInfo.js';
