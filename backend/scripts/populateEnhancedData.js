@@ -27,25 +27,18 @@ class EnhancedDataPopulator {
      */
     async populateEnhancedData(businessId = null) {
         try {
-            console.log('[EnhancedDataPopulator] Starting enhanced data population...');
-            
             // Get businesses to process
             const businesses = businessId 
                 ? await Business.find({ businessId }) 
                 : await Business.find({});
             
-            console.log(`[EnhancedDataPopulator] Found ${businesses.length} businesses to process`);
-            
             // Process each business
             for (const business of businesses) {
                 try {
-                    console.log(`[EnhancedDataPopulator] Processing business: ${business.businessName} (${business.businessId})`);
-                    
                     await this.processBusiness(business);
                     this.stats.successful++;
                     
                 } catch (error) {
-                    console.error(`[EnhancedDataPopulator] Error processing business ${business.businessId}:`, error.message);
                     this.stats.failed++;
                     this.stats.errorLogs.push({
                         businessId: business.businessId,
@@ -58,12 +51,10 @@ class EnhancedDataPopulator {
             
             // Generate final report
             const report = this.generateReport();
-            console.log('[EnhancedDataPopulator] Population completed:', report);
             
             return report;
             
         } catch (error) {
-            console.error('[EnhancedDataPopulator] Fatal error during population:', error);
             throw error;
         }
     }
@@ -74,15 +65,9 @@ class EnhancedDataPopulator {
      * @returns {Promise<void>}
      */
     async processBusiness(business) {
-        console.log(`[EnhancedDataPopulator] Building profile for ${business.businessName}`);
-        
-        // Step 1: Populate missing data with defaults
         await this.populateMissingData(business.businessId);
         
-        // Step 2: Update business with enhanced information
         await this.updateBusinessWithDefaults(business);
-        
-        console.log(`[EnhancedDataPopulator] Completed processing for ${business.businessName}`);
     }
     
     /**
@@ -91,8 +76,6 @@ class EnhancedDataPopulator {
      * @returns {Promise<void>}
      */
     async populateMissingData(businessId) {
-        console.log(`[EnhancedDataPopulator] Populating missing data for ${businessId}`);
-        
         // Get current business data
         const business = await Business.findOne({ businessId });
         const services = await Service.findOne({ businessId });
@@ -186,7 +169,6 @@ class EnhancedDataPopulator {
         if (Object.keys(updates).length > 0) {
             Object.assign(business, updates);
             await business.save();
-            console.log(`[EnhancedDataPopulator] Updated business defaults for ${business.businessId}`);
         }
     }
     
@@ -289,7 +271,6 @@ class EnhancedDataPopulator {
             ];
             
             await services.save();
-            console.log(`[EnhancedDataPopulator] Created default services for ${services.businessId}`);
         } else {
             // Enhance existing services
             let updated = false;
@@ -323,7 +304,6 @@ class EnhancedDataPopulator {
             
             if (updated) {
                 await services.save();
-                console.log(`[EnhancedDataPopulator] Enhanced existing services for ${services.businessId}`);
             }
         }
     }
@@ -416,7 +396,6 @@ class EnhancedDataPopulator {
         if (Object.keys(updates).length > 0) {
             Object.assign(extraInfo, updates);
             await extraInfo.save();
-            console.log(`[EnhancedDataPopulator] Updated extra info defaults for ${extraInfo.businessId}`);
         }
     }
     
@@ -481,7 +460,6 @@ class EnhancedDataPopulator {
         if (Object.keys(updates).length > 0) {
             Object.assign(knowledge, updates);
             await knowledge.save();
-            console.log(`[EnhancedDataPopulator] Updated knowledge defaults for ${knowledge.businessId}`);
         }
     }
     
@@ -506,7 +484,6 @@ class EnhancedDataPopulator {
             };
             
             await business.save();
-            console.log(`[EnhancedDataPopulator] Updated AI configuration for ${business.businessId}`);
         }
     }
     

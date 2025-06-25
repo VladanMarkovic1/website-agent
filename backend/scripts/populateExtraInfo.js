@@ -14,7 +14,6 @@ const defaultData = {
 async function populateExtraInfo() {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
-        console.log('Connected to MongoDB');
 
         // Get all business IDs that don't have ExtraInfo
         const existingExtraInfos = await ExtraInfo.find({}, 'businessId');
@@ -30,7 +29,6 @@ async function populateExtraInfo() {
                     ...defaultData
                 });
                 await extraInfo.save();
-                console.log(`Created ExtraInfo for business: ${business.businessId}`);
             } else {
                 // Update existing ExtraInfo if it's missing the new fields
                 const updated = await ExtraInfo.updateOne(
@@ -48,13 +46,9 @@ async function populateExtraInfo() {
                         }
                     }
                 );
-                if (updated.modifiedCount > 0) {
-                    console.log(`Updated ExtraInfo for business: ${business.businessId}`);
-                }
             }
         }
 
-        console.log('Finished populating ExtraInfo');
         process.exit(0);
     } catch (error) {
         console.error('Error:', error);

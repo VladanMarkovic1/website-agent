@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
 // Create reusable transporter object using SMTP transport
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransporter({
     service: process.env.EMAIL_SERVICE,
     auth: {
         user: process.env.EMAIL_USER,
@@ -11,7 +11,6 @@ const transporter = nodemailer.createTransport({
 
 export const sendLeadNotification = async (businessEmail, leadData) => {
     if (!businessEmail) {
-        console.log('No notification email set for business, skipping email notification');
         return;
     }
 
@@ -80,9 +79,7 @@ ${detailsString}
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`Lead notification email sent to ${businessEmail}`);
     } catch (error) {
-        console.error('Error sending lead notification email:', error);
         // Don't throw the error - we don't want to break the lead saving process
     }
 }; 

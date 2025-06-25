@@ -19,14 +19,12 @@ if (!ENCRYPTION_KEY || Buffer.from(ENCRYPTION_KEY, 'hex').length !== 32) {
  */
 export const encrypt = (text) => {
     if (text === null || typeof text === 'undefined') {
-        console.warn("[Encryption] Attempted to encrypt null or undefined value.");
         return null;
     }
     
     const textString = String(text); 
     if (!textString) {
-         console.warn("[Encryption] Attempted to encrypt an empty string.");
-         return { iv: '', encryptedData: ''}; 
+        return { iv: '', encryptedData: ''}; 
     }
 
     try {

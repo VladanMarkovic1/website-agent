@@ -26,7 +26,6 @@ import voiceWebhookRoutes from './routes/voiceWebhookRoutes.js';
 import smsWebhookRoutes from './routes/smsWebhookRoutes.js';
 import callTrackingRoutes from './routes/callTrackingRoutes.js';
 import numberPortingRoutes from './routes/numberPortingRoutes.js';
-console.log("✅ ALL ROUTES IMPORTED");
 
 dotenv.config();
 
@@ -81,9 +80,7 @@ const startServer = async () => {
                 if (isAllowed) {
                     callback(null, true);
                 } else {
-                    console.log('CORS blocked request from origin:', origin);
                     if (process.env.NODE_ENV === 'development') {
-                        console.log('Development mode: allowing all origins');
                         return callback(null, true);
                     }
                     callback(new Error('Not allowed by CORS'));
@@ -129,20 +126,20 @@ const startServer = async () => {
         
         // Auth routes first
         app.use("/api/v1/auth", authLimiter, registrationRoutes);
-app.use("/api/v1/auth", authLimiter, loginRoutes);
+        app.use("/api/v1/auth", authLimiter, loginRoutes);
 
-app.use(generalLimiter);
+        app.use(generalLimiter);
 
-// ALL API Routes
-app.use("/api/v1/scraper", scraperRoutes);
-app.use("/api/v1/services", serviceRoutes);
-app.use("/api/v1/chatbot", chatbotRoutes);
-app.use('/api/v1/leads', leadRoutes);
-app.use("/api/v1/admin", adminLimiter, adminRoutes);
-app.use('/api/v1/analytics', analyticsRoutes);
-app.use('/api/v1/clients', clientRoutes);
-app.use('/api/v1/public', publicRoutes);
-app.use('/api/v1/business', businessRoutes);
+        // ALL API Routes
+        app.use("/api/v1/scraper", scraperRoutes);
+        app.use("/api/v1/services", serviceRoutes);
+        app.use("/api/v1/chatbot", chatbotRoutes);
+        app.use('/api/v1/leads', leadRoutes);
+        app.use("/api/v1/admin", adminLimiter, adminRoutes);
+        app.use('/api/v1/analytics', analyticsRoutes);
+        app.use('/api/v1/clients', clientRoutes);
+        app.use('/api/v1/public', publicRoutes);
+        app.use('/api/v1/business', businessRoutes);
 
         // Phase 3: Call Tracking System Routes
         app.use('/api/webhooks/voice', voiceWebhookRoutes);
@@ -165,7 +162,6 @@ app.use('/api/v1/business', businessRoutes);
         
         // SIGTERM handler BEFORE starting server
         process.on('SIGTERM', () => {
-            console.log('SIGTERM RECEIVED - STARTING GRACEFUL SHUTDOWN');
             isShuttingDown = true;
             
             server.close((err) => {
@@ -173,7 +169,6 @@ app.use('/api/v1/business', businessRoutes);
                     console.error('ERROR DURING SERVER SHUTDOWN:', err);
                     process.exit(1);
                 }
-                console.log('SERVER CLOSED GRACEFULLY');
                 process.exit(0);
             });
             
@@ -200,7 +195,6 @@ app.use('/api/v1/business', businessRoutes);
         
     } catch (error) {
         console.error('FAILED TO START SERVER:', error);
-        console.error('ERROR STACK:', error.stack);
         process.exit(1);
     }
 };
@@ -208,7 +202,6 @@ app.use('/api/v1/business', businessRoutes);
 // Error handlers
 process.on('uncaughtException', (error) => {
     console.error('UNCAUGHT EXCEPTION:', error);
-    console.error('STACK:', error.stack);
     process.exit(1);
 });
 

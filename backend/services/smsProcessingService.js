@@ -17,21 +17,15 @@ class SMSProcessingService {
     // Process incoming SMS webhook from Twilio
     async processIncomingSMS(smsData) {
         try {
-            console.log('📨 Processing incoming SMS webhook:', smsData);
-            
-            const { MessageSid, From, To, Body, AccountSid } = smsData;
-            
             // Basic validation
-            if (!MessageSid || !From || !To || !Body) {
-                console.error('❌ Invalid SMS data received:', smsData);
+            if (!smsData.MessageSid || !smsData.From || !smsData.To || !smsData.Body) {
                 return { success: false, error: 'Invalid SMS data' };
             }
 
             // Process the SMS through our SMS service
-            const processResult = await this.smsService.processIncomingSMS(From, To, Body, MessageSid);
+            const processResult = await this.smsService.processIncomingSMS(smsData.From, smsData.To, smsData.Body, smsData.MessageSid);
             
             if (!processResult.processed) {
-                console.error('❌ Failed to process SMS:', processResult);
                 return { success: false, error: processResult.reason || 'Processing failed' };
             }
 
@@ -49,7 +43,6 @@ class SMSProcessingService {
             };
 
         } catch (error) {
-            console.error('❌ Error processing incoming SMS:', error);
             return { success: false, error: error.message };
         }
     }
@@ -59,7 +52,6 @@ class SMSProcessingService {
         try {
             const conversation = await SMSConversation.findOne({ conversationId });
             if (!conversation) {
-                console.error(`❌ Conversation not found: ${conversationId}`);
                 return;
             }
 
@@ -87,22 +79,18 @@ class SMSProcessingService {
             await this.updateConversationAnalytics(conversation);
 
         } catch (error) {
-            console.error('❌ Error handling conversation flow:', error);
         }
     }
 
     // Handle appointment requests
     async handleAppointmentRequest(conversation) {
         try {
-            console.log(`📅 Processing appointment request for: ${conversation.phoneNumber}`);
-
             const phoneSettings = await PhoneSettings.findOne({ 
                 businessId: conversation.businessId,
                 status: 'active' 
             });
 
             if (!phoneSettings) {
-                console.error(`❌ No phone settings found for business: ${conversation.businessId}`);
                 return;
             }
 
@@ -120,18 +108,13 @@ class SMSProcessingService {
             conversation.extractedInfo.appointmentHandled = true;
             await conversation.save();
 
-            console.log(`✅ Appointment request handled for: ${conversation.phoneNumber}`);
-
         } catch (error) {
-            console.error('❌ Error handling appointment request:', error);
         }
     }
 
     // Handle emergency requests
     async handleEmergencyRequest(conversation) {
         try {
-            console.log(`🚨 Processing emergency request for: ${conversation.phoneNumber}`);
-
             // Send priority response
             const emergencyMessage = "We understand this is urgent. Our staff will call you back within the next 30 minutes. If this is a life-threatening emergency, please call 911.";
             
@@ -145,10 +128,7 @@ class SMSProcessingService {
             // Emit high-priority notification
             this.emitEmergencyNotification(conversation);
 
-            console.log(`🚨 Emergency request handled for: ${conversation.phoneNumber}`);
-
         } catch (error) {
-            console.error('❌ Error handling emergency request:', error);
         }
     }
 
@@ -178,8 +158,6 @@ class SMSProcessingService {
     // Trigger lead creation
     async triggerLeadCreation(conversation) {
         try {
-            console.log(`👤 Creating lead for conversation: ${conversation.conversationId}`);
-
             // This would integrate with your existing lead creation system
             const leadData = {
                 businessId: conversation.businessId,
@@ -207,10 +185,7 @@ class SMSProcessingService {
                 });
             }
 
-            console.log(`✅ Lead created for: ${conversation.phoneNumber}`);
-
         } catch (error) {
-            console.error('❌ Error creating lead:', error);
         }
     }
 
@@ -256,7 +231,6 @@ class SMSProcessingService {
             await conversation.save();
 
         } catch (error) {
-            console.error('❌ Error updating conversation analytics:', error);
         }
     }
 
@@ -283,11 +257,9 @@ class SMSProcessingService {
                     this.sendFollowUpMessage(conversationId);
                 }, followUpDelay);
 
-                console.log(`📅 Follow-up scheduled for ${phoneSettings.responseSettings.followUpDelayHours} hours`);
             }
 
         } catch (error) {
-            console.error('❌ Error scheduling follow-up:', error);
         }
     }
 
@@ -327,10 +299,7 @@ class SMSProcessingService {
             
             await this.smsService.sendSMSMessage(conversation, followUpMessage, true);
             
-            console.log(`📞 Follow-up sent to: ${conversation.phoneNumber}`);
-
         } catch (error) {
-            console.error('❌ Error sending follow-up message:', error);
         }
     }
 
@@ -362,7 +331,6 @@ class SMSProcessingService {
             };
 
         } catch (error) {
-            console.error('❌ Error sending manual reply:', error);
             throw error;
         }
     }
@@ -432,7 +400,6 @@ class SMSProcessingService {
             };
 
         } catch (error) {
-            console.error('❌ Error sending manual SMS:', error);
             throw error;
         }
     }
@@ -495,16 +462,12 @@ class SMSProcessingService {
             return summary;
 
         } catch (error) {
-            console.error('❌ Error getting conversation summary:', error);
             throw error;
         }
     }
 
     // Emit emergency notification
     emitEmergencyNotification(conversation) {
-        console.log(`🚨 EMERGENCY NOTIFICATION: ${conversation.formattedPhoneNumber}`);
-        console.log(`📱 Priority follow-up required for: ${conversation.extractedInfo.serviceInterest || 'general emergency'}`);
-        
         // TODO: Integrate with WebSocket and email notifications
         // io.emit('emergencyRequest', {
         //     businessId: conversation.businessId,

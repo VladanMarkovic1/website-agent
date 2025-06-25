@@ -65,8 +65,6 @@ router.get('/:businessId/analytics', authenticateToken, checkBusinessOwner, asyn
             });
         }
 
-        console.log(`📊 Getting call analytics for ${businessId}, timeframe: ${timeframe}`);
-
         // Get call analytics
         const callAnalytics = await callHandlingService.getCallAnalytics(businessId, timeframe);
         
@@ -101,7 +99,6 @@ router.get('/:businessId/analytics', authenticateToken, checkBusinessOwner, asyn
         });
 
     } catch (error) {
-        console.error('❌ Analytics error:', error.message);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve analytics'
@@ -119,11 +116,6 @@ router.get('/:businessId/recent-calls', authenticateToken, checkBusinessOwner, a
     try {
         const { businessId } = req.params;
         const { limit = 20, missed_only = false } = req.query;
-
-        console.log(`📞 Getting recent calls for ${businessId}`);
-
-        // Log phone data access
-        logPhoneAccess('VIEW_CALLS', null, req);
 
         const query = { businessId };
         if (missed_only === 'true') {
@@ -161,7 +153,6 @@ router.get('/:businessId/recent-calls', authenticateToken, checkBusinessOwner, a
         });
 
     } catch (error) {
-        console.error('❌ Recent calls error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve recent calls'
@@ -180,8 +171,6 @@ router.get('/:businessId/missed-calls', authenticateToken, checkBusinessOwner, a
         const { businessId } = req.params;
         const { limit = 20 } = req.query;
 
-        console.log(`📞❌ Getting missed calls for ${businessId}`);
-
         const missedCalls = await callHandlingService.getRecentMissedCalls(businessId, parseInt(limit));
 
         res.status(200).json({
@@ -192,7 +181,6 @@ router.get('/:businessId/missed-calls', authenticateToken, checkBusinessOwner, a
         });
 
     } catch (error) {
-        console.error('❌ Missed calls error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve missed calls'
@@ -210,11 +198,6 @@ router.get('/:businessId/conversations', authenticateToken, checkBusinessOwner, 
     try {
         const { businessId } = req.params;
         const { limit = 20, status = 'all' } = req.query;
-
-        console.log(`💬 Getting SMS conversations for ${businessId}`);
-
-        // Log sensitive data access
-        logDataAccess('SMS_CONVERSATIONS', 'VIEW', { businessId }, req);
 
         const query = { businessId };
         if (status !== 'all') {
@@ -252,7 +235,6 @@ router.get('/:businessId/conversations', authenticateToken, checkBusinessOwner, 
         });
 
     } catch (error) {
-        console.error('❌ Conversations error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve conversations'
@@ -271,8 +253,6 @@ router.post('/:businessId/conversations/:conversationId/reply', validateCSRFToke
         const { businessId, conversationId } = req.params;
         const { message } = req.body;
         const userId = req.user.id;
-
-        console.log(`💬 Sending manual reply for ${conversationId}`);
 
         // Validate message
         if (!message || message.trim().length === 0) {
@@ -304,7 +284,6 @@ router.post('/:businessId/conversations/:conversationId/reply', validateCSRFToke
         });
 
     } catch (error) {
-        console.error('❌ Manual reply error:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to send reply'
@@ -321,8 +300,6 @@ router.post('/:businessId/conversations/:conversationId/reply', validateCSRFToke
 router.get('/:businessId/phone-settings', authenticateToken, checkBusinessOwner, async (req, res) => {
     try {
         const { businessId } = req.params;
-
-        console.log(`📞 Getting phone settings for ${businessId}`);
 
         const phoneSettings = await PhoneSettings.findOne({ businessId, status: 'active' });
 
@@ -362,7 +339,6 @@ router.get('/:businessId/phone-settings', authenticateToken, checkBusinessOwner,
         });
 
     } catch (error) {
-        console.error('❌ Phone settings error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve phone settings'
@@ -380,8 +356,6 @@ router.put('/:businessId/phone-settings', validateCSRFToken, authenticateToken, 
     try {
         const { businessId } = req.params;
         const updates = req.body;
-
-        console.log(`📞 Updating phone settings for ${businessId}`);
 
         const phoneSettings = await PhoneSettings.findOne({ businessId, status: 'active' });
 
@@ -423,7 +397,6 @@ router.put('/:businessId/phone-settings', validateCSRFToken, authenticateToken, 
         });
 
     } catch (error) {
-        console.error('❌ Phone settings update error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to update phone settings'
@@ -440,8 +413,6 @@ router.put('/:businessId/phone-settings', validateCSRFToken, authenticateToken, 
 router.get('/:businessId/health', authenticateToken, checkBusinessOwner, async (req, res) => {
     try {
         const { businessId } = req.params;
-
-        console.log(`🔍 Getting system health for ${businessId}`);
 
         // Get health checks from all services
         const [callHealth, smsHealth, leadHealth] = await Promise.all([
@@ -477,7 +448,6 @@ router.get('/:businessId/health', authenticateToken, checkBusinessOwner, async (
         });
 
     } catch (error) {
-        console.error('❌ Health check error:', error);
         res.status(500).json({
             success: false,
             error: 'Health check failed'
@@ -496,8 +466,6 @@ router.get('/:businessId/trends', authenticateToken, checkBusinessOwner, async (
         const { businessId } = req.params;
         const { timeframe = '7d' } = req.query;
 
-        console.log(`📈 Getting call trends for ${businessId}, timeframe: ${timeframe}`);
-
         // Get call trends from service
         const trends = await callHandlingService.getCallTrends(businessId, timeframe);
 
@@ -509,7 +477,6 @@ router.get('/:businessId/trends', authenticateToken, checkBusinessOwner, async (
         });
 
     } catch (error) {
-        console.error('❌ Call trends error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve call trends'
@@ -528,8 +495,6 @@ router.post('/:businessId/send-sms', smsLimiter, validateCSRFToken, authenticate
         const { businessId } = req.params;
         const { phoneNumber, message } = req.body;
         const userId = req.user.id;
-
-        console.log(`💬 Sending manual SMS from ${businessId} to ${phoneNumber}`);
 
         // Log SMS sending for security audit
         logSMSEvent(phoneNumber, businessId, { messageLength: message?.length }, req);
@@ -574,7 +539,6 @@ router.post('/:businessId/send-sms', smsLimiter, validateCSRFToken, authenticate
         });
 
     } catch (error) {
-        console.error('❌ Manual SMS error:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to send SMS'

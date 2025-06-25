@@ -17,8 +17,6 @@ class DataValidationService {
      */
     async validateBusinessProfile(businessId) {
         try {
-            console.log(`[DataValidationService] Starting validation for business: ${businessId}`);
-            
             const business = await Business.findOne({ businessId });
             if (!business) {
                 throw new Error(`Business not found: ${businessId}`);
@@ -59,12 +57,9 @@ class DataValidationService {
             // Generate recommendations
             validationResults.recommendations = this.generateRecommendations(validationResults);
             
-            console.log(`[DataValidationService] Validation completed for ${businessId}. Overall score: ${validationResults.overallScore}%`);
-            
             return validationResults;
             
         } catch (error) {
-            console.error(`[DataValidationService] Error validating business profile for ${businessId}:`, error);
             throw error;
         }
     }
@@ -378,7 +373,6 @@ class DataValidationService {
             return report;
             
         } catch (error) {
-            console.error(`[DataValidationService] Error generating quality report for ${businessId}:`, error);
             throw error;
         }
     }
@@ -440,7 +434,6 @@ class DataValidationService {
             return suggestions;
             
         } catch (error) {
-            console.error(`[DataValidationService] Error suggesting improvements for ${businessId}:`, error);
             throw error;
         }
     }

@@ -23,8 +23,6 @@ class BusinessContextBuilder {
      */
     async buildBusinessContext(businessId, sessionId, userMessage) {
         try {
-            console.log(`[BusinessContextBuilder] Building context for business: ${businessId}, session: ${sessionId}`);
-            
             // Get all business data
             const business = await Business.findOne({ businessId });
             if (!business) {
@@ -64,7 +62,6 @@ class BusinessContextBuilder {
             return context;
             
         } catch (error) {
-            console.error(`[BusinessContextBuilder] Error building context for ${businessId}:`, error);
             throw error;
         }
     }

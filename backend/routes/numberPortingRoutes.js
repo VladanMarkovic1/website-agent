@@ -17,8 +17,6 @@ router.post('/setup/ported', authenticateToken, adminAuth, validateCSRFToken, as
     try {
         const { businessId, portedNumber, originalCarrier, forwardingNumber } = req.body;
 
-        console.log(`📞 Admin setting up ported number for ${businessId}`);
-
         // Validate required fields
         if (!businessId || !portedNumber || !forwardingNumber) {
             return res.status(400).json({
@@ -43,7 +41,6 @@ router.post('/setup/ported', authenticateToken, adminAuth, validateCSRFToken, as
         });
 
     } catch (error) {
-        console.error('❌ Ported number setup error:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to setup ported number'
@@ -60,8 +57,6 @@ router.post('/setup/ported', authenticateToken, adminAuth, validateCSRFToken, as
 router.post('/setup/tracking', authenticateToken, adminAuth, validateCSRFToken, async (req, res) => {
     try {
         const { businessId, forwardingNumber, preferredAreaCode } = req.body;
-
-        console.log(`📞 Admin setting up tracking number for ${businessId}`);
 
         // Validate required fields
         if (!businessId || !forwardingNumber) {
@@ -86,7 +81,6 @@ router.post('/setup/tracking', authenticateToken, adminAuth, validateCSRFToken, 
         });
 
     } catch (error) {
-        console.error('❌ Tracking number setup error:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to setup tracking number'
@@ -103,8 +97,6 @@ router.post('/setup/tracking', authenticateToken, adminAuth, validateCSRFToken, 
 router.post('/setup/hybrid', authenticateToken, adminAuth, validateCSRFToken, async (req, res) => {
     try {
         const { businessId, businessRealNumber, forwardingNumber, preferredAreaCode } = req.body;
-
-        console.log(`📞 Admin setting up hybrid numbers for ${businessId}`);
 
         // Validate required fields
         if (!businessId || !businessRealNumber || !forwardingNumber) {
@@ -130,7 +122,6 @@ router.post('/setup/hybrid', authenticateToken, adminAuth, validateCSRFToken, as
         });
 
     } catch (error) {
-        console.error('❌ Hybrid number setup error:', error);
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to setup hybrid numbers'
@@ -148,8 +139,6 @@ router.get('/business/:businessId/setup', authenticateToken, checkBusinessOwner,
     try {
         const { businessId } = req.params;
 
-        console.log(`📞 Getting number setup for ${businessId}`);
-
         const setupInfo = await numberPortingService.getBusinessNumberSetup(businessId);
 
         res.status(200).json({
@@ -159,7 +148,6 @@ router.get('/business/:businessId/setup', authenticateToken, checkBusinessOwner,
         });
 
     } catch (error) {
-        console.error('❌ Get setup info error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve setup information'
@@ -175,8 +163,6 @@ router.get('/business/:businessId/setup', authenticateToken, checkBusinessOwner,
  */
 router.get('/admin/all-setups', authenticateToken, adminAuth, async (req, res) => {
     try {
-        console.log('📞 Admin listing all business setups');
-
         const allSetups = await numberPortingService.listAllBusinessSetups();
 
         res.status(200).json({
@@ -187,7 +173,6 @@ router.get('/admin/all-setups', authenticateToken, adminAuth, async (req, res) =
         });
 
     } catch (error) {
-        console.error('❌ List all setups error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to list business setups'
@@ -203,8 +188,6 @@ router.get('/admin/all-setups', authenticateToken, adminAuth, async (req, res) =
  */
 router.get('/admin/ported-numbers', authenticateToken, adminAuth, async (req, res) => {
     try {
-        console.log('📞 Admin getting all ported numbers');
-
         // This would be implemented in PhoneSettings model
         const portedNumbers = await numberPortingService.getPortedNumbers();
 
@@ -216,7 +199,6 @@ router.get('/admin/ported-numbers', authenticateToken, adminAuth, async (req, re
         });
 
     } catch (error) {
-        console.error('❌ Get ported numbers error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve ported numbers'
@@ -305,7 +287,6 @@ router.get('/setup-options', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Setup options error:', error);
         res.status(500).json({
             success: false,
             error: 'Failed to retrieve setup options'
@@ -330,7 +311,6 @@ router.get('/health', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Number porting health check error:', error);
         res.status(500).json({
             service: 'Number Porting',
             status: 'error',

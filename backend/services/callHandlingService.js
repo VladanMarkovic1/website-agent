@@ -14,33 +14,27 @@ class CallHandlingService {
     // Handle incoming call webhook from Twilio
     async handleIncomingCall(callData) {
         try {
-            console.log('📞 Processing incoming call:', callData);
-            
-            const { CallSid, From, To, CallStatus, Direction } = callData;
-            
             // Find phone settings for the incoming number (supports porting)
-            const phoneSettings = await PhoneSettings.findByAnyNumber(To);
+            const phoneSettings = await PhoneSettings.findByAnyNumber(callData.To);
             if (!phoneSettings) {
-                console.error(`❌ No phone settings found for number: ${To}`);
                 return this.generateErrorResponse('Phone number not configured');
             }
 
             // Get business information
             const business = await Business.findOne({ businessId: phoneSettings.businessId });
             if (!business) {
-                console.error(`❌ Business not found: ${phoneSettings.businessId}`);
                 return this.generateErrorResponse('Business not found');
             }
 
             // Create call log entry (enhanced for porting)
             const callLog = new CallLog({
                 businessId: phoneSettings.businessId,
-                trackingNumber: To,
-                callerNumber: From,
+                trackingNumber: callData.To,
+                callerNumber: callData.From,
                 forwardingNumber: phoneSettings.forwardingNumber,
-                callSid: CallSid,
-                callStatus: CallStatus || 'initiated',
-                callDirection: Direction || 'inbound',
+                callSid: callData.CallSid,
+                callStatus: callData.CallStatus || 'initiated',
+                callDirection: callData.Direction || 'inbound',
                 callStartTime: new Date(),
                 twilioData: callData,
                 // Add porting context
@@ -50,7 +44,6 @@ class CallHandlingService {
             });
 
             await callLog.save();
-            console.log(`📋 Call log created: ${callLog._id}`);
 
             // Update phone settings analytics
             await phoneSettings.incrementAnalytic('totalCalls');
@@ -69,7 +62,6 @@ class CallHandlingService {
             };
 
         } catch (error) {
-            console.error('❌ Error handling incoming call:', error);
             return this.generateErrorResponse('Internal error processing call');
         }
     }
@@ -77,35 +69,28 @@ class CallHandlingService {
     // Handle call status updates from Twilio
     async handleCallStatusUpdate(statusData) {
         try {
-            console.log('📊 Processing call status update:', statusData);
-            
-            const { CallSid, CallStatus, DialCallStatus, CallDuration, DialCallDuration } = statusData;
-
             // Find the call log
-            const callLog = await CallLog.findOne({ callSid: CallSid });
+            const callLog = await CallLog.findOne({ callSid: statusData.CallSid });
             if (!callLog) {
-                console.error(`❌ Call log not found for CallSid: ${CallSid}`);
                 return { success: false, error: 'Call log not found' };
             }
 
             // Update call log with status
-            callLog.callStatus = CallStatus;
-            callLog.callDuration = parseInt(CallDuration) || 0;
+            callLog.callStatus = statusData.CallStatus;
+            callLog.callDuration = parseInt(statusData.CallDuration) || 0;
             callLog.callEndTime = new Date();
             
             // Add dial status data
             if (statusData.DialCallStatus) {
-                callLog.twilioData.dialCallStatus = DialCallStatus;
-                callLog.twilioData.dialCallDuration = DialCallDuration;
+                callLog.twilioData.dialCallStatus = statusData.DialCallStatus;
+                callLog.twilioData.dialCallDuration = statusData.DialCallDuration;
             }
 
             // Check if this was a missed call
-            const isMissedCall = this.isMissedCall(CallStatus, DialCallStatus);
+            const isMissedCall = this.isMissedCall(statusData.CallStatus, statusData.DialCallStatus);
             
             if (isMissedCall) {
                 await this.handleMissedCall(callLog);
-            } else {
-                console.log(`✅ Call answered successfully: ${CallSid}`);
             }
 
             await callLog.save();
@@ -114,11 +99,10 @@ class CallHandlingService {
                 success: true,
                 callLogId: callLog._id,
                 isMissedCall: isMissedCall,
-                status: CallStatus
+                status: statusData.CallStatus
             };
 
         } catch (error) {
-            console.error('❌ Error handling call status update:', error);
             return { success: false, error: error.message };
         }
     }
@@ -126,8 +110,6 @@ class CallHandlingService {
     // Handle missed call logic
     async handleMissedCall(callLog) {
         try {
-            console.log(`📞❌ Processing missed call for: ${callLog.callerNumber}`);
-
             // Mark as missed call
             await callLog.markAsMissed();
 
@@ -146,7 +128,6 @@ class CallHandlingService {
 
             if (smsResult.sent || smsResult.scheduled) {
                 await callLog.markSMSSent();
-                console.log(`📱 SMS triggered for missed call: ${callLog.callSid}`);
             }
 
             // Emit real-time notification (if WebSocket is available)
@@ -159,7 +140,6 @@ class CallHandlingService {
             };
 
         } catch (error) {
-            console.error('❌ Error handling missed call:', error);
             throw error;
         }
     }
@@ -224,7 +204,6 @@ class CallHandlingService {
             return analytics;
 
         } catch (error) {
-            console.error('❌ Error generating call analytics:', error);
             throw error;
         }
     }
@@ -303,7 +282,6 @@ class CallHandlingService {
             return trends;
 
         } catch (error) {
-            console.error('❌ Error generating call trends:', error);
             throw error;
         }
     }
@@ -330,7 +308,6 @@ class CallHandlingService {
             }));
 
         } catch (error) {
-            console.error('❌ Error getting recent missed calls:', error);
             throw error;
         }
     }
@@ -338,21 +315,16 @@ class CallHandlingService {
     // Handle voicemail (if enabled)
     async handleVoicemail(voicemailData) {
         try {
-            console.log('🎤 Processing voicemail:', voicemailData);
-            
-            const { CallSid, RecordingUrl, TranscriptionText } = voicemailData;
-            
             // Find the call log
-            const callLog = await CallLog.findOne({ callSid: CallSid });
+            const callLog = await CallLog.findOne({ callSid: voicemailData.CallSid });
             if (!callLog) {
-                console.error(`❌ Call log not found for voicemail: ${CallSid}`);
                 return { success: false, error: 'Call log not found' };
             }
 
             // Update call log with voicemail info
-            callLog.notes = TranscriptionText || 'Voicemail received';
-            if (RecordingUrl) {
-                callLog.twilioData.recordingUrl = RecordingUrl;
+            callLog.notes = voicemailData.TranscriptionText || 'Voicemail received';
+            if (voicemailData.RecordingUrl) {
+                callLog.twilioData.recordingUrl = voicemailData.RecordingUrl;
             }
             
             await callLog.save();
@@ -365,11 +337,10 @@ class CallHandlingService {
             return {
                 success: true,
                 callLogId: callLog._id,
-                transcription: TranscriptionText
+                transcription: voicemailData.TranscriptionText
             };
 
         } catch (error) {
-            console.error('❌ Error handling voicemail:', error);
             return { success: false, error: error.message };
         }
     }
@@ -378,9 +349,6 @@ class CallHandlingService {
     emitMissedCallNotification(callLog, smsResult) {
         // This would integrate with your WebSocket system
         // For now, just log the notification
-        console.log(`🔔 NOTIFICATION: Missed call from ${callLog.formattedCallerNumber}`);
-        console.log(`📱 SMS ${smsResult.sent ? 'sent' : 'scheduled'} for follow-up`);
-        
         // TODO: Integrate with WebSocket to push to dashboard
         // io.emit('missedCall', {
         //     businessId: callLog.businessId,

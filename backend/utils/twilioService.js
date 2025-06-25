@@ -13,7 +13,6 @@ class TwilioService {
         if (this.accountSid && this.authToken && this.accountSid !== 'placeholder_will_replace_later') {
             this.client = twilio(this.accountSid, this.authToken);
         } else {
-            console.log('⚠️ Twilio credentials not configured - running in mock mode');
             this.client = null;
         }
     }
@@ -73,7 +72,6 @@ class TwilioService {
         const fromNumber = from || this.defaultFromNumber;
 
         if (!this.client) {
-            console.log(`📱 [MOCK SMS] To: ${to}, From: ${fromNumber}, Message: ${message}`);
             return {
                 sid: 'mock_sms_' + Date.now(),
                 status: 'sent',
@@ -92,7 +90,6 @@ class TwilioService {
                 to: to
             });
 
-            console.log(`✅ SMS sent successfully: ${sms.sid}`);
             return sms;
         } catch (error) {
             console.error('❌ Error sending SMS:', error);
@@ -104,7 +101,6 @@ class TwilioService {
     async purchasePhoneNumber(areaCode = null, businessName = '') {
         if (!this.client) {
             const mockNumber = `+1555${Math.floor(Math.random() * 1000000).toString().padStart(7, '0')}`;
-            console.log(`📞 [MOCK] Purchased phone number: ${mockNumber} for ${businessName}`);
             return {
                 phoneNumber: mockNumber,
                 friendlyName: `${businessName} Tracking Number`,
@@ -145,7 +141,6 @@ class TwilioService {
                 smsFallbackUrl: `${this.webhookBaseUrl}/sms-fallback`
             });
 
-            console.log(`✅ Phone number purchased: ${purchasedNumber.phoneNumber}`);
             return purchasedNumber;
         } catch (error) {
             console.error('❌ Error purchasing phone number:', error);
@@ -156,7 +151,6 @@ class TwilioService {
     // Configure webhooks for an existing phone number
     async configurePhoneNumber(phoneNumber, businessName) {
         if (!this.client) {
-            console.log(`📞 [MOCK] Configured webhooks for: ${phoneNumber}`);
             return { success: true, mock: true };
         }
 
@@ -182,7 +176,6 @@ class TwilioService {
                     smsFallbackUrl: `${this.webhookBaseUrl}/sms-fallback`
                 });
 
-            console.log(`✅ Phone number configured: ${updatedNumber.phoneNumber}`);
             return updatedNumber;
         } catch (error) {
             console.error('❌ Error configuring phone number:', error);
@@ -198,7 +191,9 @@ class TwilioService {
                 from: '+15551234567',
                 to: '+15559876543',
                 status: 'completed',
-                duration: '120',
+                duration: 120,
+                startTime: new Date(),
+                endTime: new Date(),
                 mock: true
             };
         }
@@ -212,7 +207,7 @@ class TwilioService {
         }
     }
 
-    // Get SMS message details
+    // Get SMS details
     async getSMSDetails(messageSid) {
         if (!this.client) {
             return {
@@ -221,6 +216,7 @@ class TwilioService {
                 to: '+15559876543',
                 body: 'Mock SMS message',
                 status: 'delivered',
+                dateCreated: new Date(),
                 mock: true
             };
         }
@@ -234,69 +230,60 @@ class TwilioService {
         }
     }
 
-    // Validate webhook signature (security)
+    // Validate webhook signature
     validateWebhookSignature(signature, url, params) {
-        if (!this.client) {
-            console.log('📋 [MOCK] Webhook signature validation bypassed');
-            return true;
-        }
-
-        const webhookSecret = process.env.TWILIO_WEBHOOK_SECRET;
-        if (!webhookSecret) {
-            console.warn('⚠️ TWILIO_WEBHOOK_SECRET not set - webhook validation disabled');
-            return true;
+        if (!process.env.TWILIO_WEBHOOK_SECRET) {
+            return true; // Skip validation if secret not set
         }
 
         try {
-            return twilio.validateRequest(webhookSecret, signature, url, params);
+            const validator = twilio.webhook;
+            return validator.validateRequest(
+                process.env.TWILIO_WEBHOOK_SECRET,
+                signature,
+                url,
+                params
+            );
         } catch (error) {
             console.error('❌ Webhook signature validation failed:', error);
             return false;
         }
     }
 
-    // Helper method to format phone numbers
+    // Format phone number for display
     formatPhoneNumber(phoneNumber) {
-        // Remove all non-digits
-        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (!phoneNumber) return '';
         
-        // Add +1 if it's a US number without country code
-        if (cleaned.length === 10) {
-            return `+1${cleaned}`;
-        } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
-            return `+${cleaned}`;
+        // Remove all non-digits
+        const digits = phoneNumber.replace(/\D/g, '');
+        
+        // Format US numbers
+        if (digits.length === 10) {
+            return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+        } else if (digits.length === 11 && digits[0] === '1') {
+            return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
         }
         
-        return phoneNumber;
+        return phoneNumber; // Return original if can't format
     }
 
-    // Health check method
+    // Health check
     async healthCheck() {
         if (!this.client) {
-            return {
-                status: 'mock',
-                message: 'Twilio service running in mock mode',
-                timestamp: new Date().toISOString()
-            };
+            return { status: 'mock', message: 'Running in mock mode' };
         }
 
         try {
-            await this.client.accounts(this.accountSid).fetch();
-            return {
-                status: 'healthy',
-                message: 'Twilio connection successful',
-                timestamp: new Date().toISOString()
+            const account = await this.client.api.accounts(this.accountSid).fetch();
+            return { 
+                status: 'healthy', 
+                accountName: account.friendlyName,
+                balance: account.balance
             };
         } catch (error) {
-            return {
-                status: 'error',
-                message: error.message,
-                timestamp: new Date().toISOString()
-            };
+            return { status: 'unhealthy', error: error.message };
         }
     }
 }
 
-// Export singleton instance
-const twilioService = new TwilioService();
-export default twilioService; 
+export default new TwilioService(); 

@@ -19,13 +19,7 @@ const validateVoiceInput = [
 const handleValidationErrors = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        console.error('❌ Voice webhook validation errors:', errors.array());
-        return res.status(400).type('text/xml').send(`
-            <Response>
-                <Say>Invalid request format. Please try again later.</Say>
-                <Hangup/>
-            </Response>
-        `);
+        return res.status(400).json({ errors: errors.array() });
     }
     next();
 };
@@ -39,7 +33,6 @@ const validateTwilioWebhook = (req, res, next) => {
         
         // For development/mock mode, allow through
         if (process.env.NODE_ENV === 'development' || !process.env.TWILIO_AUTH_TOKEN) {
-            console.log('🔓 Twilio webhook validation bypassed (development mode)');
             return next();
         }
 
@@ -55,7 +48,6 @@ const validateTwilioWebhook = (req, res, next) => {
             return res.status(403).json({ error: 'Invalid webhook signature' });
         }
 
-        console.log('✅ Twilio webhook signature validated');
         next();
     } catch (error) {
         console.error('❌ Webhook validation error:', error);
@@ -74,8 +66,6 @@ router.use(express.urlencoded({ extended: true }));
  */
 router.post('/incoming', validateTwilioWebhook, validateVoiceInput, handleValidationErrors, async (req, res) => {
     try {
-        console.log('📞 Incoming call webhook received:', req.body);
-
         // Extract Twilio call data
         const callData = {
             CallSid: req.body.CallSid,
@@ -103,7 +93,6 @@ router.post('/incoming', validateTwilioWebhook, validateVoiceInput, handleValida
         const result = await callHandlingService.handleIncomingCall(callData);
 
         if (result.success) {
-            console.log('✅ Call processed successfully:', result.callLogId);
             // Return TwiML for call forwarding
             res.type('text/xml').send(result.twiml);
         } else {
@@ -136,8 +125,6 @@ router.post('/incoming', validateTwilioWebhook, validateVoiceInput, handleValida
  */
 router.post('/status', validateTwilioWebhook, validateVoiceInput, handleValidationErrors, async (req, res) => {
     try {
-        console.log('📊 Call status update received:', req.body);
-
         // Extract status data
         const statusData = {
             CallSid: req.body.CallSid,
@@ -159,7 +146,6 @@ router.post('/status', validateTwilioWebhook, validateVoiceInput, handleValidati
         const result = await callHandlingService.handleCallStatusUpdate(statusData);
 
         if (result.success) {
-            console.log(`✅ Status update processed: ${statusData.CallStatus} (Missed: ${result.isMissedCall})`);
             res.status(200).json({
                 success: true,
                 callLogId: result.callLogId,
@@ -190,8 +176,6 @@ router.post('/status', validateTwilioWebhook, validateVoiceInput, handleValidati
  */
 router.post('/recording', validateTwilioWebhook, validateVoiceInput, handleValidationErrors, async (req, res) => {
     try {
-        console.log('🎤 Voicemail recording received:', req.body);
-
         // Extract recording data
         const recordingData = {
             CallSid: req.body.CallSid,
@@ -212,7 +196,6 @@ router.post('/recording', validateTwilioWebhook, validateVoiceInput, handleValid
         const result = await callHandlingService.handleVoicemail(recordingData);
 
         if (result.success) {
-            console.log('✅ Voicemail processed successfully:', result.callLogId);
             res.status(200).json({
                 success: true,
                 callLogId: result.callLogId,

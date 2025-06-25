@@ -17,8 +17,6 @@ class BusinessProfileBuilder {
      */
     async buildBusinessProfile(businessId) {
         try {
-            console.log(`[BusinessProfileBuilder] Starting profile build for business: ${businessId}`);
-            
             // Get existing business data
             const business = await Business.findOne({ businessId });
             if (!business) {
@@ -43,8 +41,6 @@ class BusinessProfileBuilder {
             // Update contact information
             const enhancedContact = await this.enhanceContactInfo(businessId, scrapedData);
             
-            console.log(`[BusinessProfileBuilder] Profile build completed for business: ${businessId}`);
-            
             return {
                 business: enhancedBusiness,
                 services: enhancedServices,
@@ -55,7 +51,6 @@ class BusinessProfileBuilder {
             };
             
         } catch (error) {
-            console.error(`[BusinessProfileBuilder] Error building profile for ${businessId}:`, error);
             throw error;
         }
     }
@@ -150,7 +145,6 @@ class BusinessProfileBuilder {
         if (Object.keys(updates).length > 0) {
             Object.assign(business, updates);
             await business.save();
-            console.log(`[BusinessProfileBuilder] Enhanced business data for ${business.businessId}`);
         }
         
         return business;
@@ -187,7 +181,6 @@ class BusinessProfileBuilder {
             
             serviceDoc.services = enhancedServices;
             await serviceDoc.save();
-            console.log(`[BusinessProfileBuilder] Enhanced ${enhancedServices.length} services for ${businessId}`);
         }
         
         return serviceDoc;
@@ -232,7 +225,6 @@ class BusinessProfileBuilder {
         }
         
         await extraInfoDoc.save();
-        console.log(`[BusinessProfileBuilder] Enhanced extra info for ${businessId}`);
         
         return extraInfoDoc;
     }
@@ -327,7 +319,6 @@ class BusinessProfileBuilder {
         };
         
         await knowledgeDoc.save();
-        console.log(`[BusinessProfileBuilder] Built knowledge base for ${businessId}`);
         
         return knowledgeDoc;
     }
@@ -359,7 +350,6 @@ class BusinessProfileBuilder {
         }
         
         await contactDoc.save();
-        console.log(`[BusinessProfileBuilder] Enhanced contact info for ${businessId}`);
         
         return contactDoc;
     }

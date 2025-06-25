@@ -49,16 +49,6 @@ router.post(
         try {
             const { name, email, practiceName, practiceWebsite, message } = req.body;
             
-            console.log("📧 New demo request received:", {
-                name,
-                email,
-                practiceName,
-                practiceWebsite: practiceWebsite || 'Not provided',
-                message: message || 'Standard demo request',
-                timestamp: new Date().toISOString(),
-                ip: req.ip
-            });
-
             // Here you could save to database, send email, etc.
             // For now, we'll just log it and return success
             

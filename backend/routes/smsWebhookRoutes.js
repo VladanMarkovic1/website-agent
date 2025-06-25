@@ -18,11 +18,7 @@ const validateSMSInput = [
 const handleValidationErrors = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        console.error('❌ SMS webhook validation errors:', errors.array());
-        return res.status(400).json({
-            error: 'Invalid input data',
-            details: errors.array()
-        });
+        return res.status(400).json({ errors: errors.array() });
     }
     next();
 };
@@ -36,7 +32,6 @@ const validateTwilioWebhook = (req, res, next) => {
         
         // For development/mock mode, allow through
         if (process.env.NODE_ENV === 'development' || !process.env.TWILIO_AUTH_TOKEN) {
-            console.log('🔓 SMS webhook validation bypassed (development mode)');
             return next();
         }
 
@@ -52,7 +47,6 @@ const validateTwilioWebhook = (req, res, next) => {
             return res.status(403).json({ error: 'Invalid webhook signature' });
         }
 
-        console.log('✅ Twilio SMS webhook signature validated');
         next();
     } catch (error) {
         console.error('❌ SMS webhook validation error:', error);
@@ -71,8 +65,6 @@ router.use(express.urlencoded({ extended: true }));
  */
 router.post('/incoming', validateTwilioWebhook, validateSMSInput, handleValidationErrors, async (req, res) => {
     try {
-        console.log('📨 Incoming SMS webhook received:', req.body);
-
         // Extract Twilio SMS data
         const smsData = {
             MessageSid: req.body.MessageSid,
@@ -98,7 +90,6 @@ router.post('/incoming', validateTwilioWebhook, validateSMSInput, handleValidati
 
         // Check for media attachments
         if (smsData.NumMedia && parseInt(smsData.NumMedia) > 0) {
-            console.log(`📎 SMS contains ${smsData.NumMedia} media attachments`);
             // Handle media if needed in future
         }
 
@@ -106,12 +97,6 @@ router.post('/incoming', validateTwilioWebhook, validateSMSInput, handleValidati
         const result = await smsProcessingService.processIncomingSMS(smsData);
 
         if (result.success) {
-            console.log('✅ SMS processed successfully:', {
-                conversationId: result.conversationId,
-                businessId: result.businessId,
-                newConversation: result.newConversation
-            });
-
             res.status(200).json({
                 success: true,
                 conversationId: result.conversationId,
@@ -149,8 +134,6 @@ router.post('/incoming', validateTwilioWebhook, validateSMSInput, handleValidati
  */
 router.post('/status', validateTwilioWebhook, validateSMSInput, handleValidationErrors, async (req, res) => {
     try {
-        console.log('📊 SMS status update received:', req.body);
-
         // Extract status data
         const statusData = {
             MessageSid: req.body.MessageSid,
@@ -169,14 +152,9 @@ router.post('/status', validateTwilioWebhook, validateSMSInput, handleValidation
 
         // Log status for monitoring
         const status = statusData.MessageStatus;
-        const logMessage = `📱 SMS ${statusData.MessageSid}: ${status}`;
         
-        if (status === 'delivered') {
-            console.log(`✅ ${logMessage}`);
-        } else if (status === 'failed' || status === 'undelivered') {
-            console.error(`❌ ${logMessage} - Error: ${statusData.ErrorCode} ${statusData.ErrorMessage}`);
-        } else {
-            console.log(`📊 ${logMessage}`);
+        if (status === 'failed' || status === 'undelivered') {
+            console.error(`❌ SMS ${statusData.MessageSid}: ${status} - Error: ${statusData.ErrorCode} ${statusData.ErrorMessage}`);
         }
 
         // TODO: Update SMS conversation with delivery status
@@ -210,8 +188,6 @@ router.post('/status', validateTwilioWebhook, validateSMSInput, handleValidation
  */
 router.post('/fallback', validateTwilioWebhook, validateSMSInput, handleValidationErrors, async (req, res) => {
     try {
-        console.log('🚨 SMS fallback webhook triggered:', req.body);
-
         // Log the fallback for monitoring
         const fallbackData = {
             MessageSid: req.body.MessageSid,
@@ -230,32 +206,40 @@ router.post('/fallback', validateTwilioWebhook, validateSMSInput, handleValidati
                 MessageSid: fallbackData.MessageSid,
                 From: fallbackData.From,
                 To: fallbackData.To,
-                Body: fallbackData.Body,
-                AccountSid: req.body.AccountSid
+                Body: fallbackData.Body
             });
 
             if (result.success) {
-                console.log('✅ SMS processed via fallback:', result.conversationId);
+                res.status(200).json({
+                    success: true,
+                    conversationId: result.conversationId,
+                    processed: true,
+                    fallback: true
+                });
             } else {
-                console.error('❌ Fallback SMS processing also failed:', result.error);
+                res.status(200).json({
+                    success: false,
+                    error: result.error,
+                    processed: false,
+                    fallback: true
+                });
             }
-        } catch (fallbackError) {
-            console.error('❌ Fallback processing error:', fallbackError);
-        }
 
-        // Always return success to prevent Twilio retry loops
-        res.status(200).json({
-            success: true,
-            fallback: true,
-            message: 'Fallback webhook processed'
-        });
+        } catch (processingError) {
+            console.error('❌ Fallback SMS processing failed:', processingError);
+            res.status(200).json({
+                success: false,
+                error: 'Fallback processing failed',
+                processed: false,
+                fallback: true
+            });
+        }
 
     } catch (error) {
         console.error('❌ SMS fallback webhook error:', error);
-        res.status(200).json({
+        res.status(500).json({
             success: false,
-            fallback: true,
-            error: 'Fallback processing failed'
+            error: 'SMS fallback processing failed'
         });
     }
 });
