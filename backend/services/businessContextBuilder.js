@@ -27,52 +27,35 @@ class BusinessContextBuilder {
             
             // Get all business data
             const business = await Business.findOne({ businessId });
-            const services = await Service.findOne({ businessId });
-            const knowledge = await BusinessKnowledge.findOne({ businessId });
-            const contact = await Contact.findOne({ businessId });
-            const extraInfo = await ExtraInfo.findOne({ businessId });
-            // NOTE: Only fetch services, knowledge, contact, etc. for non-profile data
-            // All business profile data (hours, location, etc.) comes ONLY from Business model
             if (!business) {
                 throw new Error(`Business not found: ${businessId}`);
             }
             
-            // After fetching business:
-            console.log('[LOG][businessContextBuilder] Raw business doc:', util.inspect(business, { depth: 5 }));
-            
-            // Build context with all business profile fields at the top level
+            // Map all fields from the business document
             const context = {
                 name: business.businessName,
                 description: business.businessDescription,
                 mission: business.mission,
                 vision: business.vision,
-                specializations: business.specializations,
+                specializations: business.specializations || [],
                 yearsInBusiness: business.yearsInBusiness,
-                teamMembers: business.teamMembers,
+                teamMembers: business.teamMembers || [],
                 businessHours: business.businessHours,
                 locationDetails: business.locationDetails,
-                certifications: business.certifications,
-                awards: business.awards,
-                insurancePartners: business.insurancePartners,
-                paymentOptions: business.paymentOptions,
+                certifications: business.certifications || [],
+                awards: business.awards || [],
+                insurancePartners: business.insurancePartners || [],
+                paymentOptions: business.paymentOptions || [],
                 emergencyProtocol: business.emergencyProtocol,
                 businessTone: business.businessTone,
                 communicationStyle: business.communicationStyle,
                 timezone: business.timezone,
                 websiteUrl: business.websiteUrl,
-                services: this.buildServicesContext(services),
-                knowledge: this.buildKnowledgeContext(knowledge),
-                contact: this.buildContactContext(contact),
-                extraInfo: this.buildExtraInfoContext(extraInfo)
+                widgetConfig: business.widgetConfig || {},
+                aiConfig: business.aiConfig || {},
             };
             
-            // Add dynamic context based on user message
-            context.dynamicContext = await this.buildDynamicContext(context, userMessage);
-            
-            // Before returning context:
-            console.log('[LOG][businessContextBuilder] Final business context:', util.inspect(context, { depth: 5 }));
-            
-            console.log(`[BusinessContextBuilder] Context built successfully for ${businessId}`);
+            console.log('[LOG][businessContextBuilder] FINAL CONTEXT RETURNED TO AI:', util.inspect(context, { depth: 5 }));
             
             return context;
             
