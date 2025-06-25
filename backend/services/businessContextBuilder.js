@@ -43,15 +43,22 @@ class BusinessContextBuilder {
             
             // Build comprehensive context using only real data
             const context = {
-                business: this.buildBusinessContext(business),
-                services: this.buildServicesContext(services),
-                knowledge: this.buildKnowledgeContext(knowledge),
-                contact: this.buildContactContext(contact),
-                extraInfo: this.buildExtraInfoContext(extraInfo),
-                conversation: this.buildConversationContext(conversationContext),
-                userMessage: userMessage,
-                aiConfiguration: business.aiConfig || {},
-                responseGuidelines: this.buildResponseGuidelines(business)
+                name: business.businessName,
+                description: business.businessDescription,
+                specializations: business.specializations,
+                yearsInBusiness: business.yearsInBusiness,
+                teamMembers: business.teamMembers,
+                businessHours: business.businessHours,
+                locationDetails: business.locationDetails,
+                certifications: business.certifications,
+                awards: business.awards,
+                insurancePartners: business.insurancePartners,
+                paymentOptions: business.paymentOptions,
+                emergencyProtocol: business.emergencyProtocol,
+                businessTone: business.businessTone,
+                communicationStyle: business.communicationStyle,
+                timezone: business.timezone,
+                websiteUrl: business.websiteUrl
             };
             
             // Add dynamic context based on user message
