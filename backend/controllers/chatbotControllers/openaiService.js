@@ -133,21 +133,23 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 }
                 // --- END MODIFIED LOGIC ---
                 
-                const businessPhoneNumber = businessData?.businessPhoneNumber;
-                
-                // Updated confirmation message emphasizing the call back for scheduling
-                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! Your information has been received. We\'ve noted your interest in ${determinedServiceContext}.\n\n`; // Use determined context
-                // Revised suffix to mention booking ideal time - REMOVED REDACTION
+                // Use phone/email from businessData (dashboard)
+                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! Your information has been received. We've noted your interest in ${determinedServiceContext}.\n\n`;
                 const scheduleSuffix = `🧑‍⚕️ Our team will call you back at ${contactInfo.phone} as soon as possible during business hours to discuss your needs and book your ideal appointment time.\n\n`;
-                const callUsSuffix = businessPhoneNumber
-                    ? `📞 If your situation requires immediate attention or you prefer to speak with us sooner, please feel free to call us directly at ${businessPhoneNumber}.`
-                    : ''; // Omit if no phone number
-                
+                // Use dashboard phone/email for callUsSuffix
+                let callUsSuffix = '';
+                if (businessData.phone) {
+                    callUsSuffix += `📞 If your situation requires immediate attention or you prefer to speak with us sooner, please feel free to call us directly at ${businessData.phone}.`;
+                }
+                if (businessData.email) {
+                    callUsSuffix += ` You can also email us at ${businessData.email}.`;
+                }
+                console.log('[DEBUG][openaiService.js] Using contact info in response:', { phone: businessData.phone, email: businessData.email });
                 responsePayload = {
                     type: 'CONTACT_INFO',
-                    response: confirmationPrefix + scheduleSuffix + callUsSuffix, // Assemble the message
-                    contactInfo: contactInfo, // Pass the complete, accumulated info
-                    serviceContext: determinedServiceContext // Use the determined context
+                    response: confirmationPrefix + scheduleSuffix + callUsSuffix,
+                    contactInfo: contactInfo,
+                    serviceContext: determinedServiceContext
                 };
                 break;
 
