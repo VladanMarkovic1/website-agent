@@ -6,6 +6,8 @@ import ConversationContext from '../models/ConversationContext.js';
 import Contact from '../models/Contact.js';
 import util from 'util';
 
+// NOTE: All business profile data (business hours, location, etc.) comes ONLY from the Business model. Do not use PhoneSettings, ExtraInfo, or any other model for these fields.
+
 /**
  * Business Context Builder Service
  * Builds comprehensive business context for AI responses using real client data
@@ -25,15 +27,8 @@ class BusinessContextBuilder {
             
             // Get all business data
             const business = await Business.findOne({ businessId });
-            const services = await Service.findOne({ businessId });
-            const extraInfo = await ExtraInfo.findOne({ businessId });
-            const knowledge = await BusinessKnowledge.findOne({ businessId });
-            const contact = await Contact.findOne({ businessId });
-            const conversationContext = await ConversationContext.findOne({ 
-                businessId, 
-                sessionId 
-            });
-            
+            // NOTE: Only fetch services, knowledge, contact, etc. for non-profile data
+            // All business profile data (hours, location, etc.) comes ONLY from Business model
             if (!business) {
                 throw new Error(`Business not found: ${businessId}`);
             }
@@ -41,24 +36,27 @@ class BusinessContextBuilder {
             // After fetching business:
             console.log('[LOG][businessContextBuilder] Raw business doc:', util.inspect(business, { depth: 5 }));
             
-            // Build comprehensive context using only real data
+            // Build context using ONLY Business model for profile fields
             const context = {
-                name: business.businessName,
-                description: business.businessDescription,
-                specializations: business.specializations,
-                yearsInBusiness: business.yearsInBusiness,
-                teamMembers: business.teamMembers,
-                businessHours: business.businessHours,
-                locationDetails: business.locationDetails,
-                certifications: business.certifications,
-                awards: business.awards,
-                insurancePartners: business.insurancePartners,
-                paymentOptions: business.paymentOptions,
-                emergencyProtocol: business.emergencyProtocol,
-                businessTone: business.businessTone,
-                communicationStyle: business.communicationStyle,
-                timezone: business.timezone,
-                websiteUrl: business.websiteUrl
+                business: {
+                    name: business.businessName,
+                    description: business.businessDescription,
+                    specializations: business.specializations,
+                    yearsInBusiness: business.yearsInBusiness,
+                    teamMembers: business.teamMembers,
+                    businessHours: business.businessHours,
+                    locationDetails: business.locationDetails,
+                    certifications: business.certifications,
+                    awards: business.awards,
+                    insurancePartners: business.insurancePartners,
+                    paymentOptions: business.paymentOptions,
+                    emergencyProtocol: business.emergencyProtocol,
+                    businessTone: business.businessTone,
+                    communicationStyle: business.communicationStyle,
+                    timezone: business.timezone,
+                    websiteUrl: business.websiteUrl
+                }
+                // Add other context fields (services, knowledge, etc.) as needed, but NOT profile data
             };
             
             // Add dynamic context based on user message
