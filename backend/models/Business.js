@@ -134,6 +134,7 @@ BusinessSchema.methods.compareApiKey = async function(candidateKey) {
 
 // Method to get formatted business hours
 BusinessSchema.methods.getFormattedHours = function() {
+    console.log('[LOG][BusinessModel] getFormattedHours called. businessHours:', this.businessHours);
     if (!this.businessHours) return null;
     
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -150,7 +151,7 @@ BusinessSchema.methods.getFormattedHours = function() {
 
 // Method to get business context for AI
 BusinessSchema.methods.getBusinessContext = function() {
-    return {
+    const ctx = {
         name: this.businessName,
         description: this.businessDescription,
         specializations: this.specializations,
@@ -161,6 +162,8 @@ BusinessSchema.methods.getBusinessContext = function() {
         hours: this.getFormattedHours(),
         location: this.locationDetails
     };
+    console.log('[LOG][BusinessModel] getBusinessContext returns:', ctx);
+    return ctx;
 };
 
 export default mongoose.model("Business", BusinessSchema);

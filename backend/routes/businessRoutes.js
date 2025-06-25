@@ -172,6 +172,9 @@ router.put(
                 return res.status(404).json({ error: 'Business not found' });
             }
 
+            console.log('[LOG][businessRoutes] Incoming PUT /:businessId/profile body:', req.body);
+            console.log('[LOG][businessRoutes] updateData:', updateData);
+
             // Update business fields
             const businessUpdateFields = [
                 'businessName', 'businessDescription', 'mission', 'vision',
@@ -210,7 +213,11 @@ router.put(
                 };
             }
 
+            console.log('[LOG][businessRoutes] business object before save:', business);
+
             await business.save();
+
+            console.log('[LOG][businessRoutes] business object after save:', business);
 
             res.json({ 
                 message: 'Business profile updated successfully',
@@ -224,7 +231,7 @@ router.put(
             });
             
         } catch (error) {
-            console.error('Error updating business profile:', error);
+            console.error('[LOG][businessRoutes] Error updating business profile:', error, error?.stack);
             res.status(500).json({ error: 'Failed to update business profile' });
         }
     }

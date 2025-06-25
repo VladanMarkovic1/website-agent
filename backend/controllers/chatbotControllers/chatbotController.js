@@ -14,6 +14,7 @@ import { redactPII } from '../../utils/piiFilter.js';
 import { extractContactInfo, extractExtraDetails } from "./extractContactInfo.js";
 import Lead from '../../models/Lead.js';
 import businessContextBuilder from '../../services/businessContextBuilder.js';
+import util from 'util';
 
 // Removed session map, timeout, cleanup (moved to sessionService)
 
@@ -22,8 +23,9 @@ async function _getBusinessContext(businessId, sessionId, message) {
     try {
         console.log(`[ChatbotController] Building business context for ${businessId}`);
         
-        // Use the enhanced business context builder
+        console.log('[LOG][chatbotController] _getBusinessContext: businessId:', businessId, 'sessionId:', sessionId, 'message:', message);
         const businessContext = await businessContextBuilder.buildBusinessContext(businessId, sessionId, message);
+        console.log('[LOG][chatbotController] Built businessContext:', util.inspect(businessContext, { depth: 5 }));
         
         console.log(`[ChatbotController] Business context built successfully for ${businessId}`);
         return businessContext;
@@ -76,6 +78,7 @@ async function _generateAndRefineResponse(message, businessContext, sessionMessa
     // }
     
     // Pass session.serviceInterest as an argument
+    console.log('[LOG][chatbotController] Passing businessContext to AI:', util.inspect(businessContext, { depth: 5 }));
     const aiResult = await generateAIResponse(
         message, 
         businessContext, 
@@ -331,6 +334,7 @@ function escapeHtml(unsafe) {
 
 const processChatMessage = async (message, sessionId, businessId) => {
     try {
+        console.log('[LOG][chatbotController] processChatMessage: message:', message, 'sessionId:', sessionId, 'businessId:', businessId);
         const { session, isNewSession } = await _initializeSessionAndTrackStart(sessionId, businessId);
         const businessContext = await _getBusinessContext(businessId, session.sessionId, message);
 

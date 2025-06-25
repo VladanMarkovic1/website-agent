@@ -4,6 +4,7 @@ import ExtraInfo from '../models/ExtraInfo.js';
 import BusinessKnowledge from '../models/BusinessKnowledge.js';
 import ConversationContext from '../models/ConversationContext.js';
 import Contact from '../models/Contact.js';
+import util from 'util';
 
 /**
  * Business Context Builder Service
@@ -37,6 +38,9 @@ class BusinessContextBuilder {
                 throw new Error(`Business not found: ${businessId}`);
             }
             
+            // After fetching business:
+            console.log('[LOG][businessContextBuilder] Raw business doc:', util.inspect(business, { depth: 5 }));
+            
             // Build comprehensive context using only real data
             const context = {
                 business: this.buildBusinessContext(business),
@@ -52,6 +56,9 @@ class BusinessContextBuilder {
             
             // Add dynamic context based on user message
             context.dynamicContext = await this.buildDynamicContext(context, userMessage);
+            
+            // Before returning context:
+            console.log('[LOG][businessContextBuilder] Final business context:', util.inspect(context, { depth: 5 }));
             
             console.log(`[BusinessContextBuilder] Context built successfully for ${businessId}`);
             
