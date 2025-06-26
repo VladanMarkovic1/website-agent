@@ -390,6 +390,10 @@ export const generateAIResponse = async (message, businessData, messageHistory =
         // console.log('--- generateAIResponse Orchestrator End ---');
         // Before returning responsePayload at the end of generateAIResponse
         console.log('[DEBUG][openaiService.js] Returning response:', responsePayload?.type, responsePayload?.response);
+
+        // Always use gpt-3.5-turbo for fastest responses
+        businessData.aiConfig = { ...businessData.aiConfig, model: 'gpt-3.5-turbo' };
+
         return {
             classifiedIntent: intent,
             responsePayload
