@@ -21,7 +21,7 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
         isPotentiallyOverridingRequest
     } = requestTypes;
 
-    console.log('[DEBUG][overrideService.js] Initial response:', initialResponse?.type, initialResponse?.response);
+    //console.log('[DEBUG][overrideService.js] Initial response:', initialResponse?.type, initialResponse?.response);
 
     let finalResponse = { ...initialResponse }; // Start with the initial response
 
@@ -117,6 +117,6 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
          // console.log(`[OverrideService] Override check skipped. NeedsOverride: ${needsOverrideCheck}, Initial Type: ${initialResponse.type}`); // Debug only
     }
 
-    console.log('[DEBUG][overrideService.js] Final response:', finalResponse?.type, finalResponse?.response);
+    //console.log('[DEBUG][overrideService.js] Final response:', finalResponse?.type, finalResponse?.response);
     return finalResponse;
 }; 
