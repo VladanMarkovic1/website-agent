@@ -144,7 +144,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 if (businessData.email) {
                     callUsSuffix += ` Or email ${businessData.email}.`;
                 }
-                console.log('[DEBUG][openaiService.js] Using contact info in response:', { phone: businessData.phone, email: businessData.email });
+               // console.log('[DEBUG][openaiService.js] Using contact info in response:', { phone: businessData.phone, email: businessData.email });
                 responsePayload = {
                     type: 'CONTACT_INFO',
                     response: confirmationPrefix + scheduleSuffix + callUsSuffix,

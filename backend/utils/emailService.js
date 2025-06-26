@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
 // Create reusable transporter object using SMTP transport
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE,
     auth: {
         user: process.env.EMAIL_USER,
