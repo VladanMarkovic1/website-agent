@@ -426,7 +426,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     }
 
     // Check for specific service consultation requests
-    const serviceConsultationRegex = /(?:i want|i need|can i get|i would like|i\'d like|i am interested in|i\'m interested in|i\'d love|i\'m looking for|i\'d want|i\'d need|i\'d get|i\'d schedule|i\'d book|book me|schedule me|consultation about|consultation for|appointment for|appointment about)\s+([a-zA-Z\s]+)/i;
+    const serviceConsultationRegex = /(?:i want|i need|can i get|i would like|i'd like|i am interested in|i'm interested in|i'd love|i'm looking for|i'd want|i'd need|i'd get|i'd schedule|i'd book|book me|schedule me|consultation about|consultation for|appointment for|appointment about|interested in|looking for)\s+([a-zA-Z\s]+)/i;
     const serviceConsultationMatch = normalizedMessage.match(serviceConsultationRegex);
     if (serviceConsultationMatch) {
       const requestedService = serviceConsultationMatch[1]?.trim();
