@@ -401,6 +401,33 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 };
                 break;
 
+            case 'TEAM_INQUIRY':
+            case 'STAFF_INQUIRY':
+            case 'ABOUT_INQUIRY': {
+                // Try to use dashboard data for team/about
+                let aboutText = '';
+                if (businessData.team && Array.isArray(businessData.team) && businessData.team.length > 0) {
+                    aboutText = 'Meet our team: ' + businessData.team.map(member => {
+                        let str = member.name ? member.name : '';
+                        if (member.title) str += `, ${member.title}`;
+                        if (member.bio) str += `. ${member.bio}`;
+                        if (member.experience) str += ` (${member.experience})`;
+                        return str;
+                    }).join(' | ');
+                } else if (businessData.about) {
+                    aboutText = businessData.about;
+                } else if (businessData.businessDescription) {
+                    aboutText = businessData.businessDescription;
+                } else {
+                    aboutText = 'We are a dedicated dental team committed to your oral health.';
+                }
+                responsePayload = {
+                    type: 'ABOUT_INFO',
+                    response: aboutText
+                };
+                break;
+            }
+
             case 'UNKNOWN':
             default:
                 // console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); // To be removed/commented
