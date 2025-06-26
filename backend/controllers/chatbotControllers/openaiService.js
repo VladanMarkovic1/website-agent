@@ -319,13 +319,14 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'PAYMENT_PLAN_INQUIRY':
+                // Build context string for insurance and payment options
                 let insuranceMsg = '';
                 let paymentMsg = '';
                 if (businessData.insurancePartners && businessData.insurancePartners.length > 0) {
-                    insuranceMsg = `We accept the following insurance providers: ${businessData.insurancePartners.join(', ')}.`;
+                    insuranceMsg = `Insurance providers: ${businessData.insurancePartners.join(', ')}.`;
                 }
                 if (businessData.paymentOptions && businessData.paymentOptions.length > 0) {
-                    paymentMsg = `We offer these payment plans/options: ${businessData.paymentOptions.join(', ')}.`;
+                    paymentMsg = `Payment plans/options: ${businessData.paymentOptions.join(', ')}.`;
                 }
                 let combinedMsg = '';
                 if (insuranceMsg && paymentMsg) {
@@ -337,9 +338,12 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 } else {
                     combinedMsg = 'We accept most major insurance providers and offer flexible payment plans.';
                 }
+                // Use AI fallback for a more natural response
+                const paymentPrompt = `A user is asking about insurance and payment options. Using the following business data, answer naturally and helpfully, listing the insurance providers and payment plans if available. Then offer to connect them with the team for more details.\n\n${combinedMsg}`;
+                const aiPaymentResponse = await generateAIFallbackResponse(paymentPrompt, messageHistory, businessData);
                 responsePayload = {
                     type: 'PAYMENT_PLAN_INQUIRY',
-                    response: `Yes, we offer flexible payment plans. ${combinedMsg} Would you like more details or to speak with our team about your specific situation?`
+                    response: aiPaymentResponse.response
                 };
                 break;
 
