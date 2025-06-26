@@ -16,18 +16,18 @@ dotenv.config();
 
 // Simple response templates to replace deleted constants
 const RESPONSE_TEMPLATES = {
-    contact_after_yes: "Great! I can help you schedule a consultation. Please provide your name, phone number, and email address.",
-    problem_followup_prefix: (category) => `I understand you're experiencing ${category}. Here are some services that might help:\n\n`,
+    contact_after_yes: "😃 Great! I can help you schedule a consultation. Please provide your name, phone number, and email address.",
+    problem_followup_prefix: (category) => `🦷 I understand you're experiencing ${category}. Here are some services that might help:\n\n`,
     problem_followup_suffix: "\n\nI can help you schedule a consultation. Please provide your name, phone number, and email address.",
-    problem_followup_fallback: (category) => `I understand you're experiencing ${category}. We can help diagnose and treat this issue. I can help you schedule a consultation. Please provide your name, phone number, and email address.`,
-    emergency: "This sounds like it might need immediate attention. Please call us right away for emergency care.",
-    visual_concern: "I understand you're concerned about the appearance of your teeth. Our cosmetic dentistry services can help improve your smile with whitening, veneers, and other treatments. I can help you schedule a consultation. Please provide your name, phone number, and email address.",
-    acknowledge_symptom: (symptom) => `I understand you're experiencing ${symptom}. We can help diagnose and treat this properly. I can help you schedule a consultation. Please provide your name, phone number, and email address.`,
-    service_list_prefix: "Here are the services we offer:\n\n",
+    problem_followup_fallback: (category) => `🦷 I understand you're experiencing ${category}. We can help diagnose and treat this issue. I can help you schedule a consultation. Please provide your name, phone number, and email address.`,
+    emergency: "🚨 This sounds like it might need immediate attention. Please call us right away for emergency care.",
+    visual_concern: "✨ I understand you're concerned about the appearance of your teeth. Our cosmetic dentistry services can help improve your smile with whitening, veneers, and other treatments. I can help you schedule a consultation. Please provide your name, phone number, and email address.",
+    acknowledge_symptom: (symptom) => `🦷 I understand you're experiencing ${symptom}. We can help diagnose and treat this properly. I can help you schedule a consultation. Please provide your name, phone number, and email address.`,
+    service_list_prefix: "🦷 Here are the services we offer:\n\n",
     service_list_suffix: "\n\nI can help you schedule a consultation. Please provide your name, phone number, and email address.",
-    error_fallback: "I apologize, but I'm having trouble processing your request right now. Please try again or call us directly.",
-    OPERATING_HOURS_RESPONSE: (hours) => `Our operating hours are:\n${hours}`,
-    HOURS_UNAVAILABLE_FALLBACK: "I don't have our current operating hours available. Please call us directly."
+    error_fallback: "😔 I apologize, but I'm having trouble processing your request right now. Please try again or call us directly.",
+    OPERATING_HOURS_RESPONSE: (hours) => `🕒 Our operating hours are:\n${hours}`,
+    HOURS_UNAVAILABLE_FALLBACK: "🕒 I don't have our current operating hours available. Please call us directly."
 };
 
 // Simple dental problems mapping to replace deleted constants
@@ -135,7 +135,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 
                 // Use phone/email from businessData (dashboard)
                 const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! We've received your information for ${determinedServiceContext}.`;
-                const scheduleSuffix = ` Our team will call you at ${contactInfo.phone} soon.`;
+                const scheduleSuffix = ` 📞 Our team will call you at ${contactInfo.phone} soon.`;
                 // Use dashboard phone/email for callUsSuffix
                 let callUsSuffix = '';
                 if (businessData.phone) {
@@ -373,7 +373,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 if (contactDetails.length > 0) {
                     responsePayload = {
                         type: 'CONTACT_INQUIRY',
-                        response: `You can reach us at: ${contactDetails.join('. ')}. Feel free to call or email us with any questions!`
+                        response: `📞 You can reach us at: ${contactDetails.join('. ')}. Feel free to call or email us with any questions!`
                     };
                 } else {
                     responsePayload = {
@@ -423,7 +423,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 }
                 responsePayload = {
                     type: 'ABOUT_INFO',
-                    response: aboutText
+                    response: '👩‍⚕️ ' + aboutText
                 };
                 break;
             }
