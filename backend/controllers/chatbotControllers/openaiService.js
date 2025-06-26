@@ -382,7 +382,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // Generate a focused, AI-powered response about the requested service, then ask for contact info
                 const serviceName = intent.serviceName || 'the requested service';
                 // Compose a prompt for the AI to answer specifically about the requested service
-                const consultationPrompt = `A user wants a consultation about ${serviceName}. Briefly explain what ${serviceName} is, its benefits, and what a patient can expect. Then, invite the user to schedule a consultation by providing their name, phone number, and email address. Keep the response specific to ${serviceName}, do not mention other services.`;
+                const consultationPrompt = `A user is interested in ${serviceName}. Briefly and directly explain what ${serviceName} is, what it includes, and its benefits. Do NOT use empathy or concern language. Do NOT assume the user is worried or concerned. Do NOT mention other services. After providing value, invite the user to schedule a consultation by providing their name, phone number, and email address.`;
                 const aiConsultationResponse = await generateAIFallbackResponse(consultationPrompt, messageHistory, businessData);
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
