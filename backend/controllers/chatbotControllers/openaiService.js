@@ -378,6 +378,19 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 break;
 
+            case 'SERVICE_CONSULTATION_REQUEST':
+                // Generate a focused, AI-powered response about the requested service, then ask for contact info
+                const serviceName = intent.serviceName || 'the requested service';
+                // Compose a prompt for the AI to answer specifically about the requested service
+                const consultationPrompt = `A user wants a consultation about ${serviceName}. Briefly explain what ${serviceName} is, its benefits, and what a patient can expect. Then, invite the user to schedule a consultation by providing their name, phone number, and email address. Keep the response specific to ${serviceName}, do not mention other services.`;
+                const aiConsultationResponse = await generateAIFallbackResponse(consultationPrompt, messageHistory, businessData);
+                responsePayload = {
+                    type: 'CONTACT_REQUEST',
+                    serviceContext: serviceName,
+                    response: aiConsultationResponse.response
+                };
+                break;
+
             case 'UNKNOWN':
             default:
                 // console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); // To be removed/commented
@@ -389,7 +402,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
         // console.log('--- generateAIResponse Orchestrator End ---');
         // Before returning responsePayload at the end of generateAIResponse
-        console.log('[DEBUG][openaiService.js] Returning response:', responsePayload?.type, responsePayload?.response);
+        //console.log('[DEBUG][openaiService.js] Returning response:', responsePayload?.type, responsePayload?.response);
 
         // Always use gpt-3.5-turbo for fastest responses
         businessData.aiConfig = { ...businessData.aiConfig, model: 'gpt-3.5-turbo' };
