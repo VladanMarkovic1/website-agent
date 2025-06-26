@@ -319,7 +319,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'PAYMENT_PLAN_INQUIRY':
-                // Build context string for insurance and payment options
+                // Determine if the user is asking about insurance or payment plans specifically
                 let insuranceMsg = '';
                 let paymentMsg = '';
                 if (businessData.insurancePartners && businessData.insurancePartners.length > 0) {
@@ -328,26 +328,28 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 if (businessData.paymentOptions && businessData.paymentOptions.length > 0) {
                     paymentMsg = `Payment plans/options: ${businessData.paymentOptions.join(', ')}.`;
                 }
-                let combinedMsg = '';
-                if (insuranceMsg && paymentMsg) {
-                    combinedMsg = `${insuranceMsg} ${paymentMsg}`;
-                } else if (insuranceMsg) {
-                    combinedMsg = insuranceMsg;
-                } else if (paymentMsg) {
-                    combinedMsg = paymentMsg;
+                let responseText = '';
+                // Check the message or intent for keywords
+                const lowerMsg = message.toLowerCase();
+                if (lowerMsg.includes('insurance')) {
+                    responseText = insuranceMsg || 'No specific insurance information is available.';
+                } else if (lowerMsg.includes('payment')) {
+                    responseText = paymentMsg || 'No specific payment plan information is available.';
                 } else {
-                    combinedMsg = 'No specific insurance or payment plan information is available.';
-                }
-                // Use AI fallback for a more natural response, with no template or leading phrase
-                const paymentPrompt = `A user is asking about insurance and payment options. Using ONLY the following business data, answer naturally and helpfully, mentioning the insurance providers and payment plans if available. Invite the user to connect with the team for more details, but do NOT repeat yourself or ask for contact info more than once.\n\nBusiness data: ${combinedMsg}`;
-                const aiPaymentResponse = await generateAIFallbackResponse(paymentPrompt, messageHistory, businessData);
-                let aiPaymentText = aiPaymentResponse.response;
-                if (aiPaymentText) {
-                  aiPaymentText = aiPaymentText.replace(/(please provide your name, phone number, and email address[.!?]?\s*){2,}/gi, '$1');
+                    // Fallback: show both if not clear
+                    if (insuranceMsg && paymentMsg) {
+                        responseText = `${insuranceMsg} ${paymentMsg}`;
+                    } else if (insuranceMsg) {
+                        responseText = insuranceMsg;
+                    } else if (paymentMsg) {
+                        responseText = paymentMsg;
+                    } else {
+                        responseText = 'No specific insurance or payment plan information is available.';
+                    }
                 }
                 responsePayload = {
                     type: 'PAYMENT_PLAN_INQUIRY',
-                    response: aiPaymentText
+                    response: responseText
                 };
                 break;
 
