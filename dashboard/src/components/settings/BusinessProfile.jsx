@@ -69,6 +69,9 @@ const BusinessProfile = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [specializationError, setSpecializationError] = useState('');
+  const [insuranceError, setInsuranceError] = useState('');
+  const [paymentError, setPaymentError] = useState('');
 
   // Form states for adding new items
   const [newSpecialization, setNewSpecialization] = useState('');
@@ -229,6 +232,48 @@ const BusinessProfile = () => {
     }));
   };
 
+  const addSpecialization = () => {
+    if (newSpecialization.trim().length < 2 || newSpecialization.trim().length > 50) {
+      setSpecializationError('Specialization must be between 2 and 50 characters.');
+      return;
+    }
+    setBusinessProfile(prev => ({ ...prev, specializations: [...prev.specializations, newSpecialization.trim()] }));
+    setNewSpecialization('');
+    setSpecializationError('');
+  };
+
+  const removeSpecialization = (index) => {
+    setBusinessProfile(prev => ({ ...prev, specializations: prev.specializations.filter((_, i) => i !== index) }));
+  };
+
+  const addInsurancePartner = () => {
+    if (newInsurancePartner.trim().length < 2 || newInsurancePartner.trim().length > 50) {
+      setInsuranceError('Insurance provider must be between 2 and 50 characters.');
+      return;
+    }
+    setBusinessProfile(prev => ({ ...prev, insurancePartners: [...prev.insurancePartners, newInsurancePartner.trim()] }));
+    setNewInsurancePartner('');
+    setInsuranceError('');
+  };
+
+  const removeInsurancePartner = (index) => {
+    setBusinessProfile(prev => ({ ...prev, insurancePartners: prev.insurancePartners.filter((_, i) => i !== index) }));
+  };
+
+  const addPaymentOption = () => {
+    if (newPaymentOption.trim().length < 2 || newPaymentOption.trim().length > 50) {
+      setPaymentError('Payment option must be between 2 and 50 characters.');
+      return;
+    }
+    setBusinessProfile(prev => ({ ...prev, paymentOptions: [...prev.paymentOptions, newPaymentOption.trim()] }));
+    setNewPaymentOption('');
+    setPaymentError('');
+  };
+
+  const removePaymentOption = (index) => {
+    setBusinessProfile(prev => ({ ...prev, paymentOptions: prev.paymentOptions.filter((_, i) => i !== index) }));
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto p-4">
@@ -347,21 +392,22 @@ const BusinessProfile = () => {
             />
             <Button
               type="button"
-              onClick={() => setNewSpecialization(addItem('specializations', newSpecialization, 
-                (value) => setBusinessProfile(prev => ({ ...prev, specializations: [...prev.specializations, value] }))))}
+              onClick={addSpecialization}
               className="flex items-center"
             >
               <HiPlus className="h-4 w-4" />
             </Button>
           </div>
+          {specializationError && (
+            <div className="text-red-600 text-sm mb-2">{specializationError}</div>
+          )}
           <div className="flex flex-wrap gap-2">
             {businessProfile.specializations.map((spec, index) => (
               <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
                 {spec}
                 <button
                   type="button"
-                  onClick={() => removeItem('specializations', index, 
-                    (value) => setBusinessProfile(prev => ({ ...prev, specializations: prev.specializations.filter((_, i) => i !== index) })))}
+                  onClick={() => removeSpecialization(index)}
                   className="ml-2 text-blue-600 hover:text-blue-800"
                 >
                   <HiTrash className="h-3 w-3" />
@@ -385,21 +431,22 @@ const BusinessProfile = () => {
               />
               <Button
                 type="button"
-                onClick={() => setNewInsurancePartner(addItem('insurancePartners', newInsurancePartner, 
-                  (value) => setBusinessProfile(prev => ({ ...prev, insurancePartners: [...prev.insurancePartners, value] }))))}
+                onClick={addInsurancePartner}
                 className="flex items-center"
               >
                 <HiPlus className="h-4 w-4" />
               </Button>
             </div>
+            {insuranceError && (
+              <div className="text-red-600 text-sm mb-2">{insuranceError}</div>
+            )}
             <div className="flex flex-wrap gap-2">
               {businessProfile.insurancePartners.map((ins, index) => (
                 <span key={index} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center">
                   {ins}
                   <button
                     type="button"
-                    onClick={() => removeItem('insurancePartners', index, 
-                      (value) => setBusinessProfile(prev => ({ ...prev, insurancePartners: prev.insurancePartners.filter((_, i) => i !== index) })))}
+                    onClick={() => removeInsurancePartner(index)}
                     className="ml-2 text-green-600 hover:text-green-800"
                   >
                     <HiTrash className="h-3 w-3" />
@@ -419,21 +466,22 @@ const BusinessProfile = () => {
               />
               <Button
                 type="button"
-                onClick={() => setNewPaymentOption(addItem('paymentOptions', newPaymentOption, 
-                  (value) => setBusinessProfile(prev => ({ ...prev, paymentOptions: [...prev.paymentOptions, value] }))))}
+                onClick={addPaymentOption}
                 className="flex items-center"
               >
                 <HiPlus className="h-4 w-4" />
               </Button>
             </div>
+            {paymentError && (
+              <div className="text-red-600 text-sm mb-2">{paymentError}</div>
+            )}
             <div className="flex flex-wrap gap-2">
               {businessProfile.paymentOptions.map((opt, index) => (
                 <span key={index} className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm flex items-center">
                   {opt}
                   <button
                     type="button"
-                    onClick={() => removeItem('paymentOptions', index, 
-                      (value) => setBusinessProfile(prev => ({ ...prev, paymentOptions: prev.paymentOptions.filter((_, i) => i !== index) })))}
+                    onClick={() => removePaymentOption(index)}
                     className="ml-2 text-yellow-600 hover:text-yellow-800"
                   >
                     <HiTrash className="h-3 w-3" />
