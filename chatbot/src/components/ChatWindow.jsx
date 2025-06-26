@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaPaperPlane, FaArrowLeft, FaCheckCircle } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
+import './ChatWindow.css'; // Add this import at the top for custom styles
 
 const getSubmissionMessage = () => {
   const today = new Date().getDay(); // 0 = Sunday, 6 = Saturday
@@ -525,9 +526,9 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
           <div className="text-left">
             <div className="inline-block p-3 rounded-lg bg-gray-100 text-gray-800">
               <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+                <span className="dot"></span>
+                <span className="dot"></span>
+                <span className="dot"></span>
               </div>
             </div>
           </div>
