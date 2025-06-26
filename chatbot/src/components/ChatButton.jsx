@@ -8,11 +8,20 @@ const ChatButton = ({ onClick, text = 'Chat with us', primaryColor = '#4F46E5' }
       style={{ backgroundColor: primaryColor }}
       aria-label={text}
     >
-      {/* Custom SVG icon for chat bubble with smile, all white */}
-      <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="12" y="12" width="24" height="20" rx="6" fill="white"/>
-        <path d="M18 26c1.5 2 6.5 2 8 0" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-        <rect x="12" y="12" width="24" height="20" rx="6" stroke="white" strokeWidth="2"/>
+      {/* Intercom-style chat bubble icon */}
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+        <g>
+          <path
+            d="M12 10c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7.5l3.5 3.5c.4.4 1 .1 1-.4V26h2c1.1 0 2-.9 2-2V12c0-1.1-.9-2-2-2H12z"
+            fill="white"
+          />
+          <path
+            d="M16 19c1.333 1.333 6.667 1.333 8 0"
+            stroke={primaryColor}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </g>
       </svg>
     </button>
   );
