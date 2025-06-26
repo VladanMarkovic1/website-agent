@@ -265,6 +265,11 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 break;
 
+            case 'HELP_REQUEST':
+                // For help requests, use AI to provide natural, helpful responses
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                break;
+
             case 'REQUEST_SERVICE_LIST':
                  // console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST'); // To be removed/commented
                  // This logic depends on context, reasonable to keep here

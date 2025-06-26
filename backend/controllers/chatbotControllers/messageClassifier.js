@@ -356,9 +356,37 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         return { type: 'REQUEST_SERVICE_LIST' };
     }
 
-    // --- Continue with other checks ---
+    // Check for help requests (questions asking for help, assistance, etc.)
+    if (normalizedMessage.includes('help') && 
+        (normalizedMessage.includes('how') || 
+         normalizedMessage.includes('can you') || 
+         normalizedMessage.includes('could you') || 
+         normalizedMessage.includes('what') || 
+         normalizedMessage.includes('tell me') || 
+         normalizedMessage.includes('explain') || 
+         normalizedMessage.includes('show me'))) {
+        return { type: 'HELP_REQUEST' };
+    }
+
     // Check for confirmation keywords ONLY if the bot didn't just ask for contact
-    if (!botRequestedContact && CONFIRMATION_KEYWORDS.some(keyword => normalizedMessage.startsWith(keyword) || normalizedMessage.endsWith(keyword))) {
+    // AND the message is actually a confirmation, not a question
+    if (!botRequestedContact && 
+        CONFIRMATION_KEYWORDS.some(keyword => normalizedMessage.startsWith(keyword) || normalizedMessage.endsWith(keyword)) &&
+        !normalizedMessage.includes('how') && 
+        !normalizedMessage.includes('what') && 
+        !normalizedMessage.includes('when') && 
+        !normalizedMessage.includes('where') && 
+        !normalizedMessage.includes('why') && 
+        !normalizedMessage.includes('can you') && 
+        !normalizedMessage.includes('could you') && 
+        !normalizedMessage.includes('would you') && 
+        !normalizedMessage.includes('help') && 
+        !normalizedMessage.includes('tell me') && 
+        !normalizedMessage.includes('explain') && 
+        !normalizedMessage.includes('show me') && 
+        !normalizedMessage.includes('give me') && 
+        !normalizedMessage.includes('?') && 
+        normalizedMessage.length < 20) { // Only short confirmations
         return { type: 'CONFIRMATION_YES' };
     }
 
