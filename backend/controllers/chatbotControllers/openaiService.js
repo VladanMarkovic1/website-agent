@@ -336,14 +336,18 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 } else if (paymentMsg) {
                     combinedMsg = paymentMsg;
                 } else {
-                    combinedMsg = 'We accept most major insurance providers and offer flexible payment plans.';
+                    combinedMsg = 'No specific insurance or payment plan information is available.';
                 }
-                // Use AI fallback for a more natural response
-                const paymentPrompt = `A user is asking about insurance and payment options. Using the following business data, answer naturally and helpfully, listing the insurance providers and payment plans if available. Then offer to connect them with the team for more details.\n\n${combinedMsg}`;
+                // Use AI fallback for a more natural response, with no template or leading phrase
+                const paymentPrompt = `A user is asking about insurance and payment options. Using ONLY the following business data, answer naturally and helpfully, mentioning the insurance providers and payment plans if available. Invite the user to connect with the team for more details, but do NOT repeat yourself or ask for contact info more than once.\n\nBusiness data: ${combinedMsg}`;
                 const aiPaymentResponse = await generateAIFallbackResponse(paymentPrompt, messageHistory, businessData);
+                let aiPaymentText = aiPaymentResponse.response;
+                if (aiPaymentText) {
+                  aiPaymentText = aiPaymentText.replace(/(please provide your name, phone number, and email address[.!?]?\s*){2,}/gi, '$1');
+                }
                 responsePayload = {
                     type: 'PAYMENT_PLAN_INQUIRY',
-                    response: aiPaymentResponse.response
+                    response: aiPaymentText
                 };
                 break;
 
