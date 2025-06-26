@@ -373,6 +373,11 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 }
                 break;
 
+            case 'FACTUAL_QUESTION':
+                // Use AI to answer factual questions, do NOT use a template or ask for contact info
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                break;
+
             case 'UNKNOWN':
             default:
                 // console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); // To be removed/commented

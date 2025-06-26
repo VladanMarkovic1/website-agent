@@ -91,7 +91,7 @@ async function _generateAndRefineResponse(message, businessContext, sessionMessa
     );
     const classifiedIntent = aiResult.classifiedIntent; // Original classification
     const initialResponsePayload = aiResult.responsePayload; // Payload after internal logic/switch in generateAIResponse
-    
+
     // --- First Override Pass (Based on the response payload type from generateAIResponse) ---
     let responseAfterOverride1 = applyResponseOverrides(initialResponsePayload, [], session, businessContext);
 
@@ -274,7 +274,7 @@ async function _handleLeadSavingIfNeeded(message, finalResponse, session, classi
 
 async function _logInteractionMessages(sessionId, userMessageContent, userMessageType, finalResponse) {
     // Only redact for logging, not for user-facing response
-    const userMessageLog = {
+     const userMessageLog = {
         role: 'user',
         content: redactPII(userMessageContent),
         timestamp: Date.now(),
@@ -376,7 +376,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
 
         // --- Handle Lead Saving (Main Logic) ---
         const leadSaved = await _handleLeadSavingIfNeeded(message, finalResponse, session, classifiedIntent);
-        
+
         // Track conversation end
         await _trackConversationCompletionIfNeeded(finalResponse, session);
         // Log messages (use detected user type)
@@ -391,7 +391,7 @@ const processChatMessage = async (message, sessionId, businessId) => {
              sessionId
         };
     } catch (error) {
-        return {
+         return {
              response: escapeHtml("I apologize, but I'm having trouble processing your request right now. Please try again or contact our team directly."),
              type: 'ERROR',
              sessionId: sessionId || 'unknown'

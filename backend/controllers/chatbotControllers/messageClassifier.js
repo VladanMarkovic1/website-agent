@@ -398,6 +398,18 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         return { type: 'CONFIRMATION_YES' };
     }
 
+    // Check for factual questions (e.g., 'what is', 'how does', etc.)
+    if (
+      normalizedMessage.startsWith('what is') ||
+      normalizedMessage.startsWith('how does') ||
+      normalizedMessage.startsWith('tell me about') ||
+      normalizedMessage.startsWith('explain') ||
+      normalizedMessage.startsWith('can you explain') ||
+      normalizedMessage.startsWith('describe')
+    ) {
+      return { type: 'FACTUAL_QUESTION' };
+    }
+
     // Check for Dental Problems
     const problemCheck = checkDentalProblem(normalizedMessage);
     if (problemCheck.isProblem) {
