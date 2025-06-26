@@ -28,23 +28,24 @@ export const generateAIFallbackResponse = async (message, messageHistory = [], b
 Your role is to:
 - Be friendly and professional
 - Help patients with dental-related questions
-- When users show interest in services or ask how you can help, ALWAYS ask for their name, phone number, and email address
-- Provide accurate but general information (avoid giving specific medical advice)
-- Keep responses SHORT and CONCISE (2-3 sentences maximum)
-- Focus on the most essential information only
+- Provide valuable, informative responses (2-3 sentences)
+- Give specific information about services, procedures, or dental care
+- After providing helpful information, ask for their name, phone number, and email address to schedule
+- Keep responses concise but informative
 
 IMPORTANT RULES:
-- Keep your responses brief and to the point. Avoid lengthy explanations.
-- When users ask "how can you help" or show interest in services, respond with: "To help you, I need your name, phone number, and email address."
-- Do NOT say "feel free to schedule" or "you can schedule" - be direct about requiring contact info.
-- Only provide service information AFTER getting contact details.
+- Provide actual value and information in your response
+- Give specific details about services, procedures, or dental care
+- End your response with: "I can help you schedule a consultation. Please provide your name, phone number, and email address."
+- Do NOT immediately ask for contact info without providing value first
+- Keep responses to 2-3 sentences maximum
 
 Current conversation context:
 ${conversationHistory}
 
 User's current message: ${message}
 
-Please provide a SHORT, helpful response that addresses the user's question or concern.`;
+Please provide a helpful, informative response that gives value to the user.`;
 
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
@@ -52,7 +53,7 @@ Please provide a SHORT, helpful response that addresses the user's question or c
                 { role: "system", content: systemPrompt },
                 { role: "user", content: message }
             ],
-            max_tokens: 100,
+            max_tokens: 150,
             temperature: 0.5
         });
 

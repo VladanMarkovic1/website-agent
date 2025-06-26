@@ -16,15 +16,15 @@ dotenv.config();
 
 // Simple response templates to replace deleted constants
 const RESPONSE_TEMPLATES = {
-    contact_after_yes: "Great! Please provide your name, phone number, and email address.",
+    contact_after_yes: "Great! I can help you schedule a consultation. Please provide your name, phone number, and email address.",
     problem_followup_prefix: (category) => `I understand you're experiencing ${category}. Here are some services that might help:\n\n`,
-    problem_followup_suffix: "\n\nWould you like to schedule a consultation?",
-    problem_followup_fallback: (category) => `I understand you're experiencing ${category}. Let me connect you with our team. Could you provide your contact information?`,
-    emergency: "This sounds like it might need immediate attention. Please call us right away.",
-    visual_concern: "I understand you're concerned about the appearance of your teeth. Our cosmetic dentistry services can help improve your smile.",
-    acknowledge_symptom: (symptom) => `I understand you're experiencing ${symptom}. Let me help you schedule a consultation.`,
+    problem_followup_suffix: "\n\nI can help you schedule a consultation. Please provide your name, phone number, and email address.",
+    problem_followup_fallback: (category) => `I understand you're experiencing ${category}. We can help diagnose and treat this issue. I can help you schedule a consultation. Please provide your name, phone number, and email address.`,
+    emergency: "This sounds like it might need immediate attention. Please call us right away for emergency care.",
+    visual_concern: "I understand you're concerned about the appearance of your teeth. Our cosmetic dentistry services can help improve your smile with whitening, veneers, and other treatments. I can help you schedule a consultation. Please provide your name, phone number, and email address.",
+    acknowledge_symptom: (symptom) => `I understand you're experiencing ${symptom}. We can help diagnose and treat this properly. I can help you schedule a consultation. Please provide your name, phone number, and email address.`,
     service_list_prefix: "Here are the services we offer:\n\n",
-    service_list_suffix: "\n\nWhich service are you interested in?",
+    service_list_suffix: "\n\nI can help you schedule a consultation. Please provide your name, phone number, and email address.",
     error_fallback: "I apologize, but I'm having trouble processing your request right now. Please try again or call us directly.",
     OPERATING_HOURS_RESPONSE: (hours) => `Our operating hours are:\n${hours}`,
     HOURS_UNAVAILABLE_FALLBACK: "I don't have our current operating hours available. Please call us directly."
@@ -180,12 +180,14 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // Otherwise, call the dedicated service matcher
                 const matchedService = await handleServiceInquiry(normalizedMessage, businessData.services);
                 if (matchedService) {
-                    // Instead of providing service details, directly ask for contact info
+                    // Provide service information first, then ask for contact info
+                    const serviceDescription = decodeHtmlEntities(matchedService.description) || 
+                        `${decodeHtmlEntities(matchedService.name)} is one of our specialized dental services`;
                     responsePayload = {
                         type: 'CONTACT_REQUEST',
                         detectedService: decodeHtmlEntities(matchedService.name),
                         serviceContext: decodeHtmlEntities(matchedService.name),
-                        response: "To help you with this service, I need your name, phone number, and email address."
+                        response: `${serviceDescription} I can help you schedule a consultation. Please provide your name, phone number, and email address.`
                     };
                 } else {
                     // Fallback to AI if explicit inquiry but no match
@@ -197,10 +199,23 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             
             case 'PROBLEM_FOLLOWUP':
                 // console.log('[generateAIResponse] Matched case: PROBLEM_FOLLOWUP'); // To be removed/commented
-                // Instead of providing service suggestions, directly ask for contact info
+                // Provide helpful information about the problem, then ask for contact info
+                const problemCategory = intent.problemCategory;
+                let problemInfo = '';
+                
+                if (problemCategory === 'damage') {
+                    problemInfo = "We can repair damaged teeth with crowns, bonding, or veneers depending on the severity.";
+                } else if (problemCategory === 'pain') {
+                    problemInfo = "Dental pain can indicate various issues from cavities to infections. We'll diagnose and treat the root cause.";
+                } else if (problemCategory === 'sensitivity') {
+                    problemInfo = "Tooth sensitivity can be treated with desensitizing agents, fillings, or other restorative procedures.";
+                } else {
+                    problemInfo = "We can help diagnose and treat your dental concern with our comprehensive services.";
+                }
+                
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
-                    response: "To help you with this issue, I need your name, phone number, and email address."
+                    response: `${problemInfo} I can help you schedule a consultation. Please provide your name, phone number, and email address.`
                 };
                 break;
 
@@ -247,19 +262,26 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 break;
 
             case 'SERVICE_INTEREST':
-                // For general service interest, directly ask for contact info
+                // For general service interest, provide value first, then ask for contact info
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
-                    response: "To help you, I need your name, phone number, and email address."
+                    response: "We offer comprehensive dental services including cosmetic dentistry, preventive care, and emergency treatments. I can help you schedule a consultation. Please provide your name, phone number, and email address."
                 };
                 break;
 
             case 'REQUEST_SERVICE_LIST':
                 // console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST'); // To be removed/commented
-                // Instead of providing service lists, directly ask for contact info
+                // Provide brief service overview, then ask for contact info
+                let serviceOverview = "We offer comprehensive dental services including preventive care, cosmetic dentistry, restorative treatments, and emergency care.";
+                
+                if (businessData.services && businessData.services.length > 0) {
+                    const serviceNames = businessData.services.slice(0, 3).map(s => decodeHtmlEntities(s.name)).join(', ');
+                    serviceOverview = `Our services include ${serviceNames} and more.`;
+                }
+                
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
-                    response: "To help you with our services, I need your name, phone number, and email address."
+                    response: `${serviceOverview} I can help you schedule a consultation. Please provide your name, phone number, and email address.`
                 };
                 break;
 
