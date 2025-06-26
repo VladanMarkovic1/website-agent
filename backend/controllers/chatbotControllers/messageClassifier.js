@@ -368,6 +368,14 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         return { type: 'HELP_REQUEST' };
     }
 
+    // Check for general service interest or "how can you help" type questions
+    if ((normalizedMessage.includes('how') && normalizedMessage.includes('help')) ||
+        (normalizedMessage.includes('what') && normalizedMessage.includes('do')) ||
+        (normalizedMessage.includes('can you') && (normalizedMessage.includes('help') || normalizedMessage.includes('do'))) ||
+        (normalizedMessage.includes('services') && (normalizedMessage.includes('offer') || normalizedMessage.includes('have') || normalizedMessage.includes('provide')))) {
+        return { type: 'SERVICE_INTEREST' };
+    }
+
     // Check for confirmation keywords ONLY if the bot didn't just ask for contact
     // AND the message is actually a confirmation, not a question
     if (!botRequestedContact && 

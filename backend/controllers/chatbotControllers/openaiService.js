@@ -180,15 +180,12 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // Otherwise, call the dedicated service matcher
                 const matchedService = await handleServiceInquiry(normalizedMessage, businessData.services);
                 if (matchedService) {
-                    // Construct response using matched service data
-                     // Apply decoding to the description
-                     const serviceDescription = decodeHtmlEntities(matchedService.description) || // USE NEW FUNCTION
-                        `${decodeHtmlEntities(matchedService.name)} is one of our specialized dental services`; // USE NEW FUNCTION & Decode name too for consistency
+                    // Instead of providing service details, directly ask for contact info
                     responsePayload = {
-                        type: 'SERVICE_INQUIRY',
-                        detectedService: decodeHtmlEntities(matchedService.name), // USE NEW FUNCTION & Decode name here too
-                        serviceContext: decodeHtmlEntities(matchedService.name), // USE NEW FUNCTION & Decode name here too
-                        response: `${serviceDescription} Would you like to schedule a consultation?` // USE NEW FUNCTION & Decode name here too
+                        type: 'CONTACT_REQUEST',
+                        detectedService: decodeHtmlEntities(matchedService.name),
+                        serviceContext: decodeHtmlEntities(matchedService.name),
+                        response: "To help you with this service, I need your name, phone number, and email address."
                     };
                 } else {
                     // Fallback to AI if explicit inquiry but no match
@@ -200,32 +197,11 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             
             case 'PROBLEM_FOLLOWUP':
                 // console.log('[generateAIResponse] Matched case: PROBLEM_FOLLOWUP'); // To be removed/commented
-                // This logic depends on constants and context, reasonable to keep here
-                let suggestedServices = [];
-                const problemCategory = intent.problemCategory;
-                if (problemCategory === 'damage') suggestedServices = ['Dental Crowns', 'Dental Bonding', 'Veneers', 'Fillings'];
-                else if (problemCategory === 'pain') suggestedServices = ['Root Canal Treatment', 'Tooth Extraction', 'Emergency Consultation'];
-                else if (problemCategory === 'sensitivity') suggestedServices = ['Sensitivity Treatment', 'Fillings', 'Dental Sealants'];
-                
-                const availableServices = businessData.services.map(s => s.name);
-                const relevantServices = suggestedServices.filter(s => 
-                    availableServices.some(as => as.toLowerCase().includes(s.toLowerCase()))
-                );
-
-                if (relevantServices.length > 0) {
-                    responsePayload = {
-                        type: 'PROBLEM_FOLLOWUP',
-                        response: 
-                            RESPONSE_TEMPLATES.problem_followup_prefix(problemCategory) + 
-                            relevantServices.map(s => `• ${s}`).join('\n') + 
-                            RESPONSE_TEMPLATES.problem_followup_suffix
-                    };
-                } else {
-                    responsePayload = {
-                        type: 'PROBLEM_FOLLOWUP',
-                        response: RESPONSE_TEMPLATES.problem_followup_fallback(problemCategory)
-                    };
-                }
+                // Instead of providing service suggestions, directly ask for contact info
+                responsePayload = {
+                    type: 'CONTACT_REQUEST',
+                    response: "To help you with this issue, I need your name, phone number, and email address."
+                };
                 break;
 
             case 'DENTAL_PROBLEM':
@@ -270,21 +246,21 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
                 break;
 
+            case 'SERVICE_INTEREST':
+                // For general service interest, directly ask for contact info
+                responsePayload = {
+                    type: 'CONTACT_REQUEST',
+                    response: "To help you, I need your name, phone number, and email address."
+                };
+                break;
+
             case 'REQUEST_SERVICE_LIST':
-                 // console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST'); // To be removed/commented
-                 // This logic depends on context, reasonable to keep here
-                if (businessData.services && businessData.services.length > 0) {
-                    // Map and decode service names using the NEW helper
-                    const serviceNames = businessData.services.map(s => `• ${decodeHtmlEntities(s.name)}`).join('\n'); // USE NEW FUNCTION
-                    responsePayload = {
-                        type: 'SERVICE_LIST',
-                        response: RESPONSE_TEMPLATES.service_list_prefix + serviceNames + RESPONSE_TEMPLATES.service_list_suffix
-                    };
-                } else {
-                     // Fallback to AI if no services defined
-                     // Pass businessData to the fallback function
-                     responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
-                }
+                // console.log('[generateAIResponse] Matched case: REQUEST_SERVICE_LIST'); // To be removed/commented
+                // Instead of providing service lists, directly ask for contact info
+                responsePayload = {
+                    type: 'CONTACT_REQUEST',
+                    response: "To help you with our services, I need your name, phone number, and email address."
+                };
                 break;
 
             case 'APPOINTMENT_REQUEST':
