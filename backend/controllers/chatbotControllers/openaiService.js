@@ -16,18 +16,18 @@ dotenv.config();
 
 // Simple response templates to replace deleted constants
 const RESPONSE_TEMPLATES = {
-    contact_after_yes: "Great! To help you schedule an appointment, could you please provide your name, phone number, and email address?",
+    contact_after_yes: "Great! Please provide your name, phone number, and email address.",
     problem_followup_prefix: (category) => `I understand you're experiencing ${category}. Here are some services that might help:\n\n`,
-    problem_followup_suffix: "\n\nWould you like to schedule a consultation to discuss these options?",
-    problem_followup_fallback: (category) => `I understand you're experiencing ${category}. Let me connect you with our team to discuss your specific needs. Could you provide your contact information?`,
-    emergency: "This sounds like it might need immediate attention. Please call us right away or visit an emergency dental clinic if the pain is severe.",
+    problem_followup_suffix: "\n\nWould you like to schedule a consultation?",
+    problem_followup_fallback: (category) => `I understand you're experiencing ${category}. Let me connect you with our team. Could you provide your contact information?`,
+    emergency: "This sounds like it might need immediate attention. Please call us right away.",
     visual_concern: "I understand you're concerned about the appearance of your teeth. Our cosmetic dentistry services can help improve your smile.",
-    acknowledge_symptom: (symptom) => `I understand you're experiencing ${symptom}. Let me help you schedule a consultation to address this properly.`,
+    acknowledge_symptom: (symptom) => `I understand you're experiencing ${symptom}. Let me help you schedule a consultation.`,
     service_list_prefix: "Here are the services we offer:\n\n",
     service_list_suffix: "\n\nWhich service are you interested in?",
     error_fallback: "I apologize, but I'm having trouble processing your request right now. Please try again or call us directly.",
     OPERATING_HOURS_RESPONSE: (hours) => `Our operating hours are:\n${hours}`,
-    HOURS_UNAVAILABLE_FALLBACK: "I don't have our current operating hours available. Please call us directly for the most up-to-date information."
+    HOURS_UNAVAILABLE_FALLBACK: "I don't have our current operating hours available. Please call us directly."
 };
 
 // Simple dental problems mapping to replace deleted constants
@@ -134,15 +134,15 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // --- END MODIFIED LOGIC ---
                 
                 // Use phone/email from businessData (dashboard)
-                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! Your information has been received. We've noted your interest in ${determinedServiceContext}.\n\n`;
-                const scheduleSuffix = `🧑‍⚕️ Our team will call you back at ${contactInfo.phone} as soon as possible during business hours to discuss your needs and book your ideal appointment time.\n\n`;
+                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! We've received your information for ${determinedServiceContext}.`;
+                const scheduleSuffix = ` Our team will call you at ${contactInfo.phone} soon.`;
                 // Use dashboard phone/email for callUsSuffix
                 let callUsSuffix = '';
                 if (businessData.phone) {
-                    callUsSuffix += `📞 If your situation requires immediate attention or you prefer to speak with us sooner, please feel free to call us directly at ${businessData.phone}.`;
+                    callUsSuffix += ` Need immediate help? Call ${businessData.phone}.`;
                 }
                 if (businessData.email) {
-                    callUsSuffix += ` You can also email us at ${businessData.email}.`;
+                    callUsSuffix += ` Or email ${businessData.email}.`;
                 }
                 console.log('[DEBUG][openaiService.js] Using contact info in response:', { phone: businessData.phone, email: businessData.email });
                 responsePayload = {
@@ -188,7 +188,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                         type: 'SERVICE_INQUIRY',
                         detectedService: decodeHtmlEntities(matchedService.name), // USE NEW FUNCTION & Decode name here too
                         serviceContext: decodeHtmlEntities(matchedService.name), // USE NEW FUNCTION & Decode name here too
-                        response: `${serviceDescription}\n\nWould you like to schedule a consultation with our ${decodeHtmlEntities(matchedService.name)} specialist? I can help arrange that. 😊` // USE NEW FUNCTION & Decode name here too
+                        response: `${serviceDescription} Would you like to schedule a consultation?` // USE NEW FUNCTION & Decode name here too
                     };
                 } else {
                     // Fallback to AI if explicit inquiry but no match
@@ -284,7 +284,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
             case 'APPOINTMENT_REQUEST':
                 // Always prepend the tip, then add the AI/template response
-                const tip = "Just so you know, I don't have access to a live calendar to confirm real-time availability. However, I can arrange for our team to call you and finalize your appointment.\n\n";
+                const tip = "I don't have access to a live calendar, but I can arrange for our team to call you.\n\n";
                 const aiAppointmentResponse = await generateAIFallbackResponse(message, messageHistory, businessData);
                 const aiText = aiAppointmentResponse.response || "";
                 responsePayload = {

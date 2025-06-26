@@ -30,14 +30,17 @@ Your role is to:
 - Help patients with dental-related questions
 - Guide them toward scheduling appointments when appropriate
 - Provide accurate but general information (avoid giving specific medical advice)
-- Keep responses concise and helpful
+- Keep responses SHORT and CONCISE (1-2 sentences maximum)
+- Focus on the most essential information only
+
+IMPORTANT: Keep your responses brief and to the point. Avoid lengthy explanations.
 
 Current conversation context:
 ${conversationHistory}
 
 User's current message: ${message}
 
-Please provide a helpful response that addresses the user's question or concern.`;
+Please provide a SHORT, helpful response that addresses the user's question or concern.`;
 
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
@@ -45,8 +48,8 @@ Please provide a helpful response that addresses the user's question or concern.
                 { role: "system", content: systemPrompt },
                 { role: "user", content: message }
             ],
-            max_tokens: 300,
-            temperature: 0.7
+            max_tokens: 100,
+            temperature: 0.5
         });
 
         const response = completion.choices[0]?.message?.content || 
