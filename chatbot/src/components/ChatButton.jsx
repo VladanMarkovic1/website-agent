@@ -30,44 +30,44 @@ const ChatButton = ({ onClick, text = 'Chat with us', primaryColor = '#4F46E5' }
       <style jsx>{`
         @keyframes attractAttention {
           0%, 100% { 
-            transform: scale(1) rotate(0deg);
+            transform: scale(1) translateX(0);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           }
           10% { 
-            transform: scale(1.08) rotate(2deg);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
-          }
-          20% { 
-            transform: scale(1.05) rotate(-1.5deg);
+            transform: scale(1.05) translateX(-4px);
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
           }
+          20% { 
+            transform: scale(1.02) translateX(3px);
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+          }
           30% { 
-            transform: scale(1.15) rotate(3deg);
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+            transform: scale(1.08) translateX(-6px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
           }
           40% { 
-            transform: scale(1.06) rotate(-2deg);
-            box-shadow: 0 7px 22px rgba(0, 0, 0, 0.22);
+            transform: scale(1.03) translateX(5px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
           }
           50% { 
-            transform: scale(1.12) rotate(2.5deg);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+            transform: scale(1.06) translateX(-3px);
+            box-shadow: 0 7px 22px rgba(0, 0, 0, 0.22);
           }
           60% { 
-            transform: scale(1.03) rotate(-1deg);
-            box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
+            transform: scale(1.01) translateX(4px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
           }
           70% { 
-            transform: scale(1.09) rotate(1.5deg);
-            box-shadow: 0 8px 26px rgba(0, 0, 0, 0.24);
-          }
-          80% { 
-            transform: scale(1.04) rotate(-0.5deg);
+            transform: scale(1.04) translateX(-2px);
             box-shadow: 0 6px 19px rgba(0, 0, 0, 0.2);
           }
+          80% { 
+            transform: scale(1.02) translateX(3px);
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+          }
           90% { 
-            transform: scale(1.07) rotate(1deg);
-            box-shadow: 0 7px 24px rgba(0, 0, 0, 0.22);
+            transform: scale(1.05) translateX(-1px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
           }
         }
       `}</style>
