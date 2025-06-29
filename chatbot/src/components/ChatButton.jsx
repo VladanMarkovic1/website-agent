@@ -7,7 +7,7 @@ const ChatButton = ({ onClick, text = 'Chat with us', primaryColor = '#4F46E5' }
       className="flex items-center justify-center p-0 w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border-0 focus:outline-none"
       style={{ 
         backgroundColor: primaryColor,
-        animation: 'attractAttention 3s ease-in-out infinite'
+        animation: 'attractAttention 2s ease-in-out infinite'
       }}
       aria-label={text}
     >
@@ -34,40 +34,40 @@ const ChatButton = ({ onClick, text = 'Chat with us', primaryColor = '#4F46E5' }
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           }
           10% { 
-            transform: scale(1.05) rotate(1deg);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-          }
-          20% { 
-            transform: scale(1.02) rotate(-0.5deg);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.18);
-          }
-          30% { 
-            transform: scale(1.08) rotate(0.5deg);
+            transform: scale(1.08) rotate(2deg);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
           }
-          40% { 
-            transform: scale(1.03) rotate(-0.3deg);
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+          20% { 
+            transform: scale(1.05) rotate(-1.5deg);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
           }
-          50% { 
-            transform: scale(1.06) rotate(0.3deg);
+          30% { 
+            transform: scale(1.15) rotate(3deg);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+          }
+          40% { 
+            transform: scale(1.06) rotate(-2deg);
             box-shadow: 0 7px 22px rgba(0, 0, 0, 0.22);
           }
+          50% { 
+            transform: scale(1.12) rotate(2.5deg);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+          }
           60% { 
-            transform: scale(1.01) rotate(-0.2deg);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+            transform: scale(1.03) rotate(-1deg);
+            box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
           }
           70% { 
-            transform: scale(1.04) rotate(0.2deg);
-            box-shadow: 0 6px 19px rgba(0, 0, 0, 0.2);
+            transform: scale(1.09) rotate(1.5deg);
+            box-shadow: 0 8px 26px rgba(0, 0, 0, 0.24);
           }
           80% { 
-            transform: scale(1.02) rotate(-0.1deg);
-            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+            transform: scale(1.04) rotate(-0.5deg);
+            box-shadow: 0 6px 19px rgba(0, 0, 0, 0.2);
           }
           90% { 
-            transform: scale(1.03) rotate(0.1deg);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            transform: scale(1.07) rotate(1deg);
+            box-shadow: 0 7px 24px rgba(0, 0, 0, 0.22);
           }
         }
       `}</style>
