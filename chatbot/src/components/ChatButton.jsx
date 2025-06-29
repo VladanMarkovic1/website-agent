@@ -4,10 +4,10 @@ const ChatButton = ({ onClick, text = 'Chat with us', primaryColor = '#4F46E5' }
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-center p-0 w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border-0 focus:outline-none animate-shake"
+      className="flex items-center justify-center p-0 w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border-0 focus:outline-none"
       style={{ 
         backgroundColor: primaryColor,
-        animation: 'shake 2s ease-in-out infinite'
+        animation: 'attractAttention 3s ease-in-out infinite'
       }}
       aria-label={text}
     >
@@ -28,10 +28,47 @@ const ChatButton = ({ onClick, text = 'Chat with us', primaryColor = '#4F46E5' }
       </svg>
       
       <style jsx>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-          20%, 40%, 60%, 80% { transform: translateX(2px); }
+        @keyframes attractAttention {
+          0%, 100% { 
+            transform: scale(1) rotate(0deg);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          }
+          10% { 
+            transform: scale(1.05) rotate(1deg);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+          }
+          20% { 
+            transform: scale(1.02) rotate(-0.5deg);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.18);
+          }
+          30% { 
+            transform: scale(1.08) rotate(0.5deg);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+          }
+          40% { 
+            transform: scale(1.03) rotate(-0.3deg);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+          }
+          50% { 
+            transform: scale(1.06) rotate(0.3deg);
+            box-shadow: 0 7px 22px rgba(0, 0, 0, 0.22);
+          }
+          60% { 
+            transform: scale(1.01) rotate(-0.2deg);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+          }
+          70% { 
+            transform: scale(1.04) rotate(0.2deg);
+            box-shadow: 0 6px 19px rgba(0, 0, 0, 0.2);
+          }
+          80% { 
+            transform: scale(1.02) rotate(-0.1deg);
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+          }
+          90% { 
+            transform: scale(1.03) rotate(0.1deg);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+          }
         }
       `}</style>
     </button>
