@@ -4,8 +4,11 @@ const ChatButton = ({ onClick, text = 'Chat with us', primaryColor = '#4F46E5' }
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-center p-0 w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border-0 focus:outline-none"
-      style={{ backgroundColor: primaryColor }}
+      className="flex items-center justify-center p-0 w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border-0 focus:outline-none animate-shake"
+      style={{ 
+        backgroundColor: primaryColor,
+        animation: 'shake 2s ease-in-out infinite'
+      }}
       aria-label={text}
     >
       {/* Intercom-style chat bubble icon */}
@@ -23,6 +26,14 @@ const ChatButton = ({ onClick, text = 'Chat with us', primaryColor = '#4F46E5' }
           />
         </g>
       </svg>
+      
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+          20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+      `}</style>
     </button>
   );
 };
