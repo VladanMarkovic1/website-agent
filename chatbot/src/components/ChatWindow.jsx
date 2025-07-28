@@ -339,8 +339,16 @@ const ChatWindow = ({
           {step === 1 && (
             <div className="flex-1 flex flex-col items-center p-3 bg-gradient-to-b from-white to-gray-50">
               <div className="mb-3 text-center">
-                <h3 className="text-lg font-semibold mb-1">How can we serve you?</h3>
-                <p className="text-sm text-gray-600">Select your dental concern</p>
+                <h3 className="text-lg font-semibold mb-1">
+                  {selectedLanguage === 'en' ? 'How can we serve you?' : 
+                   selectedLanguage === 'es' ? '¿Cómo podemos ayudarte?' : 
+                   selectedLanguage === 'it' ? 'Come possiamo aiutarti?' : 'How can we serve you?'}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {selectedLanguage === 'en' ? 'Select your dental concern' : 
+                   selectedLanguage === 'es' ? 'Selecciona tu problema dental' : 
+                   selectedLanguage === 'it' ? 'Seleziona il tuo problema dentale' : 'Select your dental concern'}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3 w-full max-w-xs mb-4">
                 {concerns.map((option) => (
@@ -350,7 +358,11 @@ const ChatWindow = ({
                     className={`${option.name === 'Other' ? 'col-span-2' : ''} flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-[#D2A89E] hover:bg-[#c49a90] transition-all duration-200 font-semibold !text-white`}
                     style={{ color: '#fff' }}
                   >
-                    {option.name === 'Other' ? 'Other Concerns' : option.name}
+                    {option.name === 'Other' ? 
+                      (selectedLanguage === 'en' ? 'Other Concerns' : 
+                       selectedLanguage === 'es' ? 'Otras Preocupaciones' : 
+                       selectedLanguage === 'it' ? 'Altre Preoccupazioni' : 'Other Concerns') : 
+                      option.name}
                   </button>
                 ))}
               </div>
