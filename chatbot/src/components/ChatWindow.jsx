@@ -242,18 +242,28 @@ const ChatWindow = ({
             <div className="flex items-center gap-2">
               {/* Language Menu */}
               {showLanguageMenu && supportedLanguages.length > 1 && (
-                <select
-                  value={selectedLanguage}
-                  onChange={(e) => handleLanguageChange(e.target.value)}
-                  className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50"
-                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
-                >
-                  {supportedLanguages.map(lang => (
-                    <option key={lang} value={lang} className="text-gray-800">
-                      {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'it' ? 'Italiano' : lang}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="appearance-none bg-white/25 backdrop-blur-sm text-white border border-white/40 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/60 transition-all duration-200 hover:bg-white/30 cursor-pointer pr-8"
+                    style={{ 
+                      backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {supportedLanguages.map(lang => (
+                      <option key={lang} value={lang} className="text-gray-800 bg-white font-medium">
+                        {lang === 'en' ? '🇺🇸 English' : lang === 'es' ? '🇪🇸 Español' : lang === 'it' ? '🇮🇹 Italiano' : lang}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               )}
               <button
                 onClick={onClose}
@@ -535,18 +545,28 @@ const ChatWindow = ({
         <div className="flex items-center gap-2">
           {/* Language Menu */}
           {showLanguageMenu && supportedLanguages.length > 1 && (
-            <select
-              value={selectedLanguage}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50"
-              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
-            >
-              {supportedLanguages.map(lang => (
-                <option key={lang} value={lang} className="text-gray-800">
-                  {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'it' ? 'Italiano' : lang}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedLanguage}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                className="appearance-none bg-white/25 backdrop-blur-sm text-white border border-white/40 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/60 transition-all duration-200 hover:bg-white/30 cursor-pointer pr-8"
+                style={{ 
+                  backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+              >
+                {supportedLanguages.map(lang => (
+                  <option key={lang} value={lang} className="text-gray-800 bg-white font-medium">
+                    {lang === 'en' ? '🇺🇸 English' : lang === 'es' ? '🇪🇸 Español' : lang === 'it' ? '🇮🇹 Italiano' : lang}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           )}
           <button
             onClick={onClose}
