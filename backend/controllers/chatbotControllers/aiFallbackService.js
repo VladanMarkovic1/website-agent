@@ -12,8 +12,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  * @param {Object} businessData - Business information
  * @returns {Object} Response payload
  */
-export const generateAIFallbackResponse = async (message, messageHistory = [], businessData = {}) => {
+export const generateAIFallbackResponse = async (message, messageHistory = [], businessData = {}, language = 'en') => {
     try {
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        
         // Build context from business data
         const businessContext = buildBusinessContext(businessData);
         
@@ -23,6 +25,9 @@ export const generateAIFallbackResponse = async (message, messageHistory = [], b
             .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
             .join('\n');
 
+        // Add language instruction to system prompt
+        const languageInstruction = language !== 'en' ? `\n\nIMPORTANT: Please respond in ${language === 'es' ? 'Spanish' : language === 'it' ? 'Italian' : language}.` : '';
+
         const systemPrompt = `You are a helpful dental office assistant. ${businessContext}
 
 Your role is to:
@@ -31,7 +36,7 @@ Your role is to:
 - Provide valuable, informative responses (2-3 sentences)
 - Give specific information about services, procedures, or dental care
 - After providing helpful information, ask for their name, phone number, and email address to schedule
-- Keep responses concise but informative
+- Keep responses concise but informative${languageInstruction}
 
 IMPORTANT RULES:
 - Provide actual value and information in your response
