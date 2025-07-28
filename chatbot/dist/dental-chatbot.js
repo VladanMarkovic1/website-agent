@@ -34876,11 +34876,14 @@ function IconBase(props) {
   };
   return IconContext !== void 0 ? /* @__PURE__ */ React.createElement(IconContext.Consumer, null, (conf) => elem(conf)) : elem(DefaultContext);
 }
+function FaArrowLeft(props) {
+  return GenIcon({ "attr": { "viewBox": "0 0 448 512" }, "child": [{ "tag": "path", "attr": { "d": "M257.5 445.1l-22.2 22.2c-9.4 9.4-24.6 9.4-33.9 0L7 273c-9.4-9.4-9.4-24.6 0-33.9L201.4 44.7c9.4-9.4 24.6-9.4 33.9 0l22.2 22.2c9.5 9.5 9.3 25-.4 34.3L136.6 216H424c13.3 0 24 10.7 24 24v32c0 13.3-10.7 24-24 24H136.6l120.5 114.8c9.8 9.3 10 24.8.4 34.3z" }, "child": [] }] })(props);
+}
+function FaCheckCircle(props) {
+  return GenIcon({ "attr": { "viewBox": "0 0 512 512" }, "child": [{ "tag": "path", "attr": { "d": "M504 256c0 136.967-111.033 248-248 248S8 392.967 8 256 119.033 8 256 8s248 111.033 248 248zM227.314 387.314l184-184c6.248-6.248 6.248-16.379 0-22.627l-22.627-22.627c-6.248-6.249-16.379-6.249-22.628 0L216 308.118l-70.059-70.059c-6.248-6.248-16.379-6.248-22.628 0l-22.627 22.627c-6.248 6.248-6.248 16.379 0 22.627l104 104c6.249 6.249 16.379 6.249 22.628.001z" }, "child": [] }] })(props);
+}
 function FaPaperPlane(props) {
   return GenIcon({ "attr": { "viewBox": "0 0 512 512" }, "child": [{ "tag": "path", "attr": { "d": "M476 3.2L12.5 270.6c-18.1 10.4-15.8 35.6 2.2 43.2L121 358.4l287.3-253.2c5.5-4.9 13.3 2.6 8.6 8.3L176 407v80.5c0 23.6 28.5 32.9 42.5 15.8L282 426l124.6 52.2c14.2 6 30.4-2.9 33-18.2l72-432C515 7.8 493.3-6.8 476 3.2z" }, "child": [] }] })(props);
-}
-function FaRobot(props) {
-  return GenIcon({ "attr": { "viewBox": "0 0 640 512" }, "child": [{ "tag": "path", "attr": { "d": "M32,224H64V416H32A31.96166,31.96166,0,0,1,0,384V256A31.96166,31.96166,0,0,1,32,224Zm512-48V448a64.06328,64.06328,0,0,1-64,64H160a64.06328,64.06328,0,0,1-64-64V176a79.974,79.974,0,0,1,80-80H288V32a32,32,0,0,1,64,0V96H464A79.974,79.974,0,0,1,544,176ZM264,256a40,40,0,1,0-40,40A39.997,39.997,0,0,0,264,256Zm-8,128H192v32h64Zm96,0H288v32h64ZM456,256a40,40,0,1,0-40,40A39.997,39.997,0,0,0,456,256Zm-8,128H384v32h64ZM640,256V384a31.96166,31.96166,0,0,1-32,32H576V224h32A31.96166,31.96166,0,0,1,640,256Z" }, "child": [] }] })(props);
 }
 function FaTimes(props) {
   return GenIcon({ "attr": { "viewBox": "0 0 352 512" }, "child": [{ "tag": "path", "attr": { "d": "M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z" }, "child": [] }] })(props);
@@ -44524,12 +44527,70 @@ function defaultUrlTransform(value2) {
   }
   return "";
 }
-const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = "#4F46E5" }) => {
+const getSubmissionMessage = () => {
+  const today = (/* @__PURE__ */ new Date()).getDay();
+  if (today === 0 || today === 6) {
+    return "We are closed for the weekend, but we will call you early on Monday with more information.";
+  }
+  return "Our team will get back to you within 2 hours with more information.";
+};
+const ChatWindow = ({
+  messages,
+  onSendMessage,
+  onClose,
+  isLoading,
+  primaryColor = "#4F46E5",
+  dayOptions = [],
+  timeOptions = [],
+  concernOptions = [],
+  showLanguageMenu = false,
+  supportedLanguages = ["en"]
+}) => {
   console.log("[ChatWindow] Rendering with messages:", messages);
   const [input, setInput] = reactExports.useState("");
   const [headerTitle, setHeaderTitle] = reactExports.useState("Chat Assistant");
   const messagesEndRef = reactExports.useRef(null);
   const inputRef = reactExports.useRef(null);
+  const [selectedLanguage, setSelectedLanguage] = reactExports.useState("en");
+  const [step, setStep] = reactExports.useState(1);
+  const [selectedConcern, setSelectedConcern] = reactExports.useState(null);
+  const [appointmentTimeframe, setAppointmentTimeframe] = reactExports.useState(null);
+  const [freeChat, setFreeChat] = reactExports.useState(false);
+  const [userDetails, setUserDetails] = reactExports.useState({ name: "", phone: "", email: "" });
+  const [bestDays, setBestDays] = reactExports.useState([]);
+  const [preferredTime, setPreferredTime] = reactExports.useState("");
+  const [hasInsurance, setHasInsurance] = reactExports.useState("");
+  const [submitStatus, setSubmitStatus] = reactExports.useState(null);
+  let concerns = [];
+  if (concernOptions && concernOptions.length > 0) {
+    const uniqueNames = /* @__PURE__ */ new Set();
+    concerns = concernOptions.filter((s) => {
+      const name2 = typeof s === "string" ? s : s.name;
+      if (!name2 || typeof name2 !== "string" || uniqueNames.has(name2.toLowerCase())) {
+        return false;
+      }
+      uniqueNames.add(name2.toLowerCase());
+      return true;
+    }).map((s) => typeof s === "string" ? { name: s } : s);
+  } else {
+    concerns = [
+      { name: "Pain" },
+      { name: "Broken teeth" },
+      { name: "Implants" },
+      { name: "Regular care" },
+      { name: "Whitening" },
+      { name: "Invisalign" }
+    ];
+  }
+  if (!concerns.some((c) => c.name === "Other")) {
+    concerns.push({ name: "Other" });
+  }
+  console.log("Concerns for buttons:", concerns);
+  concerns = concerns.filter((option) => option && typeof option.name === "string" && option.name.length > 0);
+  const days = dayOptions.length > 0 ? dayOptions : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const times = ["Morning", "Afternoon"];
+  const insuranceOptions = ["Yes", "No"];
+  const timingOptions = ["Now", "1-3 weeks", "1-3 months"];
   reactExports.useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -44549,12 +44610,348 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     var _a;
     (_a = inputRef.current) == null ? void 0 : _a.focus();
   }, []);
+  const handleConcernClick = (option) => {
+    setSelectedConcern(option);
+    if (option === "Other") {
+      setFreeChat(true);
+      setStep("chat");
+    } else {
+      onSendMessage(`I'm interested in ${option}`);
+      setStep(2);
+    }
+  };
+  const handleTimingClick = (option) => {
+    setAppointmentTimeframe(option);
+    onSendMessage(`I would like an appointment ${option.toLowerCase()}`);
+    if (option === "Now") {
+      setStep(3);
+    } else {
+      setStep(4);
+    }
+  };
+  const handleDaySelect = (day) => {
+    setBestDays([day]);
+    onSendMessage(`I prefer ${day} for my appointment`);
+    setStep(5);
+  };
+  const handleTimeSelect = (time) => {
+    setPreferredTime(time);
+    onSendMessage(`I prefer ${time} appointments`);
+    setStep(6);
+  };
+  const handleInsuranceSelect = (val) => {
+    setHasInsurance(val);
+    onSendMessage(`I ${val === "Yes" ? "have" : "do not have"} dental insurance`);
+    setStep(3);
+  };
+  const handleUserDetailChange = (e) => {
+    setUserDetails({ ...userDetails, [e.target.name]: e.target.value });
+  };
+  const handleBack = () => {
+    if (step === 2) {
+      setStep(1);
+      setSelectedConcern(null);
+      setFreeChat(false);
+      setAppointmentTimeframe(null);
+    } else if (step === 3) {
+      if (appointmentTimeframe === "Now") {
+        setStep(2);
+      } else {
+        setStep(6);
+      }
+    } else if (step === 4) {
+      setStep(2);
+      setBestDays([]);
+    } else if (step === 5) {
+      setStep(4);
+      setPreferredTime("");
+    } else if (step === 6) {
+      setStep(5);
+      setHasInsurance("");
+    }
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
-    onSendMessage(input);
+    onSendMessage(input, selectedLanguage);
     setInput("");
   };
+  const handleSubmitDetails = async () => {
+    let message = `${userDetails.name}, ${userDetails.phone}, ${userDetails.email}`;
+    try {
+      onSendMessage(message, selectedLanguage);
+      setSubmitStatus("success");
+    } catch (e) {
+      setSubmitStatus("error");
+    }
+  };
+  try {
+    if (!freeChat) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col w-80 h-[500px] bg-white rounded-lg shadow-xl", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "flex items-center justify-between p-3 rounded-t-lg text-white",
+            style: { backgroundColor: primaryColor },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-base font-semibold truncate", children: "Chat Assistant" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: onClose,
+                  className: "text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent",
+                  "aria-label": "Close chat",
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(FaTimes, { className: "w-4 h-4" })
+                }
+              )
+            ]
+          }
+        ),
+        step === 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col items-center p-3 bg-gradient-to-b from-white to-gray-50", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-3 text-center", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-semibold mb-1", children: "How can we serve you?" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-gray-600", children: "Select your dental concern" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-3 w-full max-w-xs mb-4", children: concerns.map((option) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => handleConcernClick(option.name),
+              className: `${option.name === "Other" ? "col-span-2" : ""} flex flex-col items-center py-3 text-base rounded-xl border border-gray-200 bg-[#D2A89E] hover:bg-[#c49a90] transition-all duration-200 font-semibold !text-white`,
+              style: { color: "#fff" },
+              children: option.name === "Other" ? "Other Concerns" : option.name
+            },
+            option.name
+          )) })
+        ] }),
+        step === 2 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col items-center justify-center p-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-4 text-center font-semibold", children: "📅 How soon would you like an appointment?" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col gap-2 w-full max-w-xs mb-4", children: timingOptions.map((option) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: "py-2 px-3 rounded-lg border border-gray-300 bg-gray-50 hover:bg-blue-100 text-gray-800 font-medium focus:outline-none",
+              onClick: () => handleTimingClick(option),
+              children: option
+            },
+            option
+          )) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: handleBack,
+              className: "flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(FaArrowLeft, { className: "w-3 h-3" }),
+                "Back"
+              ]
+            }
+          )
+        ] }),
+        step === 3 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 flex flex-col items-center justify-center p-4", children: submitStatus === "success" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center justify-center w-full", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(FaCheckCircle, { className: "text-green-500 mb-3", style: { fontSize: 56 } }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-green-700 text-base font-semibold text-center mb-2", children: getSubmissionMessage() })
+        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-4 text-center font-semibold", children: "Please enter your details so we can book your appointment:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "text",
+              name: "name",
+              value: userDetails.name,
+              onChange: handleUserDetailChange,
+              placeholder: "Your Name",
+              className: "mb-2 p-2 border rounded-lg w-full max-w-xs",
+              autoComplete: "name"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "tel",
+              name: "phone",
+              value: userDetails.phone,
+              onChange: handleUserDetailChange,
+              placeholder: "Phone Number",
+              className: "mb-2 p-2 border rounded-lg w-full max-w-xs",
+              autoComplete: "tel"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "email",
+              name: "email",
+              value: userDetails.email,
+              onChange: handleUserDetailChange,
+              placeholder: "Email Address",
+              className: "mb-2 p-2 border rounded-lg w-full max-w-xs",
+              autoComplete: "email"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: handleBack,
+              className: "flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none mt-2 mb-2",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(FaArrowLeft, { className: "w-4 h-4" }),
+                "Back"
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: "mt-4 px-4 py-2 text-white rounded-lg disabled:opacity-50 transition-colors duration-150",
+              style: { backgroundColor: userDetails.name && userDetails.phone && userDetails.email ? primaryColor : "#ccc", border: "none" },
+              disabled: !(userDetails.name && userDetails.phone && userDetails.email),
+              onClick: handleSubmitDetails,
+              children: "Submit"
+            }
+          ),
+          submitStatus === "error" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2 text-red-600", children: "There was an error submitting your request. Please try again." })
+        ] }) }),
+        step === 4 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col items-center p-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full pt-6 pb-7 text-center font-bold text-lg", children: "What days work the best?" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 gap-3 w-full max-w-xs mb-8", children: days.map((day) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: `py-3 rounded-xl font-medium text-base transition-all duration-150 shadow-sm focus:outline-none
+                      ${bestDays.includes(day) ? "text-white scale-105" : "text-gray-700"} bg-gray-100 hover:bg-gray-200`,
+              style: bestDays.includes(day) ? { backgroundColor: primaryColor, color: "#fff", border: "none" } : { border: "none" },
+              onClick: () => handleDaySelect(day),
+              children: day
+            },
+            day
+          )) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-row justify-between w-full max-w-xs mt-2 gap-4", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                type: "button",
+                onClick: handleBack,
+                className: "flex-1 flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none",
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(FaArrowLeft, { className: "w-4 h-4" }),
+                  "Back"
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                className: "flex-1 flex items-center justify-center px-4 py-2 rounded-full text-white text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none",
+                style: { backgroundColor: bestDays.length === 1 ? primaryColor : "#ccc", cursor: bestDays.length === 1 ? "pointer" : "not-allowed" },
+                disabled: bestDays.length !== 1,
+                onClick: () => setStep(5),
+                children: "Next"
+              }
+            )
+          ] })
+        ] }),
+        step === 5 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col items-center p-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full pt-6 pb-7 text-center font-bold text-lg", children: "Do you prefer morning or afternoon appointment?" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-row justify-center gap-4 w-full max-w-xs mb-8", children: times.map((time) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: `flex-1 py-3 rounded-xl font-medium text-base transition-all duration-150 shadow-sm focus:outline-none
+                      ${preferredTime === time ? "text-white scale-105" : "text-gray-700"} bg-gray-100 hover:bg-gray-200`,
+              style: preferredTime === time ? { backgroundColor: primaryColor, color: "#fff", border: "none" } : { border: "none" },
+              onClick: () => handleTimeSelect(time),
+              children: time
+            },
+            time
+          )) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center w-full max-w-xs mt-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: handleBack,
+              className: "flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(FaArrowLeft, { className: "w-4 h-4" }),
+                "Back"
+              ]
+            }
+          ) })
+        ] }),
+        step === 6 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 flex flex-col items-center p-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full pt-6 pb-7 text-center font-bold text-lg", children: "Do you have dental insurance?" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-row justify-center gap-4 w-full max-w-xs mb-8", children: insuranceOptions.map((val) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: `flex-1 py-3 rounded-xl font-medium text-base transition-all duration-150 shadow-sm focus:outline-none
+                      ${hasInsurance === val ? "text-white scale-105" : "text-gray-700"} bg-gray-100 hover:bg-gray-200`,
+              style: hasInsurance === val ? { backgroundColor: primaryColor, color: "#fff", border: "none" } : { border: "none" },
+              onClick: () => handleInsuranceSelect(val),
+              children: val
+            },
+            val
+          )) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center w-full max-w-xs mt-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: handleBack,
+              className: "flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(FaArrowLeft, { className: "w-4 h-4" }),
+                "Back"
+              ]
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full", children: (!selectedConcern || freeChat) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-4 pt-3 pb-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2 mb-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "text",
+                value: input,
+                onChange: (e) => setInput(e.target.value),
+                placeholder: "Click other to unlock chat...",
+                className: "flex-1 px-4 py-2.5 rounded-lg bg-white shadow-sm border-0 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500",
+                ref: inputRef,
+                disabled: !freeChat
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: handleSubmit,
+                className: "p-2.5 text-white rounded-lg transition-colors focus:outline-none border-0 shadow-none",
+                style: { backgroundColor: primaryColor },
+                disabled: !input.trim() || !freeChat,
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(FaPaperPlane, { className: "w-4 h-4" })
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-center pt-1 pb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "a",
+            {
+              href: "/privacy.html",
+              target: "_blank",
+              rel: "noopener noreferrer",
+              className: "text-[13px] text-black font-medium underline-offset-2 hover:underline",
+              onClick: (e) => {
+                e.preventDefault();
+                window.open("/privacy.html", "_blank");
+              },
+              children: "Privacy Policy"
+            }
+          ) })
+        ] }) })
+      ] });
+    }
+  } catch (err) {
+    console.error("ChatWindow render error:", err);
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 text-red-600", children: [
+      "Chatbot error: ",
+      err.message
+    ] });
+  }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col w-80 h-[500px] bg-white rounded-lg shadow-xl", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
@@ -44563,78 +44960,103 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         style: { backgroundColor: primaryColor },
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-base font-semibold truncate", children: headerTitle }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              onClick: onClose,
-              className: "text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent",
-              "aria-label": "Close chat",
-              children: /* @__PURE__ */ jsxRuntimeExports.jsx(FaTimes, { className: "w-4 h-4" })
-            }
-          )
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+            showLanguageMenu && supportedLanguages.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "select",
+              {
+                value: selectedLanguage,
+                onChange: (e) => setSelectedLanguage(e.target.value),
+                className: "text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50",
+                style: { backgroundColor: "rgba(255, 255, 255, 0.1)" },
+                children: supportedLanguages.map((lang) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: lang, className: "text-gray-800", children: lang === "en" ? "English" : lang === "es" ? "Español" : lang === "it" ? "Italiano" : lang }, lang))
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: onClose,
+                className: "text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent",
+                "aria-label": "Close chat",
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(FaTimes, { className: "w-4 h-4" })
+              }
+            )
+          ] })
         ]
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto p-3 space-y-3", children: [
-      messages.map((message, index2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: `flex ${message.type === "user" ? "justify-end" : "justify-start"}`,
-          children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: `max-w-[85%] p-2.5 rounded-lg text-sm ${message.type === "user" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`,
-              children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                Markdown,
-                {
-                  components: {
-                    p: ({ children }) => /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "m-0", children })
-                  },
-                  children: message.content
-                }
-              )
-            }
-          )
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "button",
+      {
+        type: "button",
+        onClick: () => {
+          setFreeChat(false);
+          setStep(1);
+          setSelectedConcern(null);
+          setAppointmentTimeframe(null);
         },
-        message.id
-      )),
-      isLoading && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-start", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-gray-100 text-gray-800 p-3 rounded-lg", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex space-x-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce", style: { animationDelay: "0.2s" } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce", style: { animationDelay: "0.4s" } })
+        className: "flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2",
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(FaArrowLeft, { className: "w-3 h-3" }),
+          "Back"
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto p-4", children: [
+      messages.map((message, index2) => {
+        const isUser = message.role === "user" || message.type === "user";
+        return /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: `mb-4 w-full flex ${isUser ? "justify-end" : "justify-start"}`,
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: `inline-block p-3 rounded-lg max-w-[80%] break-words ${isUser ? "text-white" : "bg-gray-100 text-gray-800"}`,
+                style: isUser ? { backgroundColor: primaryColor } : {},
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(Markdown, { children: message.content })
+              }
+            )
+          },
+          index2
+        );
+      }),
+      isLoading && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-left", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "inline-block p-3 rounded-lg bg-gray-100 text-gray-800", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "typing-indicator", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "dot" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "dot" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "dot" })
       ] }) }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: messagesEndRef })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("form", { onSubmit: handleSubmit, className: "p-4 border-t", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+    (!selectedConcern || freeChat) && /* @__PURE__ */ jsxRuntimeExports.jsx("form", { className: "p-2 border-t", onSubmit: handleSubmit, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "input",
         {
-          ref: inputRef,
           type: "text",
           value: input,
           onChange: (e) => setInput(e.target.value),
           placeholder: "Type your message...",
-          className: "flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
+          className: "flex-1 p-2 rounded-lg focus:outline-none focus:border-blue-500 border-0",
+          ref: inputRef
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
           type: "submit",
-          className: "p-2 text-white rounded-lg transition-colors",
+          className: "p-2 text-white rounded-lg transition-colors border-0 shadow-none focus:outline-none",
           style: { backgroundColor: primaryColor },
           disabled: !input.trim(),
           children: /* @__PURE__ */ jsxRuntimeExports.jsx(FaPaperPlane, {})
         }
       )
     ] }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { textAlign: "center", fontSize: "11px", color: "#888", marginTop: "4px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full text-center pt-0 pb-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
       "a",
       {
         href: "/privacy.html",
         target: "_blank",
         rel: "noopener noreferrer",
-        style: { color: "#888", textDecoration: "none" },
+        className: "text-[13px] text-black font-medium underline-offset-2 hover:underline",
         onClick: (e) => {
           e.preventDefault();
           window.open("/privacy.html", "_blank");
@@ -44649,12 +45071,75 @@ const ChatButton = ({ onClick, text: text2 = "Chat with us", primaryColor = "#4F
     "button",
     {
       onClick,
-      className: "flex items-center gap-2 px-3 py-1.5 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 text-white text-sm",
-      style: { backgroundColor: primaryColor },
+      className: "flex items-center justify-center p-0 w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border-0 focus:outline-none",
+      style: {
+        backgroundColor: primaryColor,
+        animation: "attractAttention 2s ease-in-out infinite"
+      },
       "aria-label": text2,
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(FaRobot, { className: "text-lg" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium", children: text2 })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "40", height: "40", viewBox: "0 0 40 40", fill: "none", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("g", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "path",
+            {
+              d: "M12 10c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7.5l3.5 3.5c.4.4 1 .1 1-.4V26h2c1.1 0 2-.9 2-2V12c0-1.1-.9-2-2-2H12z",
+              fill: "white"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "path",
+            {
+              d: "M16 19c1.333 1.333 6.667 1.333 8 0",
+              stroke: primaryColor,
+              strokeWidth: "1.5",
+              strokeLinecap: "round"
+            }
+          )
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("style", { jsx: true, children: `
+        @keyframes attractAttention {
+          0%, 100% { 
+            transform: scale(1) translateX(0);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          }
+          10% { 
+            transform: scale(1.05) translateX(-4px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+          }
+          20% { 
+            transform: scale(1.02) translateX(3px);
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+          }
+          30% { 
+            transform: scale(1.08) translateX(-6px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+          }
+          40% { 
+            transform: scale(1.03) translateX(5px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+          }
+          50% { 
+            transform: scale(1.06) translateX(-3px);
+            box-shadow: 0 7px 22px rgba(0, 0, 0, 0.22);
+          }
+          60% { 
+            transform: scale(1.01) translateX(4px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+          }
+          70% { 
+            transform: scale(1.04) translateX(-2px);
+            box-shadow: 0 6px 19px rgba(0, 0, 0, 0.2);
+          }
+          80% { 
+            transform: scale(1.02) translateX(3px);
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+          }
+          90% { 
+            transform: scale(1.05) translateX(-1px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+          }
+        }
+      ` })
       ]
     }
   );
@@ -44674,6 +45159,7 @@ const ChatWidget = ({
   const [messages, setMessages] = reactExports.useState([]);
   const socketRef = reactExports.useRef(null);
   const [sessionId, setSessionId] = reactExports.useState(null);
+  const [isLoading, setIsLoading] = reactExports.useState(false);
   const [widgetConfig, setWidgetConfig] = reactExports.useState({
     primaryColor: initialPrimaryColor,
     position: initialPosition,
@@ -44681,7 +45167,11 @@ const ChatWidget = ({
     // Default welcome message
   });
   const [configError, setConfigError] = reactExports.useState(null);
+  const [showLanguageMenu, setShowLanguageMenu] = reactExports.useState(false);
+  const [supportedLanguages, setSupportedLanguages] = reactExports.useState(["en"]);
+  const [options, setOptions] = reactExports.useState({ availableDays: [], availableTimes: [], services: [] });
   const fetchWidgetConfig = reactExports.useCallback(async () => {
+    var _a, _b, _c;
     if (!businessId || !backendUrl) return;
     try {
       console.log(`[ChatWidget] Fetching config from: ${backendUrl}/api/v1/chatbot/config/${businessId}`);
@@ -44692,10 +45182,12 @@ const ChatWidget = ({
       const config = await response.json();
       console.log("[ChatWidget] Received dynamic config:", config);
       setWidgetConfig({
-        primaryColor: config.primaryColor || initialPrimaryColor,
-        position: config.position || initialPosition,
-        welcomeMessage: config.welcomeMessage || "Hello! How can I help you today?"
+        primaryColor: ((_a = config.widgetConfig) == null ? void 0 : _a.primaryColor) || initialPrimaryColor,
+        position: ((_b = config.widgetConfig) == null ? void 0 : _b.position) || initialPosition,
+        welcomeMessage: ((_c = config.widgetConfig) == null ? void 0 : _c.welcomeMessage) || "Hello! How can I help you today?"
       });
+      setShowLanguageMenu(config.showLanguageMenu || false);
+      setSupportedLanguages(config.supportedLanguages || ["en"]);
     } catch (error) {
       console.error("[ChatWidget] Error fetching widget config:", error);
       setConfigError("Could not load widget configuration.");
@@ -44704,8 +45196,26 @@ const ChatWidget = ({
         position: initialPosition,
         welcomeMessage: "Hello! How can I help you today?"
       });
+      setShowLanguageMenu(false);
+      setSupportedLanguages(["en"]);
     }
   }, [businessId, backendUrl, initialPrimaryColor, initialPosition]);
+  const fetchOptions = reactExports.useCallback(async () => {
+    if (!businessId || !backendUrl) return;
+    try {
+      const response = await fetch(`${backendUrl}/api/v1/public/options/${businessId}`);
+      if (!response.ok) throw new Error("Failed to fetch options");
+      const data = await response.json();
+      setOptions({
+        availableDays: data.availableDays || [],
+        availableTimes: data.availableTimes || [],
+        services: data.services || []
+      });
+    } catch (error) {
+      console.error("[ChatWidget] Error fetching options:", error);
+      setOptions({ availableDays: [], availableTimes: [], services: [] });
+    }
+  }, [businessId, backendUrl]);
   reactExports.useEffect(() => {
     let currentSessionId = localStorage.getItem(`chatbot_session_${businessId}`);
     if (!currentSessionId) {
@@ -44714,6 +45224,7 @@ const ChatWidget = ({
     }
     setSessionId(currentSessionId);
     fetchWidgetConfig();
+    fetchOptions();
     if (!businessId || !apiKey || !currentSessionId || !backendUrl) {
       console.error("[ChatWidget] Missing required info for WebSocket connection (businessId, apiKey, sessionId, backendUrl).");
       return;
@@ -44739,6 +45250,7 @@ const ChatWidget = ({
     });
     socketRef.current.on("message", (message) => {
       console.log("[ChatWidget] Received message from server:", message);
+      setIsLoading(false);
       setMessages((prevMessages) => {
         const newMessages = [...prevMessages, { id: generateSimpleId(), type: "bot", content: message.response }];
         console.log("[ChatWidget] Updating messages state to:", newMessages);
@@ -44752,14 +45264,16 @@ const ChatWidget = ({
       }
       localStorage.removeItem(`chatbot_session_${businessId}`);
     };
-  }, [businessId, apiKey, backendUrl, fetchWidgetConfig]);
-  const handleSendMessage = (text2) => {
+  }, [businessId, apiKey, backendUrl, fetchWidgetConfig, fetchOptions]);
+  const handleSendMessage = (text2, language = "en") => {
     if (!text2.trim() || !socketRef.current || !socketRef.current.connected) return;
     const userMessage = { id: generateSimpleId(), type: "user", content: text2 };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    console.log(`[ChatWidget] Sending message: "${text2}"`);
+    setIsLoading(true);
+    console.log(`[ChatWidget] Sending message: "${text2}" with language: ${language}`);
     socketRef.current.emit("message", {
-      message: text2
+      message: text2,
+      language
       // businessId and sessionId are known server-side from the authenticated socket
     });
   };
@@ -44776,7 +45290,13 @@ const ChatWidget = ({
         onSendMessage: handleSendMessage,
         onClose: () => setIsOpen(false),
         primaryColor: widgetConfig.primaryColor,
-        welcomeMessage: widgetConfig.welcomeMessage
+        welcomeMessage: widgetConfig.welcomeMessage,
+        isLoading,
+        dayOptions: options.availableDays,
+        timeOptions: options.availableTimes,
+        concernOptions: options.services,
+        showLanguageMenu,
+        supportedLanguages
       }
     ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
       ChatButton,
@@ -44830,7 +45350,8 @@ const configFromWindow = window.DENTAL_CHATBOT_CONFIG || window.chatbotConfig ||
 if (configFromWindow) {
   initializeChatbot(configFromWindow);
 } else {
-  const currentScript = document.currentScript;
+  const dentalChatbotScriptTagById = document.getElementById("dental-chatbot-script");
+  const currentScript = dentalChatbotScriptTagById || document.currentScript;
   if (currentScript && currentScript.dataset.businessId) {
     const configFromAttributes = {
       businessId: currentScript.dataset.businessId,
@@ -44845,7 +45366,7 @@ if (configFromWindow) {
     };
     initializeChatbot(configFromAttributes);
   } else {
-    console.error("[Widget Loader] Chatbot configuration not found on window object or script data attributes.");
+    console.error("[Widget Loader] Chatbot configuration not found. Ensure the script tag has id='dental-chatbot-script' and the necessary data attributes, or provide config on window object.");
   }
 }
 window.DentalChatbot = { init: initializeChatbot };
