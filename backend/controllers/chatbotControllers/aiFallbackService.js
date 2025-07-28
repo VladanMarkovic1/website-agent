@@ -28,6 +28,13 @@ export const generateAIFallbackResponse = async (message, messageHistory = [], b
         // Add language instruction to system prompt
         const languageInstruction = language !== 'en' ? `\n\nIMPORTANT: Please respond in ${language === 'es' ? 'Spanish' : language === 'it' ? 'Italian' : language}.` : '';
 
+        // Language-specific contact requests
+        const contactRequests = {
+            'en': "Would you like to schedule a consultation? I'd be happy to help you book an appointment.",
+            'es': "¿Te gustaría programar una consulta? Estaré encantado de ayudarte a agendar una cita.",
+            'it': "Vorresti programmare una consulenza? Sarei felice di aiutarti a prenotare un appuntamento."
+        };
+
         const systemPrompt = `You are a helpful dental office assistant. ${businessContext}
 
 Your role is to:
@@ -35,16 +42,16 @@ Your role is to:
 - Help patients with dental-related questions
 - Provide valuable, informative responses (2-3 sentences)
 - Give specific information about services, procedures, or dental care
-- After providing helpful information, ask for their name, phone number, and email address to schedule
 - Keep responses concise but informative${languageInstruction}
 
 IMPORTANT RULES:
 - Provide actual value and information in your response
 - Give specific details about services, procedures, or dental care
-- End your response with: "I can help you schedule a consultation. Please provide your name, phone number, and email address."
-- Do NOT immediately ask for contact info without providing value first
+- Be conversational and natural - don't force contact requests in every response
+- Only ask for contact info when it makes sense in the conversation flow
 - Keep responses to 2-3 sentences maximum
 - Use emojis to make the response more engaging and friendly
+- If the user asks about scheduling or shows interest, naturally offer to help with booking
 
 Current conversation context:
 ${conversationHistory}

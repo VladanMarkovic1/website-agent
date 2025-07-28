@@ -16,15 +16,15 @@ dotenv.config();
 
 // Simple response templates to replace deleted constants
 const RESPONSE_TEMPLATES = {
-    contact_after_yes: "😃 Great! I can help you schedule a consultation. Please provide your name, phone number, and email address.",
+    contact_after_yes: "😃 Great! I can help you schedule a consultation.",
     problem_followup_prefix: (category) => `🦷 I understand you're experiencing ${category}. Here are some services that might help:\n\n`,
-    problem_followup_suffix: "\n\nI can help you schedule a consultation. Please provide your name, phone number, and email address.",
-    problem_followup_fallback: (category) => `🦷 I understand you're experiencing ${category}. We can help diagnose and treat this issue. I can help you schedule a consultation. Please provide your name, phone number, and email address.`,
+    problem_followup_suffix: "\n\nI'd be happy to help you learn more about these treatments.",
+    problem_followup_fallback: (category) => `🦷 I understand you're experiencing ${category}. We can help diagnose and treat this issue.`,
     emergency: "🚨 This sounds like it might need immediate attention. Please call us right away for emergency care.",
-    visual_concern: "✨ I understand you're concerned about the appearance of your teeth. Our cosmetic dentistry services can help improve your smile with whitening, veneers, and other treatments. I can help you schedule a consultation. Please provide your name, phone number, and email address.",
-    acknowledge_symptom: (symptom) => `🦷 I understand you're experiencing ${symptom}. We can help diagnose and treat this properly. I can help you schedule a consultation. Please provide your name, phone number, and email address.`,
+    visual_concern: "✨ I understand you're concerned about the appearance of your teeth. Our cosmetic dentistry services can help improve your smile with whitening, veneers, and other treatments.",
+    acknowledge_symptom: (symptom) => `🦷 I understand you're experiencing ${symptom}. We can help diagnose and treat this properly.`,
     service_list_prefix: "🦷 Here are the services we offer:\n\n",
-    service_list_suffix: "\n\nI can help you schedule a consultation. Please provide your name, phone number, and email address.",
+    service_list_suffix: "\n\nI'd be happy to tell you more about any of these services.",
     error_fallback: "😔 I apologize, but I'm having trouble processing your request right now. Please try again or call us directly.",
     OPERATING_HOURS_RESPONSE: (hours) => `🕒 Our operating hours are:\n${hours}`,
     HOURS_UNAVAILABLE_FALLBACK: "🕒 I don't have our current operating hours available. Please call us directly."
@@ -187,7 +187,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                         type: 'CONTACT_REQUEST',
                         detectedService: decodeHtmlEntities(matchedService.name),
                         serviceContext: decodeHtmlEntities(matchedService.name),
-                        response: `${serviceDescription} I can help you schedule a consultation. Please provide your name, phone number, and email address.`
+                        response: serviceDescription
                     };
                 } else {
                     // Fallback to AI if explicit inquiry but no match
@@ -215,7 +215,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
-                    response: `${problemInfo} I can help you schedule a consultation. Please provide your name, phone number, and email address.`
+                    response: problemInfo
                 };
                 break;
 
@@ -265,7 +265,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // For general service interest, provide value first, then ask for contact info
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
-                    response: "We offer comprehensive dental services including cosmetic dentistry, preventive care, and emergency treatments. I can help you schedule a consultation. Please provide your name, phone number, and email address."
+                    response: "We offer comprehensive dental services including cosmetic dentistry, preventive care, and emergency treatments."
                 };
                 break;
 
@@ -281,7 +281,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
-                    response: `${serviceOverview} I can help you schedule a consultation. Please provide your name, phone number, and email address.`
+                    response: serviceOverview
                 };
                 break;
 
