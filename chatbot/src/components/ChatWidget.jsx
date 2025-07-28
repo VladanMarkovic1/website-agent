@@ -29,6 +29,10 @@ const ChatWidget = ({
     });
     const [configError, setConfigError] = useState(null);
 
+    // State for language menu settings
+    const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+    const [supportedLanguages, setSupportedLanguages] = useState(['en']);
+
     // State for dynamic options
     const [options, setOptions] = useState({ availableDays: [], availableTimes: [], services: [] });
 
@@ -45,10 +49,13 @@ const ChatWidget = ({
             console.log("[ChatWidget] Received dynamic config:", config);
             // Merge fetched config with initial props as fallbacks
             setWidgetConfig({
-                primaryColor: config.primaryColor || initialPrimaryColor,
-                position: config.position || initialPosition,
-                welcomeMessage: config.welcomeMessage || 'Hello! How can I help you today?'
+                primaryColor: config.widgetConfig?.primaryColor || initialPrimaryColor,
+                position: config.widgetConfig?.position || initialPosition,
+                welcomeMessage: config.widgetConfig?.welcomeMessage || 'Hello! How can I help you today?'
             });
+            // Set language menu settings
+            setShowLanguageMenu(config.showLanguageMenu || false);
+            setSupportedLanguages(config.supportedLanguages || ['en']);
         } catch (error) {
             console.error('[ChatWidget] Error fetching widget config:', error);
             setConfigError('Could not load widget configuration.');
@@ -58,6 +65,9 @@ const ChatWidget = ({
                 position: initialPosition,
                 welcomeMessage: 'Hello! How can I help you today?'
             });
+            // Use default language settings
+            setShowLanguageMenu(false);
+            setSupportedLanguages(['en']);
         }
     }, [businessId, backendUrl, initialPrimaryColor, initialPosition]);
 
@@ -147,7 +157,7 @@ const ChatWidget = ({
         };
     }, [businessId, apiKey, backendUrl, fetchWidgetConfig, fetchOptions]); // Removed 'messages' dependency
 
-    const handleSendMessage = (text) => {
+    const handleSendMessage = (text, language = 'en') => {
         if (!text.trim() || !socketRef.current || !socketRef.current.connected) return;
 
         // Use simple ID generator and consistent keys
@@ -155,9 +165,10 @@ const ChatWidget = ({
         setMessages((prevMessages) => [...prevMessages, userMessage]);
         setIsLoading(true); // Start loading when user sends message
 
-        console.log(`[ChatWidget] Sending message: "${text}"`);
+        console.log(`[ChatWidget] Sending message: "${text}" with language: ${language}`);
         socketRef.current.emit('message', { 
             message: text, 
+            language: language,
             // businessId and sessionId are known server-side from the authenticated socket
         });
     };
@@ -187,6 +198,8 @@ const ChatWidget = ({
                     dayOptions={options.availableDays}
                     timeOptions={options.availableTimes}
                     concernOptions={options.services}
+                    showLanguageMenu={showLanguageMenu}
+                    supportedLanguages={supportedLanguages}
                 />
             ) : (
                 <ChatButton 
