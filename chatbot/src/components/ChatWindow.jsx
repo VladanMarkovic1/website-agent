@@ -13,6 +13,7 @@ const getSubmissionMessage = () => {
 
 const ChatWindow = ({ 
   messages, 
+  setMessages,
   onSendMessage, 
   onClose, 
   isLoading, 
@@ -33,6 +34,26 @@ const ChatWindow = ({
 
   // Language menu state
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+
+  // Handle language change
+  const handleLanguageChange = (newLanguage) => {
+    setSelectedLanguage(newLanguage);
+    
+    // Update the greeting message based on new language
+    const greetings = {
+      'en': "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
+      'es': "👋 ¡Hola! Estoy aquí para ayudarte a conocer nuestros servicios dentales y encontrar el tratamiento perfecto para tus necesidades. ¿Cómo puedo ayudarte hoy?",
+      'it': "👋 Ciao! Sono qui per aiutarti a conoscere i nostri servizi dentali e trovare il trattamento perfetto per le tue esigenze. Come posso aiutarti oggi?"
+    };
+    const newGreeting = greetings[newLanguage] || greetings['en'];
+    
+    // Update the first message (greeting) with the new language
+    if (messages.length > 0 && messages[0].type === 'bot') {
+      const updatedMessages = [...messages];
+      updatedMessages[0] = { ...updatedMessages[0], content: newGreeting };
+      setMessages(updatedMessages);
+    }
+  };
 
   // New state for button-based flow
   //new state for button-based flow
@@ -223,7 +244,7 @@ const ChatWindow = ({
               {showLanguageMenu && supportedLanguages.length > 1 && (
                 <select
                   value={selectedLanguage}
-                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
                   className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50"
                   style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
                 >
@@ -516,7 +537,7 @@ const ChatWindow = ({
           {showLanguageMenu && supportedLanguages.length > 1 && (
             <select
               value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
+              onChange={(e) => handleLanguageChange(e.target.value)}
               className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50"
               style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
             >

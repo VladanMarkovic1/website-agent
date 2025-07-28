@@ -52,10 +52,20 @@ const initWebSocket = (io) => {
         // Now connection is only established if auth passed
         // console.log(`✅ User connected (Authenticated): Business ID: ${socket.businessId}, Session ID: ${socket.sessionId}`);
         
-        // Send initial greeting message upon connection
+        // Function to get greeting in different languages
+        const getGreeting = (language = 'en') => {
+            const greetings = {
+                'en': "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
+                'es': "👋 ¡Hola! Estoy aquí para ayudarte a conocer nuestros servicios dentales y encontrar el tratamiento perfecto para tus necesidades. ¿Cómo puedo ayudarte hoy?",
+                'it': "👋 Ciao! Sono qui per aiutarti a conoscere i nostri servizi dentali e trovare il trattamento perfetto per le tue esigenze. Come posso aiutarti oggi?"
+            };
+            return greetings[language] || greetings['en'];
+        };
+        
+        // Send initial greeting message upon connection (default to English)
         socket.emit("message", {
             type: "GREETING", // Use a consistent type
-            response: "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?"
+            response: getGreeting('en') // Default to English for initial greeting
         });
         
         socket.on("message", async (data) => {

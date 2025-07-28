@@ -147,6 +147,28 @@ const ChatWidget = ({
             });
         });
 
+        // Handle language change
+        socketRef.current.on('languageChange', (data) => {
+            console.log('[ChatWidget] Language changed to:', data.language);
+            // Update the greeting message based on new language
+            const greetings = {
+                'en': "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
+                'es': "👋 ¡Hola! Estoy aquí para ayudarte a conocer nuestros servicios dentales y encontrar el tratamiento perfecto para tus necesidades. ¿Cómo puedo ayudarte hoy?",
+                'it': "👋 Ciao! Sono qui per aiutarti a conoscere i nostri servizi dentali e trovare il trattamento perfetto per le tue esigenze. Come posso aiutarti oggi?"
+            };
+            const newGreeting = greetings[data.language] || greetings['en'];
+            
+            // Replace the first message (greeting) with the new language
+            setMessages((prevMessages) => {
+                if (prevMessages.length > 0 && prevMessages[0].type === 'bot') {
+                    const updatedMessages = [...prevMessages];
+                    updatedMessages[0] = { ...updatedMessages[0], content: newGreeting };
+                    return updatedMessages;
+                }
+                return prevMessages;
+            });
+        });
+
         // Cleanup on component unmount
         return () => {
             if (socketRef.current) {
@@ -190,6 +212,7 @@ const ChatWidget = ({
             {isOpen ? (
                 <ChatWindow 
                     messages={messages} 
+                    setMessages={setMessages}
                     onSendMessage={handleSendMessage} 
                     onClose={() => setIsOpen(false)} 
                     primaryColor={widgetConfig.primaryColor}
