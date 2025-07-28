@@ -14,8 +14,12 @@ export const getWidgetSettings = async (req, res) => {
             return res.status(404).json({ error: 'Business not found.' });
         }
 
-        // Return the widgetConfig part
-        res.status(200).json(business.widgetConfig || {}); 
+        // Return widgetConfig and language menu settings
+        res.status(200).json({
+            widgetConfig: business.widgetConfig || {},
+            showLanguageMenu: business.showLanguageMenu || false,
+            supportedLanguages: business.supportedLanguages || ['en']
+        });
 
     } catch (error) {
         console.error(`Error fetching widget settings for ${clientId}:`, error);
