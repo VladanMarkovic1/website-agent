@@ -66,7 +66,8 @@ const initWebSocket = (io) => {
                 const response = await processWebSocketMessage(
                     data.message,
                     socket.sessionId, // Use ID from authenticated socket
-                    socket.businessId  // Use ID from authenticated socket
+                    socket.businessId,  // Use ID from authenticated socket
+                    data.language || 'en' // Extract language from client message
                 );
                 
                 socket.emit("message", response);
