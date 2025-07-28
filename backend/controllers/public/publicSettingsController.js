@@ -11,14 +11,19 @@ export const getPublicWidgetConfig = async (req, res) => {
     }
 
     try {
-        const business = await Business.findOne({ businessId }).select('widgetConfig'); // Only select config
+        // Select widgetConfig, showLanguageMenu, and supportedLanguages
+        const business = await Business.findOne({ businessId }).select('widgetConfig showLanguageMenu supportedLanguages');
 
         if (!business) {
             return res.status(404).json({ error: 'Configuration not found for this business ID.' });
         }
 
-        // Return only the widgetConfig
-        res.status(200).json(business.widgetConfig || {});
+        // Return widgetConfig and language menu settings
+        res.status(200).json({
+            widgetConfig: business.widgetConfig || {},
+            showLanguageMenu: business.showLanguageMenu || false,
+            supportedLanguages: business.supportedLanguages || ['en']
+        });
 
     } catch (error) {
         console.error(`Error fetching public widget config for ${businessId}:`, error);
