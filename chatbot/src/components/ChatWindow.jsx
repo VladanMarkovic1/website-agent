@@ -218,13 +218,30 @@ const ChatWindow = ({
             style={{ backgroundColor: primaryColor }}
           >
             <h2 className="text-base font-semibold truncate">Chat Assistant</h2>
-            <button
-              onClick={onClose}
-              className="text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent"
-              aria-label="Close chat"
-            >
-              <FaTimes className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Language Menu */}
+              {showLanguageMenu && supportedLanguages.length > 1 && (
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                  className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50"
+                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                >
+                  {supportedLanguages.map(lang => (
+                    <option key={lang} value={lang} className="text-gray-800">
+                      {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'it' ? 'Italiano' : lang}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={onClose}
+                className="text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent"
+                aria-label="Close chat"
+              >
+                <FaTimes className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           {/* Step 1: Concern Selection */}
           {step === 1 && (
