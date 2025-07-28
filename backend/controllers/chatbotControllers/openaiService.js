@@ -90,7 +90,7 @@ const decodeHtmlEntities = (text) => {
 
 // --- Main Exported Function (Orchestrator) --- 
 
-export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false, previousPartialInfo = { name: null, phone: null, email: null }, sessionServiceInterest = null) => {
+export const generateAIResponse = async (message, businessData, messageHistory = [], isNewSession = false, previousPartialInfo = { name: null, phone: null, email: null }, sessionServiceInterest = null, language = 'en') => {
     try {
         // console.log('--- generateAIResponse Orchestrator Start ---');
         // console.log('User Message:', message); // Potential PII - Removed
@@ -174,7 +174,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // console.log('[generateAIResponse] Matched case: SERVICE_INQUIRY_EXPLICIT'); // To be removed/commented
                 // If the user message is a question, delegate to AI for a richer response
                 if (message.trim().endsWith('?')) {
-                    responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                    responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData, language);
                     break;
                 }
                 // Otherwise, call the dedicated service matcher
@@ -193,7 +193,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                     // Fallback to AI if explicit inquiry but no match
                     // console.log('Explicit inquiry keywords but no specific service match. Falling back to AI.'); // To be removed/commented
                     // Pass businessData to the fallback function
-                    responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                    responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData, language);
                 }
                 break;
             
@@ -253,12 +253,12 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
             case 'GREETING':
                 // For greetings, do not send a welcome message. Instead, use OpenAI fallback to continue the conversation naturally.
-                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData, language);
                 break;
 
             case 'HELP_REQUEST':
                 // For help requests, use AI to provide natural, helpful responses
-                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData, language);
                 break;
 
             case 'SERVICE_INTEREST':
@@ -288,7 +288,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             case 'APPOINTMENT_REQUEST':
                 // Always prepend the tip, then add the AI/template response
                 const tip = "I don't have access to a live calendar, but I can arrange for our team to call you.\n\n";
-                const aiAppointmentResponse = await generateAIFallbackResponse(message, messageHistory, businessData);
+                const aiAppointmentResponse = await generateAIFallbackResponse(message, messageHistory, businessData, language);
                 const aiText = aiAppointmentResponse.response || "";
                 responsePayload = {
                     type: 'APPOINTMENT_REQUEST',
@@ -315,7 +315,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // console.log('[generateAIResponse] Matched case: SERVICE_FAQ'); // To be removed/commented
                 // ... existing code ...
                 console.warn('[generateAIResponse] SERVICE_FAQ case hit but no specific handler implemented yet. Falling back to AI.');
-                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData, language);
                 break;
 
             case 'PAYMENT_PLAN_INQUIRY':
@@ -385,7 +385,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
 
             case 'FACTUAL_QUESTION':
                 // Use AI to answer factual questions, do NOT use a template or ask for contact info
-                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData, language);
                 break;
 
             case 'SERVICE_CONSULTATION_REQUEST':
@@ -393,7 +393,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 const serviceName = intent.serviceName || 'the requested service';
                 // Compose a prompt for the AI to answer specifically about the requested service
                 const consultationPrompt = `A user is interested in ${serviceName}. Briefly and directly explain what ${serviceName} is, what it includes, and its benefits. Do NOT use empathy or concern language. Do NOT assume the user is worried or concerned. Do NOT mention other services. After providing value, invite the user to schedule a consultation by providing their name, phone number, and email address.`;
-                const aiConsultationResponse = await generateAIFallbackResponse(consultationPrompt, messageHistory, businessData);
+                const aiConsultationResponse = await generateAIFallbackResponse(consultationPrompt, messageHistory, businessData, language);
                 responsePayload = {
                     type: 'CONTACT_REQUEST',
                     serviceContext: serviceName,
@@ -432,7 +432,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
             default:
                 // console.log('[generateAIResponse] Matched case: UNKNOWN/default - Calling AI Fallback'); // To be removed/commented
                 // Pass businessData to the fallback function
-                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData);
+                responsePayload = await generateAIFallbackResponse(message, messageHistory, businessData, language);
                 break;
         }
         // console.log('[generateAIResponse] Exiting switch, final responsePayload:', JSON.stringify(responsePayload)); // Potential PII - Removed
