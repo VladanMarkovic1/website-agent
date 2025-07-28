@@ -11,7 +11,18 @@ const getSubmissionMessage = () => {
   return 'Our team will get back to you within 2 hours with more information.';
 };
 
-const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor = '#4F46E5', dayOptions = [], timeOptions = [], concernOptions = [] }) => {
+const ChatWindow = ({ 
+  messages, 
+  onSendMessage, 
+  onClose, 
+  isLoading, 
+  primaryColor = '#4F46E5', 
+  dayOptions = [], 
+  timeOptions = [], 
+  concernOptions = [],
+  showLanguageMenu = false,
+  supportedLanguages = ['en']
+}) => {
   // Add console log here
   console.log('[ChatWindow] Rendering with messages:', messages);
 
@@ -19,6 +30,9 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
   const [headerTitle, setHeaderTitle] = useState('Chat Assistant');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Language menu state
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
 
   // New state for button-based flow
   //new state for button-based flow
@@ -178,7 +192,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     e.preventDefault();
     if (!input.trim()) return;
     
-    onSendMessage(input);
+    onSendMessage(input, selectedLanguage);
     setInput('');
   };
 
@@ -186,7 +200,7 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
     // Only send contact info since extra details are already sent through button clicks
     let message = `${userDetails.name}, ${userDetails.phone}, ${userDetails.email}`;
     try {
-      onSendMessage(message); // Use the same handler as classic chat
+      onSendMessage(message, selectedLanguage); // Use the same handler as classic chat
       setSubmitStatus('success');
     } catch (e) {
       setSubmitStatus('error');
@@ -480,13 +494,30 @@ const ChatWindow = ({ messages, onSendMessage, onClose, isLoading, primaryColor 
         style={{ backgroundColor: primaryColor }}
       >
         <h2 className="text-base font-semibold truncate">{headerTitle}</h2>
-        <button
-          onClick={onClose}
-          className="text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent"
-          aria-label="Close chat"
-        >
-          <FaTimes className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Language Menu */}
+          {showLanguageMenu && supportedLanguages.length > 1 && (
+            <select
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+            >
+              {supportedLanguages.map(lang => (
+                <option key={lang} value={lang} className="text-gray-800">
+                  {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'it' ? 'Italiano' : lang}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={onClose}
+            className="text-white hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-white/50 ml-2 bg-transparent"
+            aria-label="Close chat"
+          >
+            <FaTimes className="w-4 h-4" />
+          </button>
+        </div>
       </div>
       {/* Back button for free chat mode */}
       <button
