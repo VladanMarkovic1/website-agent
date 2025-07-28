@@ -127,6 +127,15 @@ const ChatWidget = ({
 
         socketRef.current.on('connect', () => {
             console.log('[ChatWidget] Socket connected successfully with ID:', socketRef.current.id);
+            
+            // Add initial greeting only if no messages exist
+            setMessages((prevMessages) => {
+                if (prevMessages.length === 0) {
+                    const initialGreeting = "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?";
+                    return [{ id: generateSimpleId(), type: 'bot', content: initialGreeting }];
+                }
+                return prevMessages;
+            });
         });
 
         socketRef.current.on('connect_error', (err) => {
@@ -138,9 +147,21 @@ const ChatWidget = ({
         socketRef.current.on('message', (message) => {
             console.log('[ChatWidget] Received message from server:', message);
             setIsLoading(false); // Stop loading when response received
-            // Use functional update to ensure latest state is used
+            
+            // Check if this is a greeting message and we already have one
+            const isGreeting = message.type === 'GREETING' || 
+                              (message.response && message.response.includes('👋'));
+            
             setMessages((prevMessages) => {
-                // prevMessages is guaranteed to be the latest state here
+                // If this is a greeting and we already have a greeting, don't add it
+                if (isGreeting && prevMessages.length > 0 && 
+                    prevMessages[0].type === 'bot' && 
+                    prevMessages[0].content.includes('👋')) {
+                    console.log('[ChatWidget] Skipping duplicate greeting');
+                    return prevMessages;
+                }
+                
+                // Otherwise, add the new message
                 const newMessages = [...prevMessages, { id: generateSimpleId(), type: 'bot', content: message.response }];
                 console.log('[ChatWidget] Updating messages state to:', newMessages);
                 return newMessages;

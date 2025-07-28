@@ -62,11 +62,11 @@ const initWebSocket = (io) => {
             return greetings[language] || greetings['en'];
         };
         
-        // Send initial greeting message upon connection (default to English)
-        socket.emit("message", {
-            type: "GREETING", // Use a consistent type
-            response: getGreeting('en') // Default to English for initial greeting
-        });
+        // Don't send automatic greeting - let the frontend handle it
+        // socket.emit("message", {
+        //     type: "GREETING",
+        //     response: getGreeting('en')
+        // });
         
         socket.on("message", async (data) => {
             // Use businessId/sessionId attached to the authenticated socket
