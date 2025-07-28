@@ -60,7 +60,7 @@ async function _detectAndSetInitialServiceInterest(session, businessContext, mes
     }
 }
 
-async function _generateAndRefineResponse(message, businessContext, sessionMessages, isNewSession, session, previousPartialInfo) {
+async function _generateAndRefineResponse(message, businessContext, sessionMessages, isNewSession, session, previousPartialInfo, language) {
     // Map businessContext.business.businessHours to businessData.operatingHours (string)
     function getOperatingHoursString(businessHours) {
         if (!businessHours) return undefined;
@@ -87,7 +87,8 @@ async function _generateAndRefineResponse(message, businessContext, sessionMessa
         sessionMessages, 
         isNewSession, 
         previousPartialInfo,
-        session.serviceInterest
+        session.serviceInterest,
+        language
     );
     const classifiedIntent = aiResult.classifiedIntent; // Original classification
     const initialResponsePayload = aiResult.responsePayload; // Payload after internal logic/switch in generateAIResponse
@@ -319,7 +320,7 @@ function escapeHtml(unsafe) {
 
 // --- Main Orchestrator Function --- 
 
-const processChatMessage = async (message, sessionId, businessId) => {
+const processChatMessage = async (message, sessionId, businessId, language = 'en') => {
     try {
         const { session, isNewSession } = await _initializeSessionAndTrackStart(sessionId, businessId);
         const businessContext = await _getBusinessContext(businessId, session.sessionId, message);
@@ -338,7 +339,8 @@ const processChatMessage = async (message, sessionId, businessId) => {
             sessionMessages, 
             isNewSession, 
             session,
-            previousPartialInfo
+            previousPartialInfo,
+            language
         );
 
         // --- Second Override Pass (Based on user message type) --- 
@@ -418,9 +420,9 @@ export const handleChatMessage = async (req, res) => {
 };
 
 // WebSocket message processor 
-export const processWebSocketMessage = async (message, sessionId, businessId) => {
+export const processWebSocketMessage = async (message, sessionId, businessId, language = 'en') => {
     try {
-        return await processChatMessage(message, sessionId, businessId);
+        return await processChatMessage(message, sessionId, businessId, language);
     } catch (error) {
         return {
             type: "error",
