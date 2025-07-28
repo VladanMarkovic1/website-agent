@@ -31,7 +31,8 @@ const ChatWindow = ({
   const [headerTitle, setHeaderTitle] = useState('Chat Assistant');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const languageDropdownRef = useRef(null);
+  const languageDropdownRef1 = useRef(null);
+  const languageDropdownRef2 = useRef(null);
 
   // Language menu state
   const [selectedLanguage, setSelectedLanguage] = useState('en');
@@ -121,7 +122,10 @@ const ChatWindow = ({
   // Handle clicking outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
+      if (languageDropdownRef1.current && !languageDropdownRef1.current.contains(event.target)) {
+        setIsLanguageOpen(false);
+      }
+      if (languageDropdownRef2.current && !languageDropdownRef2.current.contains(event.target)) {
         setIsLanguageOpen(false);
       }
     };
@@ -258,24 +262,24 @@ const ChatWindow = ({
             <div className="flex items-center gap-2">
               {/* Language Menu */}
               {showLanguageMenu && supportedLanguages.length > 1 && (
-                <div className="relative group" ref={languageDropdownRef}>
+                <div className="relative group" ref={languageDropdownRef1}>
                   <div className="relative">
                     <button
                       onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md text-white border border-white/30 rounded-xl font-medium text-sm transition-all duration-300 hover:from-white/30 hover:to-white/20 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md text-white border border-white/30 rounded-lg font-medium text-xs transition-all duration-300 hover:from-white/30 hover:to-white/20 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent"
                       style={{
                         boxShadow: '0 4px 15px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2)',
                         textShadow: '0 1px 2px rgba(0,0,0,0.1)'
                       }}
                     >
-                      <span className="text-lg">
+                      <span className="text-sm">
                         {selectedLanguage === 'en' ? '🇺🇸' : selectedLanguage === 'es' ? '🇪🇸' : selectedLanguage === 'it' ? '🇮🇹' : '🌐'}
                       </span>
-                      <span className="font-semibold">
+                      <span className="font-semibold text-xs">
                         {selectedLanguage === 'en' ? 'English' : selectedLanguage === 'es' ? 'Español' : selectedLanguage === 'it' ? 'Italiano' : selectedLanguage}
                       </span>
                       <svg 
-                        className={`w-4 h-4 transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`} 
+                        className={`w-3 h-3 transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`} 
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
@@ -602,24 +606,24 @@ const ChatWindow = ({
         <div className="flex items-center gap-2">
           {/* Language Menu */}
           {showLanguageMenu && supportedLanguages.length > 1 && (
-            <div className="relative group" ref={languageDropdownRef}>
+            <div className="relative group" ref={languageDropdownRef2}>
               <div className="relative">
                 <button
                   onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md text-white border border-white/30 rounded-xl font-medium text-sm transition-all duration-300 hover:from-white/30 hover:to-white/20 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md text-white border border-white/30 rounded-lg font-medium text-xs transition-all duration-300 hover:from-white/30 hover:to-white/20 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent"
                   style={{
                     boxShadow: '0 4px 15px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2)',
                     textShadow: '0 1px 2px rgba(0,0,0,0.1)'
                   }}
                 >
-                  <span className="text-lg">
+                  <span className="text-sm">
                     {selectedLanguage === 'en' ? '🇺🇸' : selectedLanguage === 'es' ? '🇪🇸' : selectedLanguage === 'it' ? '🇮🇹' : '🌐'}
                   </span>
-                  <span className="font-semibold">
+                  <span className="font-semibold text-xs">
                     {selectedLanguage === 'en' ? 'English' : selectedLanguage === 'es' ? 'Español' : selectedLanguage === 'it' ? 'Italiano' : selectedLanguage}
                   </span>
                   <svg 
-                    className={`w-4 h-4 transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`} 
+                    className={`w-3 h-3 transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`} 
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
