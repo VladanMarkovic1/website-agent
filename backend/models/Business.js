@@ -90,6 +90,10 @@ const BusinessSchema = new mongoose.Schema({
     businessHours: BusinessHoursSchema,
     timezone: { type: String, default: "America/New_York" },
     
+    // Language Menu Settings
+    showLanguageMenu: { type: Boolean, default: false },
+    supportedLanguages: { type: [String], default: ['en'] },
+    
     // Business Personality & Tone
     businessTone: { 
         type: String, 
