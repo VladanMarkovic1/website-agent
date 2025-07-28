@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaTimes, FaPaperPlane, FaArrowLeft, FaCheckCircle } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 import './ChatWindow.css'; // Add this import at the top for custom styles
@@ -31,29 +31,11 @@ const ChatWindow = ({
   const [headerTitle, setHeaderTitle] = useState('Chat Assistant');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const languageDropdownRef = useRef(null);
 
   // Language menu state
   const [selectedLanguage, setSelectedLanguage] = useState('en');
-
-  // Handle language change
-  const handleLanguageChange = (newLanguage) => {
-    setSelectedLanguage(newLanguage);
-    
-    // Update the greeting message based on new language
-    const greetings = {
-      'en': "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
-      'es': "👋 ¡Hola! Estoy aquí para ayudarte a conocer nuestros servicios dentales y encontrar el tratamiento perfecto para tus necesidades. ¿Cómo puedo ayudarte hoy?",
-      'it': "👋 Ciao! Sono qui per aiutarti a conoscere i nostri servizi dentali e trovare il trattamento perfetto per le tue esigenze. Come posso aiutarti oggi?"
-    };
-    const newGreeting = greetings[newLanguage] || greetings['en'];
-    
-    // Update the first message (greeting) with the new language
-    if (messages.length > 0 && messages[0].type === 'bot') {
-      const updatedMessages = [...messages];
-      updatedMessages[0] = { ...updatedMessages[0], content: newGreeting };
-      setMessages(updatedMessages);
-    }
-  };
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
 
   // New state for button-based flow
   //new state for button-based flow
@@ -135,6 +117,40 @@ const ChatWindow = ({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Handle clicking outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
+        setIsLanguageOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Handle language change
+  const handleLanguageChange = (newLanguage) => {
+    setSelectedLanguage(newLanguage);
+    
+    // Update the greeting message based on new language
+    const greetings = {
+      'en': "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
+      'es': "👋 ¡Hola! Estoy aquí para ayudarte a conocer nuestros servicios dentales y encontrar el tratamiento perfecto para tus necesidades. ¿Cómo puedo ayudarte hoy?",
+      'it': "👋 Ciao! Sono qui per aiutarti a conoscere i nostri servizi dentali e trovare il trattamento perfetto per le tue esigenze. Come posso aiutarti oggi?"
+    };
+    const newGreeting = greetings[newLanguage] || greetings['en'];
+    
+    // Update the first message (greeting) with the new language
+    if (messages.length > 0 && messages[0].type === 'bot') {
+      const updatedMessages = [...messages];
+      updatedMessages[0] = { ...updatedMessages[0], content: newGreeting };
+      setMessages(updatedMessages);
+    }
+  };
 
   // Handlers
   const handleConcernClick = (option) => {
@@ -242,26 +258,67 @@ const ChatWindow = ({
             <div className="flex items-center gap-2">
               {/* Language Menu */}
               {showLanguageMenu && supportedLanguages.length > 1 && (
-                <div className="relative">
-                  <select
-                    value={selectedLanguage}
-                    onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="appearance-none bg-white/25 backdrop-blur-sm text-white border border-white/40 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/60 transition-all duration-200 hover:bg-white/30 cursor-pointer pr-8"
-                    style={{ 
-                      backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    {supportedLanguages.map(lang => (
-                      <option key={lang} value={lang} className="text-gray-800 bg-white font-medium">
-                        {lang === 'en' ? '🇺🇸 English' : lang === 'es' ? '🇪🇸 Español' : lang === 'it' ? '🇮🇹 Italiano' : lang}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                <div className="relative group" ref={languageDropdownRef}>
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md text-white border border-white/30 rounded-xl font-medium text-sm transition-all duration-300 hover:from-white/30 hover:to-white/20 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent"
+                      style={{
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2)',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      <span className="text-lg">
+                        {selectedLanguage === 'en' ? '🇺🇸' : selectedLanguage === 'es' ? '🇪🇸' : selectedLanguage === 'it' ? '🇮🇹' : '🌐'}
+                      </span>
+                      <span className="font-semibold">
+                        {selectedLanguage === 'en' ? 'English' : selectedLanguage === 'es' ? 'Español' : selectedLanguage === 'it' ? 'Italiano' : selectedLanguage}
+                      </span>
+                      <svg 
+                        className={`w-4 h-4 transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {/* Dropdown Menu */}
+                    {isLanguageOpen && (
+                      <div className="absolute top-full mt-2 right-0 z-50 min-w-[160px]">
+                        <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 overflow-hidden">
+                          <div className="py-1">
+                            {supportedLanguages.map((lang, index) => (
+                              <button
+                                key={lang}
+                                onClick={() => {
+                                  handleLanguageChange(lang);
+                                  setIsLanguageOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 ${
+                                  selectedLanguage === lang 
+                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md' 
+                                    : 'text-gray-700 hover:text-gray-900'
+                                } ${index === 0 ? 'rounded-t-lg' : ''} ${index === supportedLanguages.length - 1 ? 'rounded-b-lg' : ''}`}
+                              >
+                                <span className="text-xl">
+                                  {lang === 'en' ? '🇺🇸' : lang === 'es' ? '🇪🇸' : lang === 'it' ? '🇮🇹' : '🌐'}
+                                </span>
+                                <span className="font-medium">
+                                  {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'it' ? 'Italiano' : lang}
+                                </span>
+                                {selectedLanguage === lang && (
+                                  <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -545,26 +602,67 @@ const ChatWindow = ({
         <div className="flex items-center gap-2">
           {/* Language Menu */}
           {showLanguageMenu && supportedLanguages.length > 1 && (
-            <div className="relative">
-              <select
-                value={selectedLanguage}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                className="appearance-none bg-white/25 backdrop-blur-sm text-white border border-white/40 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/60 transition-all duration-200 hover:bg-white/30 cursor-pointer pr-8"
-                style={{ 
-                  backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                }}
-              >
-                {supportedLanguages.map(lang => (
-                  <option key={lang} value={lang} className="text-gray-800 bg-white font-medium">
-                    {lang === 'en' ? '🇺🇸 English' : lang === 'es' ? '🇪🇸 Español' : lang === 'it' ? '🇮🇹 Italiano' : lang}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+            <div className="relative group" ref={languageDropdownRef}>
+              <div className="relative">
+                <button
+                  onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md text-white border border-white/30 rounded-xl font-medium text-sm transition-all duration-300 hover:from-white/30 hover:to-white/20 hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent"
+                  style={{
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <span className="text-lg">
+                    {selectedLanguage === 'en' ? '🇺🇸' : selectedLanguage === 'es' ? '🇪🇸' : selectedLanguage === 'it' ? '🇮🇹' : '🌐'}
+                  </span>
+                  <span className="font-semibold">
+                    {selectedLanguage === 'en' ? 'English' : selectedLanguage === 'es' ? 'Español' : selectedLanguage === 'it' ? 'Italiano' : selectedLanguage}
+                  </span>
+                  <svg 
+                    className={`w-4 h-4 transition-transform duration-300 ${isLanguageOpen ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Dropdown Menu */}
+                {isLanguageOpen && (
+                  <div className="absolute top-full mt-2 right-0 z-50 min-w-[160px]">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 overflow-hidden">
+                      <div className="py-1">
+                        {supportedLanguages.map((lang, index) => (
+                          <button
+                            key={lang}
+                            onClick={() => {
+                              handleLanguageChange(lang);
+                              setIsLanguageOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 ${
+                              selectedLanguage === lang 
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md' 
+                                : 'text-gray-700 hover:text-gray-900'
+                            } ${index === 0 ? 'rounded-t-lg' : ''} ${index === supportedLanguages.length - 1 ? 'rounded-b-lg' : ''}`}
+                          >
+                            <span className="text-xl">
+                              {lang === 'en' ? '🇺🇸' : lang === 'es' ? '🇪🇸' : lang === 'it' ? '🇮🇹' : '🌐'}
+                            </span>
+                            <span className="font-medium">
+                              {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'it' ? 'Italiano' : lang}
+                            </span>
+                            {selectedLanguage === lang && (
+                              <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
