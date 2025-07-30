@@ -104,7 +104,7 @@ const ChatWindow = ({
     };
     return timeOptions[language] || timeOptions['en'];
   };
-  const days = dayOptions.length > 0 ? dayOptions : getDays(selectedLanguage);
+  const days = getDays(selectedLanguage);
   const times = getTimes(selectedLanguage);
   const getInsuranceOptions = (language) => {
     const options = {
@@ -543,7 +543,9 @@ const ChatWindow = ({
                   className="flex-1 flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none"
                 >
                   <FaArrowLeft className="w-4 h-4" />
-                  Back
+                  {selectedLanguage === 'en' ? 'Back' : 
+                   selectedLanguage === 'es' ? 'Atrás' : 
+                   selectedLanguage === 'it' ? 'Indietro' : 'Back'}
                 </button>
                 <button
                   type="button"
