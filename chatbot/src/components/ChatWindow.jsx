@@ -371,7 +371,12 @@ const ChatWindow = ({
           {/* Step 2: Appointment Timing */}
           {step === 2 && (
             <div className="flex-1 flex flex-col items-center justify-center p-4">
-              <div className="mb-4 text-center font-semibold">📅 How soon would you like an appointment?</div>
+              <div className="mb-4 text-center font-semibold">
+                📅 {selectedLanguage === 'en' ? 'How soon would you like an appointment?' : 
+                    selectedLanguage === 'es' ? '¿Qué tan pronto te gustaría una cita?' : 
+                    selectedLanguage === 'it' ? 'Quanto presto vorresti un appuntamento?' : 
+                    'How soon would you like an appointment?'}
+              </div>
               <div className="flex flex-col gap-2 w-full max-w-xs mb-4">
                 {timingOptions.map((option) => (
                   <button
@@ -389,7 +394,9 @@ const ChatWindow = ({
                 className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium transition-colors duration-150 shadow-none border-none focus:outline-none w-fit mt-2 mb-2"
               >
                 <FaArrowLeft className="w-3 h-3" />
-                Back
+                {selectedLanguage === 'en' ? 'Back' : 
+                 selectedLanguage === 'es' ? 'Atrás' : 
+                 selectedLanguage === 'it' ? 'Indietro' : 'Back'}
               </button>
             </div>
           )}
@@ -405,13 +412,20 @@ const ChatWindow = ({
                 </div>
               ) : (
                 <>
-                  <div className="mb-4 text-center font-semibold">Please enter your details so we can book your appointment:</div>
+                  <div className="mb-4 text-center font-semibold">
+                    {selectedLanguage === 'en' ? 'Please enter your details so we can book your appointment:' : 
+                     selectedLanguage === 'es' ? 'Por favor ingresa tus datos para poder agendar tu cita:' : 
+                     selectedLanguage === 'it' ? 'Inserisci i tuoi dati per prenotare il tuo appuntamento:' : 
+                     'Please enter your details so we can book your appointment:'}
+                  </div>
                   <input
                     type="text"
                     name="name"
                     value={userDetails.name}
                     onChange={handleUserDetailChange}
-                    placeholder="Your Name"
+                    placeholder={selectedLanguage === 'en' ? 'Your Name' : 
+                               selectedLanguage === 'es' ? 'Tu Nombre' : 
+                               selectedLanguage === 'it' ? 'Il Tuo Nome' : 'Your Name'}
                     className="mb-2 p-2 border rounded-lg w-full max-w-xs"
                     autoComplete="name"
                   />
@@ -420,7 +434,9 @@ const ChatWindow = ({
                     name="phone"
                     value={userDetails.phone}
                     onChange={handleUserDetailChange}
-                    placeholder="Phone Number"
+                    placeholder={selectedLanguage === 'en' ? 'Phone Number' : 
+                               selectedLanguage === 'es' ? 'Número de Teléfono' : 
+                               selectedLanguage === 'it' ? 'Numero di Telefono' : 'Phone Number'}
                     className="mb-2 p-2 border rounded-lg w-full max-w-xs"
                     autoComplete="tel"
                   />
@@ -429,7 +445,9 @@ const ChatWindow = ({
                     name="email"
                     value={userDetails.email}
                     onChange={handleUserDetailChange}
-                    placeholder="Email Address"
+                    placeholder={selectedLanguage === 'en' ? 'Email Address' : 
+                               selectedLanguage === 'es' ? 'Dirección de Correo' : 
+                               selectedLanguage === 'it' ? 'Indirizzo Email' : 'Email Address'}
                     className="mb-2 p-2 border rounded-lg w-full max-w-xs"
                     autoComplete="email"
                   />
@@ -439,7 +457,9 @@ const ChatWindow = ({
                     className="flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-base font-medium transition-colors duration-150 shadow-none border-none focus:outline-none mt-2 mb-2"
                   >
                     <FaArrowLeft className="w-4 h-4" />
-                    Back
+                    {selectedLanguage === 'en' ? 'Back' : 
+                     selectedLanguage === 'es' ? 'Atrás' : 
+                     selectedLanguage === 'it' ? 'Indietro' : 'Back'}
                   </button>
                   <button
                     className="mt-4 px-4 py-2 text-white rounded-lg disabled:opacity-50 transition-colors duration-150"
@@ -447,9 +467,16 @@ const ChatWindow = ({
                     disabled={!(userDetails.name && userDetails.phone && userDetails.email)}
                     onClick={handleSubmitDetails}
                   >
-                    Submit
+                    {selectedLanguage === 'en' ? 'Submit' : 
+                     selectedLanguage === 'es' ? 'Enviar' : 
+                     selectedLanguage === 'it' ? 'Invia' : 'Submit'}
                   </button>
-                  {submitStatus === 'error' && <div className="mt-2 text-red-600">There was an error submitting your request. Please try again.</div>}
+                  {submitStatus === 'error' && <div className="mt-2 text-red-600">
+                    {selectedLanguage === 'en' ? 'There was an error submitting your request. Please try again.' : 
+                     selectedLanguage === 'es' ? 'Hubo un error al enviar tu solicitud. Por favor intenta de nuevo.' : 
+                     selectedLanguage === 'it' ? 'Si è verificato un errore nell\'invio della richiesta. Riprova.' : 
+                     'There was an error submitting your request. Please try again.'}
+                  </div>}
                 </>
               )}
             </div>
@@ -457,7 +484,12 @@ const ChatWindow = ({
           {/* Step 4: Best Days */}
           {step === 4 && (
             <div className="flex-1 flex flex-col items-center p-4">
-              <div className="w-full pt-6 pb-7 text-center font-bold text-lg">What days work the best?</div>
+              <div className="w-full pt-6 pb-7 text-center font-bold text-lg">
+                {selectedLanguage === 'en' ? 'What days work the best?' : 
+                 selectedLanguage === 'es' ? '¿Qué días te funcionan mejor?' : 
+                 selectedLanguage === 'it' ? 'Quali giorni ti vanno meglio?' : 
+                 'What days work the best?'}
+              </div>
               <div className="grid grid-cols-3 gap-3 w-full max-w-xs mb-8">
                 {days.map((day) => (
                   <button
@@ -497,7 +529,12 @@ const ChatWindow = ({
           {/* Step 5: Morning/Afternoon */}
           {step === 5 && (
             <div className="flex-1 flex flex-col items-center p-4">
-              <div className="w-full pt-6 pb-7 text-center font-bold text-lg">Do you prefer morning or afternoon appointment?</div>
+              <div className="w-full pt-6 pb-7 text-center font-bold text-lg">
+                {selectedLanguage === 'en' ? 'Do you prefer morning or afternoon appointment?' : 
+                 selectedLanguage === 'es' ? '¿Prefieres cita por la mañana o por la tarde?' : 
+                 selectedLanguage === 'it' ? 'Preferisci appuntamento mattutino o pomeridiano?' : 
+                 'Do you prefer morning or afternoon appointment?'}
+              </div>
               <div className="flex flex-row justify-center gap-4 w-full max-w-xs mb-8">
                 {times.map((time) => (
                   <button
@@ -528,7 +565,12 @@ const ChatWindow = ({
           {/* Step 6: Dental Insurance */}
           {step === 6 && (
             <div className="flex-1 flex flex-col items-center p-4">
-              <div className="w-full pt-6 pb-7 text-center font-bold text-lg">Do you have dental insurance?</div>
+              <div className="w-full pt-6 pb-7 text-center font-bold text-lg">
+                {selectedLanguage === 'en' ? 'Do you have dental insurance?' : 
+                 selectedLanguage === 'es' ? '¿Tienes seguro dental?' : 
+                 selectedLanguage === 'it' ? 'Hai un\'assicurazione dentale?' : 
+                 'Do you have dental insurance?'}
+              </div>
               <div className="flex flex-row justify-center gap-4 w-full max-w-xs mb-8">
                 {insuranceOptions.map((val) => (
                   <button
