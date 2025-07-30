@@ -89,26 +89,31 @@ export function extractContactInfo(message) {
     nameCandidate = nameCandidate.replace(/[,.:;!?&\-\(\)]/g, ' ').trim();
     nameCandidate = nameCandidate.replace(/\s+/g, ' ').trim();
     
-            // Extract the first meaningful word(s) - limit to 2-3 words max for names
-        const nameMatch = nameCandidate.match(/([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/);
-        if (nameMatch && nameMatch[1].trim().length > 1) {
-            const potentialName = nameMatch[1].trim();
-            // Additional validation: make sure it's not just common words or phrases
-            const commonWords = ['the', 'is', 'are', 'and', 'or', 'but', 'my', 'me', 'i', 'you', 'your', 'hi', 'hello', 'hey', 'quiero', 'agendar', 'una', 'cita', 'para', 'carillas', 'dentales', 'necesito', 'busco', 'me', 'gustaria', 'puedo', 'tener', 'hacer', 'ver', 'consultar', 'informacion', 'sobre'];
-            const nameWords = potentialName.toLowerCase().split(' ');
-            const isValidName = !nameWords.every(word => commonWords.includes(word));
-            
-            // Additional check: make sure it looks like a real name (not a sentence)
-            const isRealName = potentialName.length <= 30 && (potentialName.split(' ').length <= 3);
-            
-            // Extra validation: reject common phrases that are not names
-            const commonPhrases = ['quiero agendar', 'necesito una', 'me gustaria', 'puedo tener', 'busco informacion', 'quiero consultar'];
-            const isNotCommonPhrase = !commonPhrases.some(phrase => potentialName.toLowerCase().includes(phrase));
-            
-            if (isValidName && isRealName && isNotCommonPhrase) {
-                extractedName = potentialName;
-            }
+    // Extract the first meaningful word(s) - limit to 2-3 words max for names
+    const nameMatch = nameCandidate.match(/([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/);
+    if (nameMatch && nameMatch[1].trim().length > 1) {
+        const potentialName = nameMatch[1].trim();
+        // Additional validation: make sure it's not just common words or phrases
+        const commonWords = ['the', 'is', 'are', 'and', 'or', 'but', 'my', 'me', 'i', 'you', 'your', 'hi', 'hello', 'hey', 'quiero', 'agendar', 'una', 'cita', 'para', 'carillas', 'dentales', 'necesito', 'busco', 'me', 'gustaria', 'puedo', 'tener', 'hacer', 'ver', 'consultar', 'informacion', 'sobre'];
+        const nameWords = potentialName.toLowerCase().split(' ');
+        const isValidName = !nameWords.every(word => commonWords.includes(word));
+        
+        // Additional check: make sure it looks like a real name (not a sentence)
+        const isRealName = potentialName.length <= 30 && (potentialName.split(' ').length <= 3);
+        
+        // Expanded blacklist of common intent phrases (English, Spanish, Italian)
+        const commonPhrases = [
+          // English
+          "i am interested", "i'm interested", "i want to book", "i want an appointment", "i want to schedule", "i would like to book", "i would like an appointment", "i would like to schedule", "i need an appointment", "i need to book", "i need to schedule", "i want information", "i want to know", "i want to consult", "i want consultation", "i want to ask", "i want help", "i need help", "i need information", "i need to ask", "i need consultation", "i need consult", "i want to see", "i want to visit", "i want to talk", "i want to speak", "i want to contact", "i want to reach", "i want to get", "i want to receive", "i want to learn", "i want to try", "i want to start", "i want to begin", "i want to join", "i want to participate", "i want to apply", "i want to register", "i want to sign up", "i want to enroll", "i want to subscribe", "i want to order", "i want to buy", "i want to purchase", "i want to pay", "i want to reserve", "i want to make", "i want to create", "i want to open", "i want to close", "i want to finish", "i want to complete", "i want to end", "i want to stop", "i want to cancel", "i want to change", "i want to update", "i want to edit", "i want to modify", "i want to delete", "i want to remove", "i want to add", "i want to include", "i want to exclude", "i want to continue", "i want to proceed", "i want to confirm", "i want to accept", "i want to decline", "i want to reject", "i want to refuse", "i want to agree", "i want to disagree", "i want to approve", "i want to disapprove", "i want to support", "i want to oppose", "i want to recommend", "i want to suggest", "i want to advise", "i want to warn", "i want to inform", "i want to notify", "i want to announce", "i want to declare", "i want to state", "i want to explain", "i want to describe", "i want to report", "i want to complain", "i want to praise", "i want to thank", "i want to apologize", "i want to excuse", "i want to forgive", "i want to ask for", "i want to request", "i want to demand", "i want to require", "i want to need", "i want to wish", "i want to hope", "i want to expect", "i want to plan", "i want to intend", "i want to mean", "i want to imply", "i want to propose", "i want to offer", "i want to give", "i want to send", "i want to show", "i want to display", "i want to present", "i want to introduce", "i want to mention", "i want to refer", "i want to relate", "i want to connect", "i want to link", "i want to associate", "i want to combine", "i want to mix", "i want to blend", "i want to merge", "i want to join", "i want to unite", "i want to separate", "i want to divide", "i want to split", "i want to break", "i want to cut", "i want to slice", "i want to chop", "i want to dice", "i want to mince", "i want to grind", "i want to crush", "i want to press", "i want to squeeze", "i want to extract", "i want to remove", "i want to eliminate", "i want to get rid of", "i want to throw away", "i want to discard", "i want to dispose", "i want to destroy", "i want to ruin", "i want to damage", "i want to harm", "i want to hurt",
+          // Spanish/Italian (already present)
+          "quiero agendar", "necesito una", "me gustaria", "puedo tener", "busco informacion", "quiero consultar"
+        ];
+        const isNotCommonPhrase = !commonPhrases.some(phrase => potentialName.toLowerCase().includes(phrase));
+        
+        if (isValidName && isRealName && isNotCommonPhrase) {
+            extractedName = potentialName;
         }
+    }
 
     // Return if we found something
     if (extractedEmail || extractedPhone || extractedName) {
