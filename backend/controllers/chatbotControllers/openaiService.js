@@ -166,15 +166,38 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // --- END MODIFIED LOGIC ---
                 
                 // Use phone/email from businessData (dashboard)
-                const confirmationPrefix = `✅ Thank you, ${contactInfo.name}! We've received your information for ${determinedServiceContext}.`;
-                const scheduleSuffix = ` 📞 Our team will call you at ${contactInfo.phone} soon.`;
+                const confirmationMessages = {
+                    'en': {
+                        prefix: `✅ Thank you, ${contactInfo.name}! We've received your information for ${determinedServiceContext}.`,
+                        schedule: ` 📞 Our team will call you at ${contactInfo.phone} soon.`,
+                        immediateHelp: ` Need immediate help? Call ${businessData.phone}.`,
+                        orEmail: ` Or email ${businessData.email}.`
+                    },
+                    'es': {
+                        prefix: `✅ ¡Gracias, ${contactInfo.name}! Hemos recibido tu información para ${determinedServiceContext}.`,
+                        schedule: ` 📞 Nuestro equipo te llamará al ${contactInfo.phone} pronto.`,
+                        immediateHelp: ` ¿Necesitas ayuda inmediata? Llama al ${businessData.phone}.`,
+                        orEmail: ` O envía un correo a ${businessData.email}.`
+                    },
+                    'it': {
+                        prefix: `✅ Grazie, ${contactInfo.name}! Abbiamo ricevuto le tue informazioni per ${determinedServiceContext}.`,
+                        schedule: ` 📞 Il nostro team ti chiamerà al ${contactInfo.phone} presto.`,
+                        immediateHelp: ` Hai bisogno di aiuto immediato? Chiama ${businessData.phone}.`,
+                        orEmail: ` O invia un'email a ${businessData.email}.`
+                    }
+                };
+                
+                const langMessages = confirmationMessages[language] || confirmationMessages['en'];
+                const confirmationPrefix = langMessages.prefix;
+                const scheduleSuffix = langMessages.schedule;
+                
                 // Use dashboard phone/email for callUsSuffix
                 let callUsSuffix = '';
                 if (businessData.phone) {
-                    callUsSuffix += ` Need immediate help? Call ${businessData.phone}.`;
+                    callUsSuffix += langMessages.immediateHelp;
                 }
                 if (businessData.email) {
-                    callUsSuffix += ` Or email ${businessData.email}.`;
+                    callUsSuffix += langMessages.orEmail;
                 }
                // console.log('[DEBUG][openaiService.js] Using contact info in response:', { phone: businessData.phone, email: businessData.email });
                 responsePayload = {
