@@ -74,34 +74,32 @@ export function extractContactInfo(message) {
         }
     }
 
-    // 3. Extract Name - improved logic to avoid including phone/email keywords
-    if (extractedEmail || extractedPhone) {
-        let nameCandidate = message;
+    // 3. Extract Name - improved logic to handle both cases: with contact info and standalone names
+    let nameCandidate = message;
+    
+    // Remove email and phone from the message if they exist
+    if (extractedEmail) nameCandidate = nameCandidate.replace(extractedEmail, '');
+    if (phoneMatch) nameCandidate = nameCandidate.replace(phoneMatch[0], '');
+    
+    // Remove common keywords that might be included
+    nameCandidate = nameCandidate.replace(/\b(name|phone|email|mail|contact|number|tel|telephone):\s*/gi, '');
+    nameCandidate = nameCandidate.replace(/\b(name|phone|email|mail|contact|number|tel|telephone)\b/gi, '');
+    
+    // Clean up punctuation and extra spaces
+    nameCandidate = nameCandidate.replace(/[,.:;!?&\-\(\)]/g, ' ').trim();
+    nameCandidate = nameCandidate.replace(/\s+/g, ' ').trim();
+    
+    // Extract the first meaningful word(s) - limit to 2-3 words max for names
+    const nameMatch = nameCandidate.match(/([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/);
+    if (nameMatch && nameMatch[1].trim().length > 1) {
+        const potentialName = nameMatch[1].trim();
+        // Additional validation: make sure it's not just common words
+        const commonWords = ['the', 'is', 'are', 'and', 'or', 'but', 'my', 'me', 'i', 'you', 'your', 'hi', 'hello', 'hey'];
+        const nameWords = potentialName.toLowerCase().split(' ');
+        const isValidName = !nameWords.every(word => commonWords.includes(word));
         
-        // Remove email and phone from the message
-        if (extractedEmail) nameCandidate = nameCandidate.replace(extractedEmail, '');
-        if (phoneMatch) nameCandidate = nameCandidate.replace(phoneMatch[0], '');
-        
-        // Remove common keywords that might be included
-        nameCandidate = nameCandidate.replace(/\b(name|phone|email|mail|contact|number|tel|telephone):\s*/gi, '');
-        nameCandidate = nameCandidate.replace(/\b(name|phone|email|mail|contact|number|tel|telephone)\b/gi, '');
-        
-        // Clean up punctuation and extra spaces
-        nameCandidate = nameCandidate.replace(/[,.:;!?&\-\(\)]/g, ' ').trim();
-        nameCandidate = nameCandidate.replace(/\s+/g, ' ').trim();
-        
-        // Extract the first meaningful word(s) - limit to 2-3 words max for names
-        const nameMatch = nameCandidate.match(/([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/);
-        if (nameMatch && nameMatch[1].trim().length > 1) {
-            const potentialName = nameMatch[1].trim();
-            // Additional validation: make sure it's not just common words
-            const commonWords = ['the', 'is', 'are', 'and', 'or', 'but', 'my', 'me', 'i', 'you', 'your', 'hi', 'hello', 'hey'];
-            const nameWords = potentialName.toLowerCase().split(' ');
-            const isValidName = !nameWords.every(word => commonWords.includes(word));
-            
-            if (isValidName) {
-                extractedName = potentialName;
-            }
+        if (isValidName) {
+            extractedName = potentialName;
         }
     }
 
