@@ -250,8 +250,9 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
                 if (extractedFromMsg.phone && !finalAccumulatedInfo.phone) { finalAccumulatedInfo.phone = extractedFromMsg.phone; merged = true; }
                 if (extractedFromMsg.email && !finalAccumulatedInfo.email) { finalAccumulatedInfo.email = extractedFromMsg.email; merged = true; }
                 
-                if(merged && userMsg.content === message) { // Check if merge happened for the *current* user message
-                     extractedSomethingThisTurn = true; // Mark that we found something new *this turn*
+                // Mark that we found something new *this turn* if this is the current message
+                if (userMsg.content === message) {
+                    extractedSomethingThisTurn = true;
                 }
             }
         });
