@@ -93,7 +93,15 @@ const ChatWindow = ({
   const times = ['Morning', 'Afternoon'];
   const insuranceOptions = ['Yes', 'No'];
   // Add timingOptions for appointment step
-  const timingOptions = ['Now', '1-3 weeks', '1-3 months'];
+  const getTimingOptions = (language) => {
+    const options = {
+      'en': ['Now', '1-3 weeks', '1-3 months'],
+      'es': ['Ahora', '1-3 semanas', '1-3 meses'],
+      'it': ['Ora', '1-3 settimane', '1-3 mesi']
+    };
+    return options[language] || options['en'];
+  };
+  const timingOptions = getTimingOptions(selectedLanguage);
 
   // Update header title based on service mentions in messages
   useEffect(() => {
