@@ -89,19 +89,26 @@ export function extractContactInfo(message) {
     nameCandidate = nameCandidate.replace(/[,.:;!?&\-\(\)]/g, ' ').trim();
     nameCandidate = nameCandidate.replace(/\s+/g, ' ').trim();
     
-    // Extract the first meaningful word(s) - limit to 2-3 words max for names
-    const nameMatch = nameCandidate.match(/([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/);
-    if (nameMatch && nameMatch[1].trim().length > 1) {
-        const potentialName = nameMatch[1].trim();
-        // Additional validation: make sure it's not just common words
-        const commonWords = ['the', 'is', 'are', 'and', 'or', 'but', 'my', 'me', 'i', 'you', 'your', 'hi', 'hello', 'hey'];
-        const nameWords = potentialName.toLowerCase().split(' ');
-        const isValidName = !nameWords.every(word => commonWords.includes(word));
-        
-        if (isValidName) {
-            extractedName = potentialName;
+            // Extract the first meaningful word(s) - limit to 2-3 words max for names
+        const nameMatch = nameCandidate.match(/([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/);
+        if (nameMatch && nameMatch[1].trim().length > 1) {
+            const potentialName = nameMatch[1].trim();
+            // Additional validation: make sure it's not just common words or phrases
+            const commonWords = ['the', 'is', 'are', 'and', 'or', 'but', 'my', 'me', 'i', 'you', 'your', 'hi', 'hello', 'hey', 'quiero', 'agendar', 'una', 'cita', 'para', 'carillas', 'dentales', 'necesito', 'busco', 'me', 'gustaria', 'puedo', 'tener', 'hacer', 'ver', 'consultar', 'informacion', 'sobre'];
+            const nameWords = potentialName.toLowerCase().split(' ');
+            const isValidName = !nameWords.every(word => commonWords.includes(word));
+            
+            // Additional check: make sure it looks like a real name (not a sentence)
+            const isRealName = potentialName.length <= 30 && (potentialName.split(' ').length <= 3);
+            
+            // Extra validation: reject common phrases that are not names
+            const commonPhrases = ['quiero agendar', 'necesito una', 'me gustaria', 'puedo tener', 'busco informacion', 'quiero consultar'];
+            const isNotCommonPhrase = !commonPhrases.some(phrase => potentialName.toLowerCase().includes(phrase));
+            
+            if (isValidName && isRealName && isNotCommonPhrase) {
+                extractedName = potentialName;
+            }
         }
-    }
 
     // Return if we found something
     if (extractedEmail || extractedPhone || extractedName) {
