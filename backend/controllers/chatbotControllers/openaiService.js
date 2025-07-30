@@ -43,20 +43,52 @@ const DENTAL_PROBLEMS = {
 const TIME_PREFERENCE_KEYWORDS = ['morning', 'afternoon', 'evening', 'weekend', 'saturday', 'sunday', 'today', 'tomorrow', 'asap', 'soon'];
 
 // Restore local definition of createMissingInfoPrompt
-const createMissingInfoPrompt = (missingFields, providedInfo) => {
+const createMissingInfoPrompt = (missingFields, providedInfo, language = 'en') => {
     let prompt = "";
+    
+    // Multilingual responses
+    const responses = {
+        en: {
+            namePhoneNoEmail: `Thanks, ${providedInfo.name}! Got your phone number. Could you also provide your email address?`,
+            nameEmailNoPhone: `Thanks, ${providedInfo.name}! Got your email. Could you also provide your phone number?`,
+            phoneEmailNoName: `Got your phone and email! Could you please provide your full name too?`,
+            nameNoPhoneNoEmail: `Thanks, ${providedInfo.name}! Could you also share your phone number and email address?`,
+            phoneNoNameNoEmail: `Got your phone number! Could you also share your name and email address?`,
+            emailNoNameNoPhone: `Got your email address! Could you also share your name and phone number?`
+        },
+        es: {
+            namePhoneNoEmail: `¡Gracias, ${providedInfo.name}! Obtuvimos tu número de teléfono. ¿Podrías también proporcionar tu dirección de correo electrónico?`,
+            nameEmailNoPhone: `¡Gracias, ${providedInfo.name}! Obtuvimos tu correo electrónico. ¿Podrías también proporcionar tu número de teléfono?`,
+            phoneEmailNoName: `¡Obtuvimos tu teléfono y correo electrónico! ¿Podrías proporcionar tu nombre completo también?`,
+            nameNoPhoneNoEmail: `¡Gracias, ${providedInfo.name}! ¿Podrías también compartir tu número de teléfono y dirección de correo electrónico?`,
+            phoneNoNameNoEmail: `¡Obtuvimos tu número de teléfono! ¿Podrías también compartir tu nombre y dirección de correo electrónico?`,
+            emailNoNameNoPhone: `¡Obtuvimos tu dirección de correo electrónico! ¿Podrías también compartir tu nombre y número de teléfono?`
+        },
+        it: {
+            namePhoneNoEmail: `Grazie, ${providedInfo.name}! Abbiamo il tuo numero di telefono. Potresti anche fornire il tuo indirizzo email?`,
+            nameEmailNoPhone: `Grazie, ${providedInfo.name}! Abbiamo la tua email. Potresti anche fornire il tuo numero di telefono?`,
+            phoneEmailNoName: `Abbiamo il tuo telefono ed email! Potresti fornire anche il tuo nome completo?`,
+            nameNoPhoneNoEmail: `Grazie, ${providedInfo.name}! Potresti anche condividere il tuo numero di telefono e indirizzo email?`,
+            phoneNoNameNoEmail: `Abbiamo il tuo numero di telefono! Potresti anche condividere il tuo nome e indirizzo email?`,
+            emailNoNameNoPhone: `Abbiamo il tuo indirizzo email! Potresti anche condividere il tuo nome e numero di telefono?`
+        }
+    };
+    
+    // Get the appropriate language responses, fallback to English
+    const langResponses = responses[language] || responses.en;
+    
     if (providedInfo.name && providedInfo.phone && !providedInfo.email) {
-        prompt = `Thanks, ${providedInfo.name}! Got your phone number. Could you also provide your email address?`;
+        prompt = langResponses.namePhoneNoEmail;
     } else if (providedInfo.name && !providedInfo.phone && providedInfo.email) {
-        prompt = `Thanks, ${providedInfo.name}! Got your email. Could you also provide your phone number?`;
+        prompt = langResponses.nameEmailNoPhone;
     } else if (!providedInfo.name && providedInfo.phone && providedInfo.email) {
-        prompt = `Got your phone and email! Could you please provide your full name too?`;
+        prompt = langResponses.phoneEmailNoName;
     } else if (providedInfo.name && !providedInfo.phone && !providedInfo.email) {
-        prompt = `Thanks, ${providedInfo.name}! Could you also share your phone number and email address?`;
+        prompt = langResponses.nameNoPhoneNoEmail;
     } else if (!providedInfo.name && providedInfo.phone && !providedInfo.email) {
-        prompt = `Got your phone number! Could you also share your name and email address?`;
+        prompt = langResponses.phoneNoNameNoEmail;
     } else if (!providedInfo.name && !providedInfo.phone && providedInfo.email) {
-        prompt = `Got your email address! Could you also share your name and phone number?`;
+        prompt = langResponses.emailNoNameNoPhone;
     } else {
         // Default fallback if logic somehow misses a case (shouldn't happen)
         prompt = RESPONSE_TEMPLATES.contact_after_yes; 
@@ -157,7 +189,7 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 // console.log('[generateAIResponse] Matched case: PARTIAL_CONTACT_INFO_PROVIDED'); // To be removed/commented
                 responsePayload = {
                     type: 'PARTIAL_CONTACT_REQUEST', // Indicate bot is asking for more
-                    response: createMissingInfoPrompt(intent.missingFields, intent.contactInfo),
+                    response: createMissingInfoPrompt(intent.missingFields, intent.contactInfo, language),
                     contactInfo: intent.contactInfo // Pass back the updated partial info
                 };
                 break;
