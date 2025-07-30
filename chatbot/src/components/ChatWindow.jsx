@@ -88,10 +88,33 @@ const ChatWindow = ({
   concerns = concerns.filter(option => option && typeof option.name === 'string' && option.name.length > 0);
 
   // Day and time options
-  const days = dayOptions.length > 0 ? dayOptions : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  // Remove timeOptions from backend, use static options for time selection
-  const times = ['Morning', 'Afternoon'];
-  const insuranceOptions = ['Yes', 'No'];
+  const getDays = (language) => {
+    const dayOptions = {
+      'en': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      'es': ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+      'it': ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì']
+    };
+    return dayOptions[language] || dayOptions['en'];
+  };
+  const getTimes = (language) => {
+    const timeOptions = {
+      'en': ['Morning', 'Afternoon'],
+      'es': ['Mañana', 'Tarde'],
+      'it': ['Mattina', 'Pomeriggio']
+    };
+    return timeOptions[language] || timeOptions['en'];
+  };
+  const days = dayOptions.length > 0 ? dayOptions : getDays(selectedLanguage);
+  const times = getTimes(selectedLanguage);
+  const getInsuranceOptions = (language) => {
+    const options = {
+      'en': ['Yes', 'No'],
+      'es': ['Sí', 'No'],
+      'it': ['Sì', 'No']
+    };
+    return options[language] || options['en'];
+  };
+  const insuranceOptions = getInsuranceOptions(selectedLanguage);
   // Add timingOptions for appointment step
   const getTimingOptions = (language) => {
     const options = {
@@ -529,7 +552,9 @@ const ChatWindow = ({
                   disabled={bestDays.length !== 1}
                   onClick={() => setStep(5)}
                 >
-                  Next
+                  {selectedLanguage === 'en' ? 'Next' : 
+                   selectedLanguage === 'es' ? 'Siguiente' : 
+                   selectedLanguage === 'it' ? 'Avanti' : 'Next'}
                 </button>
               </div>
             </div>
