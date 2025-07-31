@@ -3,12 +3,30 @@ import { FaTimes, FaPaperPlane, FaArrowLeft, FaCheckCircle } from 'react-icons/f
 import ReactMarkdown from 'react-markdown';
 import './ChatWindow.css'; // Add this import at the top for custom styles
 
-const getSubmissionMessage = () => {
+const getSubmissionMessage = (language = 'en') => {
   const today = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+  
+  const messages = {
+    'en': {
+      weekend: 'We are closed for the weekend, but we will call you early on Monday with more information.',
+      weekday: 'Our team will get back to you within 2 hours with more information.'
+    },
+    'es': {
+      weekend: 'Estamos cerrados durante el fin de semana, pero te llamaremos temprano el lunes con más información.',
+      weekday: 'Nuestro equipo se pondrá en contacto contigo en las próximas 2 horas con más información.'
+    },
+    'it': {
+      weekend: 'Siamo chiusi durante il fine settimana, ma ti chiameremo presto lunedì con maggiori informazioni.',
+      weekday: 'Il nostro team ti contatterà entro 2 ore con maggiori informazioni.'
+    }
+  };
+  
+  const langMessages = messages[language] || messages['en'];
+  
   if (today === 0 || today === 6) {
-    return 'We are closed for the weekend, but we will call you early on Monday with more information.';
+    return langMessages.weekend;
   }
-  return 'Our team will get back to you within 2 hours with more information.';
+  return langMessages.weekday;
 };
 
 const ChatWindow = ({ 
@@ -438,7 +456,7 @@ const ChatWindow = ({
                 <div className="flex flex-col items-center justify-center w-full">
                   <FaCheckCircle className="text-green-500 mb-3" style={{ fontSize: 56 }} />
                   <div className="text-green-700 text-base font-semibold text-center mb-2">
-                    {getSubmissionMessage()}
+                    {getSubmissionMessage(selectedLanguage)}
                   </div>
                 </div>
               ) : (
