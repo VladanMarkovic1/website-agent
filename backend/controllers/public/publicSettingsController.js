@@ -9,6 +9,8 @@ const serviceTranslations = {
         'Broken teeth': 'Broken teeth',
         'Implants': 'Implants',
         'Regular care': 'Regular care',
+        'Teeth Whitening': 'Teeth Whitening',
+        'Dental Whitening': 'Dental Whitening',
         'Whitening': 'Whitening',
         'Invisalign': 'Invisalign',
         'Veneers': 'Veneers',
@@ -16,13 +18,21 @@ const serviceTranslations = {
         'Crowns': 'Crowns',
         'Bridges': 'Bridges',
         'Dental Cleaning': 'Dental Cleaning',
-        'Emergency Care': 'Emergency Care'
+        'Dental Examination': 'Dental Examination',
+        'Emergency Care': 'Emergency Care',
+        'Emergency Dental Care': 'Emergency Dental Care',
+        'Cosmetic Dentistry': 'Cosmetic Dentistry',
+        'General Dentistry': 'General Dentistry',
+        'Preventive Care': 'Preventive Care',
+        'Restorative Dentistry': 'Restorative Dentistry'
     },
     'es': {
         'Pain': 'Dolor',
         'Broken teeth': 'Dientes rotos',
         'Implants': 'Implantes',
         'Regular care': 'Cuidado regular',
+        'Teeth Whitening': 'Blanqueamiento dental',
+        'Dental Whitening': 'Blanqueamiento dental',
         'Whitening': 'Blanqueamiento',
         'Invisalign': 'Invisalign',
         'Veneers': 'Carillas',
@@ -30,13 +40,21 @@ const serviceTranslations = {
         'Crowns': 'Coronas',
         'Bridges': 'Puentes',
         'Dental Cleaning': 'Limpieza dental',
-        'Emergency Care': 'Cuidado de emergencia'
+        'Dental Examination': 'Examen dental',
+        'Emergency Care': 'Cuidado de emergencia',
+        'Emergency Dental Care': 'Cuidado dental de emergencia',
+        'Cosmetic Dentistry': 'Odontología cosmética',
+        'General Dentistry': 'Odontología general',
+        'Preventive Care': 'Cuidado preventivo',
+        'Restorative Dentistry': 'Odontología restaurativa'
     },
     'it': {
         'Pain': 'Dolore',
         'Broken teeth': 'Denti rotti',
         'Implants': 'Impianti',
         'Regular care': 'Cura regolare',
+        'Teeth Whitening': 'Sbiancamento dentale',
+        'Dental Whitening': 'Sbiancamento dentale',
         'Whitening': 'Sbiancamento',
         'Invisalign': 'Invisalign',
         'Veneers': 'Faccette',
@@ -44,7 +62,13 @@ const serviceTranslations = {
         'Crowns': 'Corone',
         'Bridges': 'Ponti',
         'Dental Cleaning': 'Pulizia dentale',
-        'Emergency Care': 'Cura d\'emergenza'
+        'Dental Examination': 'Esame dentale',
+        'Emergency Care': 'Cura d\'emergenza',
+        'Emergency Dental Care': 'Cura dentale d\'emergenza',
+        'Cosmetic Dentistry': 'Odontoiatria cosmetica',
+        'General Dentistry': 'Odontoiatria generale',
+        'Preventive Care': 'Cura preventiva',
+        'Restorative Dentistry': 'Odontoiatria restaurativa'
     }
 };
 
