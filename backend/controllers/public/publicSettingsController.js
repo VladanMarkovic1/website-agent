@@ -7,6 +7,7 @@ const serviceTranslations = {
     'en': {
         'Pain': 'Pain',
         'Broken teeth': 'Broken teeth',
+        'Broken Teeth': 'Broken Teeth',
         'Implants': 'Implants',
         'Regular care': 'Regular care',
         'Teeth Whitening': 'Teeth Whitening',
@@ -29,6 +30,7 @@ const serviceTranslations = {
     'es': {
         'Pain': 'Dolor',
         'Broken teeth': 'Dientes rotos',
+        'Broken Teeth': 'Dientes rotos',
         'Implants': 'Implantes',
         'Regular care': 'Cuidado regular',
         'Teeth Whitening': 'Blanqueamiento dental',
@@ -51,6 +53,7 @@ const serviceTranslations = {
     'it': {
         'Pain': 'Dolore',
         'Broken teeth': 'Denti rotti',
+        'Broken Teeth': 'Denti rotti',
         'Implants': 'Impianti',
         'Regular care': 'Cura regolare',
         'Teeth Whitening': 'Sbiancamento dentale',
