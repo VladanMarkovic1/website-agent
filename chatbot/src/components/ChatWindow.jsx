@@ -40,7 +40,9 @@ const ChatWindow = ({
   timeOptions = [], 
   concernOptions = [],
   showLanguageMenu = false,
-  supportedLanguages = ['en']
+  supportedLanguages = ['en'],
+  currentLanguage = 'en',
+  onLanguageChange
 }) => {
   // Add console log here
   console.log('[ChatWindow] Rendering with messages:', messages);
@@ -53,7 +55,7 @@ const ChatWindow = ({
   const languageDropdownRef2 = useRef(null);
 
   // Language menu state
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [selectedLanguage, setSelectedLanguage] = useState(currentLanguage);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
 
   // New state for button-based flow
@@ -188,6 +190,11 @@ const ChatWindow = ({
   // Handle language change
   const handleLanguageChange = (newLanguage) => {
     setSelectedLanguage(newLanguage);
+    
+    // Call parent's language change handler
+    if (onLanguageChange) {
+      onLanguageChange(newLanguage);
+    }
     
     // Update the greeting message based on new language
     const greetings = {

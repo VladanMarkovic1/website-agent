@@ -35,6 +35,7 @@ const ChatWidget = ({
 
     // State for dynamic options
     const [options, setOptions] = useState({ availableDays: [], availableTimes: [], services: [] });
+    const [currentLanguage, setCurrentLanguage] = useState('en');
 
     // Function to fetch dynamic config
     const fetchWidgetConfig = useCallback(async () => {
@@ -72,10 +73,10 @@ const ChatWidget = ({
     }, [businessId, backendUrl, initialPrimaryColor, initialPosition]);
 
     // Fetch public options (days, times, services) for the business
-    const fetchOptions = useCallback(async () => {
+    const fetchOptions = useCallback(async (language = 'en') => {
         if (!businessId || !backendUrl) return;
         try {
-            const response = await fetch(`${backendUrl}/api/v1/public/options/${businessId}`);
+            const response = await fetch(`${backendUrl}/api/v1/public/options/${businessId}?language=${language}`);
             if (!response.ok) throw new Error('Failed to fetch options');
             const data = await response.json();
             setOptions({
@@ -171,6 +172,8 @@ const ChatWidget = ({
         // Handle language change
         socketRef.current.on('languageChange', (data) => {
             console.log('[ChatWidget] Language changed to:', data.language);
+            setCurrentLanguage(data.language);
+            
             // Update the greeting message based on new language
             const greetings = {
                 'en': "👋 Hello! I'm here to help you learn about our dental services and find the perfect treatment for your needs. How can I assist you today?",
@@ -188,6 +191,9 @@ const ChatWidget = ({
                 }
                 return prevMessages;
             });
+            
+            // Refetch options with new language
+            fetchOptions(data.language);
         });
 
         // Cleanup on component unmount
@@ -244,6 +250,11 @@ const ChatWidget = ({
                     concernOptions={options.services}
                     showLanguageMenu={showLanguageMenu}
                     supportedLanguages={supportedLanguages}
+                    currentLanguage={currentLanguage}
+                    onLanguageChange={(newLanguage) => {
+                        setCurrentLanguage(newLanguage);
+                        fetchOptions(newLanguage);
+                    }}
                 />
             ) : (
                 <ChatButton 

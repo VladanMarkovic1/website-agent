@@ -2,6 +2,58 @@ import Business from '../../models/Business.js';
 import ExtraInfo from '../../models/ExtraInfo.js';
 import Service from '../../models/Service.js';
 
+// Service translation mapping
+const serviceTranslations = {
+    'en': {
+        'Pain': 'Pain',
+        'Broken teeth': 'Broken teeth',
+        'Implants': 'Implants',
+        'Regular care': 'Regular care',
+        'Whitening': 'Whitening',
+        'Invisalign': 'Invisalign',
+        'Veneers': 'Veneers',
+        'Root Canal': 'Root Canal',
+        'Crowns': 'Crowns',
+        'Bridges': 'Bridges',
+        'Dental Cleaning': 'Dental Cleaning',
+        'Emergency Care': 'Emergency Care'
+    },
+    'es': {
+        'Pain': 'Dolor',
+        'Broken teeth': 'Dientes rotos',
+        'Implants': 'Implantes',
+        'Regular care': 'Cuidado regular',
+        'Whitening': 'Blanqueamiento',
+        'Invisalign': 'Invisalign',
+        'Veneers': 'Carillas',
+        'Root Canal': 'Endodoncia',
+        'Crowns': 'Coronas',
+        'Bridges': 'Puentes',
+        'Dental Cleaning': 'Limpieza dental',
+        'Emergency Care': 'Cuidado de emergencia'
+    },
+    'it': {
+        'Pain': 'Dolore',
+        'Broken teeth': 'Denti rotti',
+        'Implants': 'Impianti',
+        'Regular care': 'Cura regolare',
+        'Whitening': 'Sbiancamento',
+        'Invisalign': 'Invisalign',
+        'Veneers': 'Faccette',
+        'Root Canal': 'Devitalizzazione',
+        'Crowns': 'Corone',
+        'Bridges': 'Ponti',
+        'Dental Cleaning': 'Pulizia dentale',
+        'Emergency Care': 'Cura d\'emergenza'
+    }
+};
+
+// Function to translate service names
+const translateServiceName = (serviceName, language) => {
+    const translations = serviceTranslations[language] || serviceTranslations['en'];
+    return translations[serviceName] || serviceName; // Fallback to original if no translation
+};
+
 // Controller to get public widget settings (NO AUTH)
 export const getPublicWidgetConfig = async (req, res) => {
     const { businessId } = req.params;
@@ -35,6 +87,7 @@ export const getPublicWidgetConfig = async (req, res) => {
 export const getPublicBusinessOptions = async (req, res) => {
     try {
         const { businessId } = req.params;
+        const { language = 'en' } = req.query; // Get language from query parameter
 
         if (!businessId) {
             return res.status(400).json({ error: "Business ID is required" });
@@ -55,15 +108,15 @@ export const getPublicBusinessOptions = async (req, res) => {
         let featuredServices = extraInfo?.featuredServices || [];
         let featuredForFrontend = [];
         if (featuredServices.length > 0) {
-            // Use the stored display names
+            // Use the stored display names with translation
             featuredForFrontend = featuredServices.map(fs => ({
-                name: fs.displayName,
+                name: translateServiceName(fs.displayName, language),
                 description: (allServices.find(s => s.name === fs.originalName)?.description) || ''
             }));
         } else {
-            // Fallback: first 6 services, use their name as displayName
+            // Fallback: first 6 services, use their name as displayName with translation
             featuredForFrontend = allServices.slice(0, 6).map(service => ({
-                name: service.name,
+                name: translateServiceName(service.name, language),
                 description: service.description
             }));
         }
