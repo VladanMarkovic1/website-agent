@@ -285,6 +285,35 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
 
     console.log(`[Classifier ${sessionId}] Proceeding to check other intents.`);
 
+    // --- PRIORITY: Check for service-related intents BEFORE contact extraction ---
+    // Check for general service list request FIRST to prevent false contact extraction
+    if (listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+        return { type: 'REQUEST_SERVICE_LIST' };
+    }
+
+    // Check for explicit service inquiry keywords ("interested in", "about", "want")
+    const mentionedServiceNameExplicit = findServiceNameInMessage(normalizedMessage, services);
+    if (serviceInquiryKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+        if (mentionedServiceNameExplicit) { 
+            return { type: 'SERVICE_INQUIRY_EXPLICIT', serviceName: mentionedServiceNameExplicit };
+        }
+    }
+
+    // Check for service FAQ
+    const faqMatch = checkServiceFAQ(normalizedMessage, services);
+    if (faqMatch) {
+        return { type: 'SERVICE_FAQ', serviceName: faqMatch.serviceName, questionType: faqMatch.questionType };
+    }
+
+    // Check for general service interest
+    if ((normalizedMessage.includes('how') && normalizedMessage.includes('help')) ||
+        (normalizedMessage.includes('what') && normalizedMessage.includes('do')) ||
+        (normalizedMessage.includes('can you') && (normalizedMessage.includes('help') || normalizedMessage.includes('do'))) ||
+        (normalizedMessage.includes('services') && (normalizedMessage.includes('offer') || normalizedMessage.includes('have') || normalizedMessage.includes('provide')))) {
+        return { type: 'SERVICE_INTEREST' };
+    }
+
+    // --- NOW check for contact info extraction ---
     // Check for complete contact info in the current message ONLY if bot didn't just ask
     const singleMessageContactInfo = extractContactInfo(message);
     if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone) {
@@ -342,26 +371,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         return { type: 'PAYMENT_PLAN_INQUIRY' };
     }
 
-    // --- NEW ORDER: Check for specific service inquiries FIRST ---
-    const faqMatch = checkServiceFAQ(normalizedMessage, services);
-    if (faqMatch) {
-        return { type: 'SERVICE_FAQ', serviceName: faqMatch.serviceName, questionType: faqMatch.questionType };
-    }
-
-    // Check for explicit service inquiry keywords ("interested in", "about", "want")
-    const mentionedServiceNameExplicit = findServiceNameInMessage(normalizedMessage, services); // Call it once here
-    if (serviceInquiryKeywords.some(keyword => normalizedMessage.includes(keyword))) {
-        if (mentionedServiceNameExplicit) { 
-            return { type: 'SERVICE_INQUIRY_EXPLICIT', serviceName: mentionedServiceNameExplicit }; // Add service name
-        }
-    }
-    
-    // --- Check for general service list request only AFTER specific checks ---
-    const potentiallySpecific = faqMatch || mentionedServiceNameExplicit;
-    
-    if (!potentiallySpecific && listServiceKeywords.some(keyword => normalizedMessage.includes(keyword))) {
-        return { type: 'REQUEST_SERVICE_LIST' };
-    }
+    // --- Service-related intents are now handled earlier in the function ---
 
     // Check for help requests (questions asking for help, assistance, etc.)
     if (normalizedMessage.includes('help') && 
@@ -375,13 +385,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         return { type: 'HELP_REQUEST' };
     }
 
-    // Check for general service interest or "how can you help" type questions
-    if ((normalizedMessage.includes('how') && normalizedMessage.includes('help')) ||
-        (normalizedMessage.includes('what') && normalizedMessage.includes('do')) ||
-        (normalizedMessage.includes('can you') && (normalizedMessage.includes('help') || normalizedMessage.includes('do'))) ||
-        (normalizedMessage.includes('services') && (normalizedMessage.includes('offer') || normalizedMessage.includes('have') || normalizedMessage.includes('provide')))) {
-        return { type: 'SERVICE_INTEREST' };
-    }
+    // --- Service interest is now handled earlier in the function ---
 
     // Check for confirmation keywords ONLY if the bot didn't just ask for contact
     // AND the message is actually a confirmation, not a question
