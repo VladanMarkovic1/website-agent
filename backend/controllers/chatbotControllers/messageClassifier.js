@@ -313,6 +313,11 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         return { type: 'SERVICE_INTEREST' };
     }
 
+    // --- PRIORITY: Check for contact inquiries BEFORE contact extraction ---
+    if (CONTACT_INFO_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
+        return { type: 'CONTACT_INQUIRY' };
+    }
+
     // --- NOW check for contact info extraction ---
     // Check for complete contact info in the current message ONLY if bot didn't just ask
     const singleMessageContactInfo = extractContactInfo(message);
@@ -346,9 +351,7 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
         return { type: 'OPERATING_HOURS_INQUIRY' };
     }
 
-    if (CONTACT_INFO_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
-        return { type: 'CONTACT_INQUIRY' };
-    }
+    // --- Contact inquiry is now handled earlier in the function ---
 
      if (RESCHEDULE_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
         return { type: 'RESCHEDULE_REQUEST' };
