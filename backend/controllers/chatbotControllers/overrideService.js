@@ -46,7 +46,8 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
         'CONTACT_REQUEST', // Bot explicitly asked for contact
         'PARTIAL_CONTACT_REQUEST', // Bot asking for missing pieces
         'CONTACT_INQUIRY', // User asking for contact information (should not be overridden)
-        'OPERATING_HOURS_INQUIRY' // User asking for hours (should not be overridden)
+        'OPERATING_HOURS_INQUIRY', // User asking for hours (should not be overridden)
+        'REQUEST_SERVICE_LIST' // User asking for service list (should not be overridden)
         // Add any other relevant types here
     ];
 
