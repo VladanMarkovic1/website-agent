@@ -74,7 +74,7 @@ const availabilityKeywords = [
 // Keywords indicating a request to list available services
 const listServiceKeywords = [
     'list services', 'what services', 'which services', 'do you offer', 'your services',
-    'list service'
+    'list service', 'services'
 ];
 
 // Keywords indicating potential service inquiry
