@@ -27,7 +27,7 @@ const SPECIFIC_SERVICE_QUESTION_KEYWORDS = ['options', 'best', 'recommend', 'sug
 
 const OPERATING_HOURS_KEYWORDS = ['hours', 'open', 'close', 'available', 'when', 'time', 'schedule'];
 
-const CONTACT_INFO_KEYWORDS = ['fax', 'fax number', 'phone number', 'telephone', 'email', 'email address', 'contact', 'contact information', 'address', 'location', 'where are you', 'how can i reach', 'how to contact'];
+const CONTACT_INFO_KEYWORDS = ['fax', 'fax number', 'phone number', 'telephone', 'email', 'email address', 'contact', 'contact information', 'address', 'location', 'where are you', 'how can i reach', 'how to contact', 'office number', 'office phone', 'office telephone'];
 
 const RESCHEDULE_KEYWORDS = ['reschedule', 'change', 'move', 'postpone', 'cancel'];
 
@@ -319,27 +319,45 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
     }
 
     // --- NOW check for contact info extraction ---
-    // Check for complete contact info in the current message ONLY if bot didn't just ask
-    const singleMessageContactInfo = extractContactInfo(message);
-    if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone) {
-        return {
-            type: 'CONTACT_INFO_PROVIDED',
-            contactInfo: singleMessageContactInfo,
-            service: findServiceNameInMessage(message, services)
-        };
-    }
-    // NEW: Check for *partial* contact info in the current message, even if bot didn't just ask
-    else if (singleMessageContactInfo && (singleMessageContactInfo.name || singleMessageContactInfo.phone || singleMessageContactInfo.email)) {
-        // If we extracted *anything* from this single message, treat it as partial.
-        const missingFields = [];
-        if (!singleMessageContactInfo.name) missingFields.push('name');
-        if (!singleMessageContactInfo.phone) missingFields.push('phone');
-        if (!singleMessageContactInfo.email) missingFields.push('email');
-        return {
-            type: 'PARTIAL_CONTACT_INFO_PROVIDED',
-            contactInfo: singleMessageContactInfo,
-            missingFields: missingFields
-        };
+    // PREVENT contact extraction for questions that are clearly asking for information
+    const isQuestionAskingForInfo = (
+        normalizedMessage.startsWith('what') ||
+        normalizedMessage.startsWith('which') ||
+        normalizedMessage.startsWith('where') ||
+        normalizedMessage.startsWith('when') ||
+        normalizedMessage.startsWith('how') ||
+        normalizedMessage.startsWith('can you') ||
+        normalizedMessage.startsWith('could you') ||
+        normalizedMessage.startsWith('do you') ||
+        normalizedMessage.startsWith('tell me') ||
+        normalizedMessage.startsWith('show me') ||
+        normalizedMessage.startsWith('give me') ||
+        normalizedMessage.includes('?')
+    );
+
+    // Only extract contact info if it's NOT a question asking for information
+    if (!isQuestionAskingForInfo) {
+        const singleMessageContactInfo = extractContactInfo(message);
+        if (singleMessageContactInfo && singleMessageContactInfo.name && singleMessageContactInfo.phone) {
+            return {
+                type: 'CONTACT_INFO_PROVIDED',
+                contactInfo: singleMessageContactInfo,
+                service: findServiceNameInMessage(message, services)
+            };
+        }
+        // NEW: Check for *partial* contact info in the current message, even if bot didn't just ask
+        else if (singleMessageContactInfo && (singleMessageContactInfo.name || singleMessageContactInfo.phone || singleMessageContactInfo.email)) {
+            // If we extracted *anything* from this single message, treat it as partial.
+            const missingFields = [];
+            if (!singleMessageContactInfo.name) missingFields.push('name');
+            if (!singleMessageContactInfo.phone) missingFields.push('phone');
+            if (!singleMessageContactInfo.email) missingFields.push('email');
+            return {
+                type: 'PARTIAL_CONTACT_INFO_PROVIDED',
+                contactInfo: singleMessageContactInfo,
+                missingFields: missingFields
+            };
+        }
     }
 
     // --- Other Intent Checks (Prioritize more specific intents) ---
