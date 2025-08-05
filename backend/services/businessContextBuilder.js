@@ -53,6 +53,7 @@ class BusinessContextBuilder {
                 aiConfig: business.aiConfig || {},
                 phone: business.phone,
                 email: business.email,
+                fax: business.fax,
                 address: business.locationDetails?.address,
                 city: business.locationDetails?.city,
                 state: business.locationDetails?.state,

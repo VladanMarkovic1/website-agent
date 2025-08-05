@@ -417,6 +417,9 @@ export const generateAIResponse = async (message, businessData, messageHistory =
                 if (businessData.email) {
                     contactDetails.push(`Email: ${businessData.email}`);
                 }
+                if (businessData.fax) {
+                    contactDetails.push(`Fax: ${businessData.fax}`);
+                }
                 if (businessData.address) {
                     let address = businessData.address;
                     if (businessData.city) address += `, ${businessData.city}`;

@@ -27,6 +27,8 @@ const SPECIFIC_SERVICE_QUESTION_KEYWORDS = ['options', 'best', 'recommend', 'sug
 
 const OPERATING_HOURS_KEYWORDS = ['hours', 'open', 'close', 'available', 'when', 'time', 'schedule'];
 
+const CONTACT_INFO_KEYWORDS = ['fax', 'fax number', 'phone number', 'telephone', 'email', 'email address', 'contact', 'contact information', 'address', 'location', 'where are you', 'how can i reach', 'how to contact'];
+
 const RESCHEDULE_KEYWORDS = ['reschedule', 'change', 'move', 'postpone', 'cancel'];
 
 const CANCEL_KEYWORDS = ['cancel', 'cancellation', 'stop', 'end'];
@@ -313,6 +315,10 @@ export const classifyUserIntent = (message, messageHistory, services = [], isNew
 
     if (OPERATING_HOURS_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
         return { type: 'OPERATING_HOURS_INQUIRY' };
+    }
+
+    if (CONTACT_INFO_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {
+        return { type: 'CONTACT_INQUIRY' };
     }
 
      if (RESCHEDULE_KEYWORDS.some(keyword => normalizedMessage.includes(keyword))) {

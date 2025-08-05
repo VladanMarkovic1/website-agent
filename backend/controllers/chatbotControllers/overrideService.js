@@ -44,7 +44,9 @@ export const applyResponseOverrides = (initialResponse, requestTypes, session, b
         'APPOINTMENT_REQUEST', // Generic booking request (before details extracted)
         'APPOINTMENT_REQUEST_DETAILED', // Booking request with details (after extraction)
         'CONTACT_REQUEST', // Bot explicitly asked for contact
-        'PARTIAL_CONTACT_REQUEST' // Bot asking for missing pieces
+        'PARTIAL_CONTACT_REQUEST', // Bot asking for missing pieces
+        'CONTACT_INQUIRY', // User asking for contact information (should not be overridden)
+        'OPERATING_HOURS_INQUIRY' // User asking for hours (should not be overridden)
         // Add any other relevant types here
     ];
 
